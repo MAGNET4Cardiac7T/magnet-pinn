@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "magnet"
+version = "0.0.1"
+description = "This is the software package for simulating EM Fields using NNs"
+authors = ["Alex Tarasov <tarasov.oleksander@gmail.com>"]
+license = "GNU"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^1.26.4"
+trimesh = "^4.2.4"
+h5py = "^3.10.0"
+
+
+[tool.poetry.group.dev.dependencies]
+matplotlib = "^3.8.4"
+jupyterlab = "^4.1.5"
+ipywidgets = "^8.1.2"
+sphinx = "^7.2.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
