@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        additional_dependencies: [toml]
+        exclude: ^.*/?setup\.py$
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-json
+      - id: pretty-format-json
+        args: [--no-ensure-ascii]
+      - id: check-yaml
+        exclude: ^tests/.*
+      - id: trailing-whitespace
+        exclude: ^tests/.*/fixtures/.*
+      - id: end-of-file-fixer
+        exclude: ^tests/.*/fixtures/.*
+      - id: debug-statements
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy
