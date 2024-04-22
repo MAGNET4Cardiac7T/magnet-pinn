@@ -1,8 +1,13 @@
 [tool.poetry]
-name = "magnet"
+name = "magnet-pinn"
 version = "0.0.1"
 description = "This is the software package for simulating EM Fields using NNs"
-authors = ["Alex Tarasov <tarasov.oleksander@gmail.com>"]
+authors = [
+    "Andrzej Dulny <andzej.dulny@gmail.com>",
+    "Anna Krause <krause@informatik.uni-wuerzburg.de>",
+    "Farzad Jabbarigargari <Jabbarigar_F@ukw.de>",
+    "Alex Tarasov <tarasov.oleksander@gmail.com>"
+]
 license = "GNU"
 readme = "README.md"
 
