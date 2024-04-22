@@ -2,6 +2,10 @@
 About the MAGNET4Cardiac7T project
 ==================================
 
+.. image:: images/logo_magnet.svg
+     :width: 1800px
+     :align: center
+
 ----------------------
 Motivation
 ----------------------
@@ -24,6 +28,7 @@ Partners
 This project is done in cooperation with:
 
 `Data Science Chair (X), University of Würzburg <https://dmir.org/>`_
+
 `Deutsches Zentrum für Herzinsufizienz (DZHI), Universitätsklinikum Würzburg <https://www.ukw.de/behandlungszentren/dzhi/startseite/>`_
 
 
