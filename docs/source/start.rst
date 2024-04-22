@@ -4,9 +4,9 @@ Getting Started
 
 This section guides you on how to start using the magnet-pinn package.
 
---------------------
+----------------------
 Installing magnet-pinn
---------------------
+----------------------
 
 ^^^^^^^^^^^^^^^^^^^^
 Install using pip
