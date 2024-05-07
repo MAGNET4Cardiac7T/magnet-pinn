@@ -42,7 +42,7 @@ ASCII_FILENAME_PATTERN = "*AC*.txt"
 H5_FILENAME_PATTERN = "*AC*.h5"
 
 
-class Field_Reader:
+class FieldReader:
     """Class for reading H/E field values.
     We assume values can be only packed in .h5/.txt files"""
 

@@ -6,49 +6,16 @@ import os.path as osp
 from typing import List
 
 import numpy as np
-import pandas as pd
-from trimesh import load_mesh
-from trimesh.voxel.creation import local_voxelize
+
+from magnet_pinn.preprocessing.reading_field import (
+    E_FIELD_DATABASE_KEY,
+    H_FIELD_DATABASE_KEY,
+    FieldReader,
+)
 
 RAW_DATA_DIR_PATH = "raw"
-INPUT_DIR_PATH = "input"
 DIPOLES_MATERIALS_DIR_PATH = osp.join(RAW_DATA_DIR_PATH, "dipoles", "simple", "raw")
-MATERIALS_FILE_NAME = "materials.txt"
 STANDARD_VOXEL_SIZE = 4
-
-E_FIELD_DATABASE_KEY = "E-FIELD"
-H_FIELD_DATABASE_KEY = "H-FIELD"
-POSITIONS_DATABASE_KEY = "Position"
-
-FIELD_DIR_PATH = {E_FIELD_DATABASE_KEY: "E_field", H_FIELD_DATABASE_KEY: "H_field"}
-
-ASCII_COLUMN_NAMES = {
-    E_FIELD_DATABASE_KEY: [
-        "x",
-        "y",
-        "z",
-        "ExRe",
-        "EyRe",
-        "EzRe",
-        "ExIm",
-        "EyIm",
-        "EzIm",
-    ],
-    H_FIELD_DATABASE_KEY: [
-        "x",
-        "y",
-        "z",
-        "HxRe",
-        "HyRe",
-        "HzRe",
-        "HxIm",
-        "HyIm",
-        "HzIm",
-    ],
-}
-
-ASCII_FILENAME_PATTERN = "*AC*.txt"
-H5_FILENAME_PATTERN = "*AC*.h5"
 
 
 class Preprocessing:
@@ -61,27 +28,43 @@ class Preprocessing:
         simulations_names: List[str],
         data_dir_path: str,
         voxel_size: int = STANDARD_VOXEL_SIZE,
-        x_max: int = 240,
-        x_min=-240,
-        y_max: int = 150,
-        y_min: int = -150,
-        z_max: int = 150,
-        z_min: int = -230,
+        **kwargs,
     ) -> None:
-        self.simulation_paths = list(
-            map(
-                lambda x: osp.join(data_dir_path, RAW_DATA_DIR_PATH, x),
-                simulations_names,
-            )
-        )
+        self.simulations_dir_path = osp.join(data_dir_path, RAW_DATA_DIR_PATH)
         self.voxel_size = voxel_size
-        self.positions_min = np.array([x_min, y_min, z_min])
-        self.positions_max = np.array([x_max, y_max, z_max])
+        self.positions_min = np.array(
+            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
+        )
+        self.positions_max = np.array(
+            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
+        )
 
-    def process_simulation(self, simulation_name: str, data_dir_path: str):
-        pass
+        list(map(lambda x: self.process_simulation(x), simulations_names))
 
-    def validate_coordinates(self, positions: np.array):
+    def process_simulation(self, simulation_name: str):
+        simulation_dir_path = osp.join(self.simulations_dir_path, simulation_name)
+
+        e_field_values, positions = self.read_field(
+            simulation_dir_path, E_FIELD_DATABASE_KEY
+        )
+        h_field_values, _ = self.read_field(simulation_dir_path, H_FIELD_DATABASE_KEY)
+
+        print(f"Simulation {simulation_name} has been processed")
+
+    def read_field(
+        self, simulation_dir_path: str, field_type: str = E_FIELD_DATABASE_KEY
+    ):
+        field_values = []
+        positions = None
+        reader = FieldReader(simulation_dir_path, field_type)
+        for data, pos in reader.read_data():
+            if self.sanity_check(pos):
+                field_values.append(data)
+                if positions is None:
+                    positions = pos
+        return field_values, positions
+
+    def sanity_check(self, positions: np.array):
         data_min = np.min(positions, axis=0)
         if not np.all(self.positions_min <= data_min):
             raise Exception("Min not satisfied")
@@ -90,16 +73,4 @@ class Preprocessing:
         if not np.all(self.positions_max >= data_max):
             raise Exception("Max not satisfied")
 
-    def process_dipoles(self, data_dir_path: str):
-        properties = self.read_properties(data_dir_path)
-        meshes = (
-            properties["file"].apply(lambda x: load_mesh(osp.join(data_dir_path, x)))
-        ).tolist()
-        mask = [
-            local_voxelize(mesh, (0, 0, 0), self.voxel_size, 100) for mesh in meshes
-        ]
-        return properties, mask
-
-    def read_properties(self, dir_path: str) -> pd.DataFrame:
-        materials_file = osp.join(dir_path, MATERIALS_FILE_NAME)
-        return pd.read_csv(materials_file)
+        return True
