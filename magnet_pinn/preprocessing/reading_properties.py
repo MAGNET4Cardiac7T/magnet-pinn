@@ -5,14 +5,13 @@ import os.path as osp
 import pandas as pd
 from trimesh import load_mesh
 
-INPUT_DIR_PATH = "input"
 MATERIALS_FILE_NAME = "materials.txt"
 
 
 class PropertyReader:
 
-    def __init__(self, simmulation_dir_path: str) -> None:
-        self.properties_dir_path = osp.join(simmulation_dir_path, INPUT_DIR_PATH)
+    def __init__(self, properties_dir_path: str) -> None:
+        self.properties_dir_path = properties_dir_path
         self.properties = pd.read_csv(
             osp.join(self.properties_dir_path, MATERIALS_FILE_NAME)
         )

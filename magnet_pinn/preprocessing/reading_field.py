@@ -79,7 +79,12 @@ class FieldReader:
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
 
-        return np.column_stack((Ex, Ey, Ez)), positions
+        return (
+            np.column_stack((Ex, Ey, Ez)).astype(np.complex128),
+            np.column_stack((positions["x"], positions["y"], positions["z"])).astype(
+                np.int64
+            ),
+        )
 
     def __get_real_columns_order(self):
         header = np.loadtxt(self.files_list[0], max_rows=1, dtype=str)
@@ -98,5 +103,7 @@ class FieldReader:
         Ey = data[:, 4] + 1j * data[:, 7]
         Ez = data[:, 5] + 1j * data[:, 8]
 
-        positions = data[:, :3].astype(np.int64)
-        return np.column_stack((Ex, Ey, Ez)), positions
+        return (
+            np.column_stack((Ex, Ey, Ez)).astype(np.complex128),
+            data[:, :3].astype(np.int64),
+        )
