@@ -66,11 +66,13 @@ class Preprocessing:
     def process_simulation(self, simulation_name: str):
         simulation_dir_path = osp.join(self.simulations_dir_path, simulation_name)
 
-        e_field_values, positions = self.read_field(
-            simulation_dir_path, E_FIELD_DATABASE_KEY
-        )
+        e_field_reader = FieldReader(simulation_dir_path, E_FIELD_DATABASE_KEY)
+        h_field_reader = FieldReader(simulation_dir_path, H_FIELD_DATABASE_KEY)
 
-        h_field_values, _ = self.read_field(simulation_dir_path, H_FIELD_DATABASE_KEY)
+        if not np.array_equal(e_field_reader.coordinates, h_field_reader.coordinates):
+            raise Exception("Different coordinates for the E-field and H-field")
+        self.__sanity_check__(e_field_reader.coordinates)
+        positions = e_field_reader.coordinates
 
         center, radius, bounds = self.__get_center_radius_bounds__(positions)
 
@@ -91,6 +93,9 @@ class Preprocessing:
         general_mask = sum(dipoles_masks + object_masks)
         final_features = np.stack((general_mask, *input_features))
 
+        e_field_values = e_field_reader.read_data()
+        h_field_values = h_field_reader.read_data()
+
         self.__format_and_write__(
             simulation_name,
             final_features,
@@ -102,20 +107,7 @@ class Preprocessing:
 
         print(f"Simulation {simulation_name} processed")
 
-    def read_field(
-        self, simulation_dir_path: str, field_type: str = E_FIELD_DATABASE_KEY
-    ):
-        field_values = []
-        positions = None
-        reader = FieldReader(simulation_dir_path, field_type)
-        for data, pos in reader.read_data():
-            if self.sanity_check(pos):
-                field_values.append(data)
-                if positions is None:
-                    positions = pos
-        return field_values, positions
-
-    def sanity_check(self, positions: np.array):
+    def __sanity_check__(self, positions: np.array):
         data_min = np.min(positions, axis=0)
         if not np.all(self.positions_min <= data_min):
             raise Exception("Min not satisfied")
@@ -125,17 +117,6 @@ class Preprocessing:
             raise Exception("Max not satisfied")
 
         return True
-
-    def __get_objects_data__(
-        self, simulation_dir_path: str, center: np.array, radius: int, bounds: np.array
-    ):
-        properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
-        property_reader = PropertyReader(properties_dir_path)
-        meshes = property_reader.read_meshes()
-        masks = list(
-            map(lambda x: self.__process_mesh__(x, center, radius, bounds), meshes)
-        )
-        return property_reader.properties, masks
 
     def __get_center_radius_bounds__(self, coordinates: np.array):
         x_unique = np.unique(coordinates[:, 0])
@@ -174,6 +155,17 @@ class Preprocessing:
         bounds = np.row_stack([lows, highs]).astype(int)
 
         return center, radius, bounds
+
+    def __get_objects_data__(
+        self, simulation_dir_path: str, center: np.array, radius: int, bounds: np.array
+    ):
+        properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
+        property_reader = PropertyReader(properties_dir_path)
+        meshes = property_reader.read_meshes()
+        masks = list(
+            map(lambda x: self.__process_mesh__(x, center, radius, bounds), meshes)
+        )
+        return property_reader.properties, masks
 
     def __process_mesh__(self, mesh, center, radius, bounds):
         voxel_grid = local_voxelize(mesh, center, self.voxel_size, radius).matrix
