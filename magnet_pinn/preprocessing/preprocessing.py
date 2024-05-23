@@ -3,12 +3,13 @@ Module for basic preprocessing functionality.
 """
 
 import os.path as osp
-from typing import List
+from os import makedirs
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
 from h5py import File
-from trimesh.voxel.creation import local_voxelize
+from tqdm import tqdm
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -16,10 +17,11 @@ from magnet_pinn.preprocessing.reading_field import (
     FieldReader,
 )
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
+from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 
 RAW_DATA_DIR_PATH = "raw"
 DIPOLES_MATERIALS_DIR_PATH = osp.join("dipoles", "simple", "raw")
-INPUT_DIR_PATH = "input"
+INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
@@ -51,9 +53,8 @@ class Preprocessing:
             (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
         )
 
-        for i in simulations_names:
-            self.process_simulation(i)
-            break
+        for simulation_name in tqdm(simulations_names):
+            self.process_simulation(simulation_name)
 
     def __get_dipoles_data__(self):
         dipoles_properties_dir_path = osp.join(
@@ -69,175 +70,143 @@ class Preprocessing:
         e_field_reader = FieldReader(simulation_dir_path, E_FIELD_DATABASE_KEY)
         h_field_reader = FieldReader(simulation_dir_path, H_FIELD_DATABASE_KEY)
 
-        if not np.array_equal(e_field_reader.coordinates, h_field_reader.coordinates):
+        if (
+            not np.array_equal(e_field_reader.x_bounds, h_field_reader.x_bounds)
+            or not np.array_equal(e_field_reader.y_bounds, h_field_reader.y_bounds)
+            or not np.array_equal(e_field_reader.z_bounds, h_field_reader.z_bounds)
+        ):
             raise Exception("Different coordinates for the E-field and H-field")
-        self.__sanity_check__(e_field_reader.coordinates)
-        positions = e_field_reader.coordinates
-
-        center, radius, bounds = self.__get_center_radius_bounds__(positions)
-
-        object_properties, object_masks = self.__get_objects_data__(
-            simulation_dir_path, center, radius, bounds
+        bounds = (
+            e_field_reader.x_bounds,
+            e_field_reader.y_bounds,
+            e_field_reader.z_bounds,
         )
+        self.__sanity_check__(bounds)
 
-        dipoles_masks = list(
-            map(
-                lambda x: self.__process_mesh__(x, center, radius, bounds),
-                self.dipoles_meshes,
-            )
+        object_properties, object_meshes = self.__get_objects_data__(
+            simulation_dir_path
         )
+        dipoles_masks, object_masks = self.__get_masks__(object_meshes, bounds)
 
-        input_features = self.__calculate_features__(
+        features = self.__calculate_features__(
             dipoles_masks, object_masks, object_properties
         )
-        general_mask = sum(dipoles_masks + object_masks)
-        final_features = np.stack((general_mask, *input_features))
 
         e_field_values = e_field_reader.read_data()
         h_field_values = h_field_reader.read_data()
 
-        self.__format_and_write__(
+        self.__format_and_write_dataset__(
             simulation_name,
-            final_features,
+            features,
             e_field_values,
             h_field_values,
-            positions,
+            bounds,
             object_masks,
         )
 
-        print(f"Simulation {simulation_name} processed")
-
-    def __sanity_check__(self, positions: np.array):
-        data_min = np.min(positions, axis=0)
+    def __sanity_check__(self, bounds: Tuple):
+        x_bounds, y_bounds, z_bounds = bounds
+        data_min = np.array((x_bounds[0], y_bounds[0], z_bounds[0]))
         if not np.all(self.positions_min <= data_min):
             raise Exception("Min not satisfied")
 
-        data_max = np.max(positions, axis=0)
+        data_max = np.array((x_bounds[-1], y_bounds[-1], z_bounds[-1]))
         if not np.all(self.positions_max >= data_max):
             raise Exception("Max not satisfied")
 
         return True
 
-    def __get_center_radius_bounds__(self, coordinates: np.array):
-        x_unique = np.unique(coordinates[:, 0])
-        y_unique = np.unique(coordinates[:, 1])
-        z_unique = np.unique(coordinates[:, 2])
+    def __get_objects_data__(self, simulation_dir_path: str):
+        properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
+        property_reader = PropertyReader(properties_dir_path)
+        object_meshes = property_reader.read_meshes()
+        return property_reader.properties, object_meshes
 
-        x_center_index = x_unique.shape[0] // 2
-        y_center_index = y_unique.shape[0] // 2
-        z_center_index = z_unique.shape[0] // 2
-
-        center = np.array(
-            [
-                x_unique[x_center_index],
-                y_unique[y_center_index],
-                z_unique[z_center_index],
-            ]
-        ).astype(int)
-
-        radius = max(
-            (
-                x_center_index,
-                y_center_index,
-                z_center_index,
-                x_unique.shape[0] - x_center_index - 1,
-                y_unique.shape[0] - y_center_index - 1,
-                z_unique.shape[0] - z_center_index - 1,
+    def __get_masks__(self, objects_meshes, bounds: Tuple):
+        voxelizer = MeshVoxelizer(bounds, self.voxel_size)
+        dipoles_masks = list(
+            map(
+                lambda x: voxelizer.process_mesh(x),
+                self.dipoles_meshes,
+            )
+        )
+        object_masks = list(
+            map(
+                lambda x: voxelizer.process_mesh(x),
+                objects_meshes,
             )
         )
 
-        lows = np.array(
-            [radius - x_center_index, radius - y_center_index, radius - z_center_index]
-        )
-        highs = lows + np.array(
-            [x_unique.shape[0], y_unique.shape[0], z_unique.shape[0]]
-        )
-        bounds = np.row_stack([lows, highs]).astype(int)
-
-        return center, radius, bounds
-
-    def __get_objects_data__(
-        self, simulation_dir_path: str, center: np.array, radius: int, bounds: np.array
-    ):
-        properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
-        property_reader = PropertyReader(properties_dir_path)
-        meshes = property_reader.read_meshes()
-        masks = list(
-            map(lambda x: self.__process_mesh__(x, center, radius, bounds), meshes)
-        )
-        return property_reader.properties, masks
-
-    def __process_mesh__(self, mesh, center, radius, bounds):
-        voxel_grid = local_voxelize(mesh, center, self.voxel_size, radius).matrix
-        x_low, y_low, z_low = bounds[0]
-        x_high, y_high, z_high = bounds[1]
-        return voxel_grid[x_low:x_high, y_low:y_high, z_low:z_high] * 1.0
+        return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
 
     def __calculate_features__(
         self,
-        dipoles_masks: List[np.array],
-        object_masks: List[np.array],
+        dipoles_masks: np.array,
+        objects_masks: np.array,
         object_properties: pd.DataFrame,
     ):
-        features = []
-        for feature_name in FEATURE_NAMES:
+        object_properties_values = object_properties.loc[:, FEATURE_NAMES].to_numpy().T
+        dipoles_properties_values = (
+            self.dipoles_properties.loc[:, FEATURE_NAMES].to_numpy().T
+        )
 
-            dipoles_features = sum(
-                (
-                    dipoles_masks[i] * feature
-                    for i, feature in enumerate(self.dipoles_properties[feature_name])
-                )
-            )
+        """
+        Masks arrays have shape (x, y, z, n), where n is number of dipoles/objects.
+        We need to create a new axis for the features. It will be pre-last.
+        """
 
-            object_features = sum(
-                (
-                    object_masks[i] * feature
-                    for i, feature in enumerate(object_properties[feature_name])
-                )
-            )
+        object_properties_values = object_properties.loc[:, FEATURE_NAMES].to_numpy().T
+        extended_object_masks = np.repeat(
+            objects_masks[:, :, :, np.newaxis, :], len(FEATURE_NAMES), axis=-2
+        )
+        objects_features = np.sum(
+            extended_object_masks * object_properties_values, axis=-1
+        )
 
-            feature_values = dipoles_features + object_features
+        dipoles_properties_values = (
+            self.dipoles_properties.loc[:, FEATURE_NAMES].to_numpy().T
+        )
+        dipoles_extended_masks = np.repeat(
+            dipoles_masks[:, :, :, np.newaxis, :], len(FEATURE_NAMES), axis=-2
+        )
+        dipoles_features = np.sum(
+            dipoles_extended_masks * dipoles_properties_values, axis=-1
+        )
 
-            air_mask = 1 - sum(dipoles_masks + object_masks)
-            feature_values += air_mask * AIR_FEATURES[feature_name]
-            features.append(feature_values)
+        features = dipoles_features + objects_features
 
+        # The last axis is the features axis and we need to fill the air values
+        for i, feature_name in enumerate(FEATURE_NAMES):
+            features[features[:, :, :, i] == 0, i] = AIR_FEATURES[feature_name]
+
+        general_mask = np.sum(
+            np.concatenate((dipoles_masks, objects_masks), axis=-1), axis=-1
+        ).astype(bool)
+        features = np.concatenate(
+            (features, general_mask[:, :, :, np.newaxis]), axis=-1
+        )
         return features
 
-    def __format_and_write__(
+    def __format_and_write_dataset__(
         self,
         simulation_name: str,
         features: np.array,
         e_field: np.array,
         h_field: np.array,
-        positions: np.array,
-        object_masks: List[np.array],
+        bounds: Tuple,
+        object_masks: np.array,
     ):
-        reshaped_efield = self.__format_field_values__(e_field, positions)
-        reshaped_hfield = self.__format_field_values__(h_field, positions)
-
-        target_file_name = f"{simulation_name}-voxel_size_{self.voxel_size}.h5"
-        output_file_path = osp.join(
-            self.data_dir_path, PROCESSED_DIR_PATH, target_file_name
+        target_dir_name = f"processed_voxel_size_{self.voxel_size}"
+        target_dir_path = osp.join(
+            self.data_dir_path, PROCESSED_DIR_PATH, target_dir_name
         )
-        with File(output_file_path, "w") as f:
-            f.create_dataset("features", data=features)
-            f.create_dataset("e_field", data=reshaped_efield)
-            f.create_dataset("h_field", data=reshaped_hfield)
-            f.create_dataset("object_masks", data=np.stack(object_masks))
+        makedirs(target_dir_path, exist_ok=True)
 
-    def __format_field_values__(self, field_values: np.array, positions: np.array):
-        x_axis_size = np.unique(positions[:, 0]).shape[0]
-        y_axis_size = np.unique(positions[:, 1]).shape[0]
-        z_axis_size = np.unique(positions[:, 2]).shape[0]
-        new_shape = (x_axis_size, y_axis_size, z_axis_size)
-        fields = []
-        for field in field_values:
-            field_reshaped = np.empty(
-                (x_axis_size, y_axis_size, z_axis_size, 3), dtype=np.complex128
-            )
-            field_reshaped[:, :, :, 0] = np.reshape(field[:, 0], new_shape, order="F")
-            field_reshaped[:, :, :, 1] = np.reshape(field[:, 1], new_shape, order="F")
-            field_reshaped[:, :, :, 2] = np.reshape(field[:, 2], new_shape, order="F")
-            fields.append(field_reshaped)
-        return np.stack(fields, axis=-1)
+        target_file_name = f"{simulation_name}.h5"
+        output_file_path = osp.join(target_dir_path, target_file_name)
+
+        with File(output_file_path, "w") as f:
+            f.create_dataset("input", data=features)
+            f.create_dataset("efield", data=e_field)
+            f.create_dataset("hfield", data=h_field)
+            f.create_dataset("subject", data=object_masks)
