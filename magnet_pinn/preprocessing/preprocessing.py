@@ -4,7 +4,7 @@ Module for basic preprocessing functionality.
 
 import os.path as osp
 from os import makedirs
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,7 @@ PROCESSED_DIR_PATH = "processed"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
 AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
+AIR_FEATURE_VALUES = tuple(AIR_FEATURES[feature_name] for feature_name in FEATURE_NAMES)
 
 
 class Preprocessing:
@@ -35,17 +36,14 @@ class Preprocessing:
 
     def __init__(
         self,
-        simulations_names: List[str],
         data_dir_path: str,
-        voxel_size: int = STANDARD_VOXEL_SIZE,
         **kwargs,
     ) -> None:
         self.data_dir_path = data_dir_path
         self.simulations_dir_path = osp.join(data_dir_path, RAW_DATA_DIR_PATH)
 
-        self.dipoles_properties, self.dipoles_meshes = self.__get_dipoles_data__()
+        self.dipoles_properties, self.dipoles_meshes = self.__get_dipoles_data()
 
-        self.voxel_size = voxel_size
         self.positions_min = np.array(
             (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
         )
@@ -53,10 +51,7 @@ class Preprocessing:
             (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
         )
 
-        for simulation_name in tqdm(simulations_names):
-            self.process_simulation(simulation_name)
-
-    def __get_dipoles_data__(self):
+    def __get_dipoles_data(self):
         dipoles_properties_dir_path = osp.join(
             self.simulations_dir_path, DIPOLES_MATERIALS_DIR_PATH
         )
@@ -64,7 +59,11 @@ class Preprocessing:
         dipoles_meshes = dipoles_property_reader.read_meshes()
         return dipoles_property_reader.properties, dipoles_meshes
 
-    def process_simulation(self, simulation_name: str):
+    def process_simulations(self, simulation_name: str):
+        for simulation_name in tqdm(simulation_name):
+            self.__process_simulation(simulation_name)
+
+    def __process_simulation(self, simulation_name: str):
         simulation_dir_path = osp.join(self.simulations_dir_path, simulation_name)
 
         e_field_reader = FieldReader(simulation_dir_path, E_FIELD_DATABASE_KEY)
@@ -81,21 +80,19 @@ class Preprocessing:
             e_field_reader.y_bounds,
             e_field_reader.z_bounds,
         )
-        self.__sanity_check__(bounds)
+        self.__sanity_check(bounds)
 
-        object_properties, object_meshes = self.__get_objects_data__(
-            simulation_dir_path
-        )
-        dipoles_masks, object_masks = self.__get_masks__(object_meshes, bounds)
+        object_properties, object_meshes = self.__get_objects_data(simulation_dir_path)
+        dipoles_masks, object_masks = self._get_masks(object_meshes, bounds)
 
-        features = self.__calculate_features__(
+        features = self.__calculate_features(
             dipoles_masks, object_masks, object_properties
         )
 
         e_field_values = e_field_reader.read_data()
         h_field_values = h_field_reader.read_data()
 
-        self.__format_and_write_dataset__(
+        self._format_and_write_dataset(
             simulation_name,
             features,
             e_field_values,
@@ -104,7 +101,7 @@ class Preprocessing:
             object_masks,
         )
 
-    def __sanity_check__(self, bounds: Tuple):
+    def __sanity_check(self, bounds: Tuple):
         x_bounds, y_bounds, z_bounds = bounds
         data_min = np.array((x_bounds[0], y_bounds[0], z_bounds[0]))
         if not np.all(self.positions_min <= data_min):
@@ -116,30 +113,16 @@ class Preprocessing:
 
         return True
 
-    def __get_objects_data__(self, simulation_dir_path: str):
+    def __get_objects_data(self, simulation_dir_path: str):
         properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
         property_reader = PropertyReader(properties_dir_path)
         object_meshes = property_reader.read_meshes()
         return property_reader.properties, object_meshes
 
-    def __get_masks__(self, objects_meshes, bounds: Tuple):
-        voxelizer = MeshVoxelizer(bounds, self.voxel_size)
-        dipoles_masks = list(
-            map(
-                lambda x: voxelizer.process_mesh(x),
-                self.dipoles_meshes,
-            )
-        )
-        object_masks = list(
-            map(
-                lambda x: voxelizer.process_mesh(x),
-                objects_meshes,
-            )
-        )
+    def _get_masks(self, objects_meshes, bounds: Tuple):
+        raise NotImplementedError()
 
-        return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
-
-    def __calculate_features__(
+    def __calculate_features(
         self,
         dipoles_masks: np.array,
         objects_masks: np.array,
@@ -157,7 +140,7 @@ class Preprocessing:
 
         object_properties_values = object_properties.loc[:, FEATURE_NAMES].to_numpy().T
         extended_object_masks = np.repeat(
-            objects_masks[:, :, :, np.newaxis, :], len(FEATURE_NAMES), axis=-2
+            np.expand_dims(objects_masks, axis=-2), len(FEATURE_NAMES), axis=-2
         )
         objects_features = np.sum(
             extended_object_masks * object_properties_values, axis=-1
@@ -167,7 +150,7 @@ class Preprocessing:
             self.dipoles_properties.loc[:, FEATURE_NAMES].to_numpy().T
         )
         dipoles_extended_masks = np.repeat(
-            dipoles_masks[:, :, :, np.newaxis, :], len(FEATURE_NAMES), axis=-2
+            np.expand_dims(dipoles_masks, axis=-2), len(FEATURE_NAMES), axis=-2
         )
         dipoles_features = np.sum(
             dipoles_extended_masks * dipoles_properties_values, axis=-1
@@ -175,19 +158,54 @@ class Preprocessing:
 
         features = dipoles_features + objects_features
 
-        # The last axis is the features axis and we need to fill the air values
-        for i, feature_name in enumerate(FEATURE_NAMES):
-            features[features[:, :, :, i] == 0, i] = AIR_FEATURES[feature_name]
+        # set air feaure values
+        features[np.sum(features, axis=-1) == 0, :] = AIR_FEATURE_VALUES
 
         general_mask = np.sum(
             np.concatenate((dipoles_masks, objects_masks), axis=-1), axis=-1
         ).astype(bool)
         features = np.concatenate(
-            (features, general_mask[:, :, :, np.newaxis]), axis=-1
+            (features, np.expand_dims(general_mask, axis=-1)), axis=-1
         )
         return features
 
-    def __format_and_write_dataset__(
+    def _format_and_write_dataset(
+        self,
+        simulation_name: str,
+        features: np.array,
+        e_field: np.array,
+        h_field: np.array,
+        bounds: Tuple,
+        object_masks: np.array,
+    ):
+        raise NotImplementedError()
+
+
+class GridPreprocessing(Preprocessing):
+    def __init__(
+        self, data_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
+    ):
+        super().__init__(data_dir_path, **kwargs)
+        self.voxel_size = voxel_size
+
+    def _get_masks(self, objects_meshes, bounds: Tuple):
+        voxelizer = MeshVoxelizer(bounds, self.voxel_size)
+        dipoles_masks = list(
+            map(
+                lambda x: voxelizer.process_mesh(x),
+                self.dipoles_meshes,
+            )
+        )
+        object_masks = list(
+            map(
+                lambda x: voxelizer.process_mesh(x),
+                objects_meshes,
+            )
+        )
+
+        return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
+
+    def _format_and_write_dataset(
         self,
         simulation_name: str,
         features: np.array,
