@@ -17,7 +17,9 @@ class PropertyReader:
         )
 
     def read_meshes(self):
-        return map(
-            lambda x: load_mesh(osp.join(self.properties_dir_path, x)),
-            self.properties["file"].tolist(),
+        return list(
+            map(
+                lambda x: load_mesh(osp.join(self.properties_dir_path, x)),
+                self.properties["file"].tolist(),
+            )
         )
