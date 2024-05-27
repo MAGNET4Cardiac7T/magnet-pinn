@@ -59,8 +59,8 @@ class Preprocessing:
         dipoles_meshes = dipoles_property_reader.read_meshes()
         return dipoles_property_reader.properties, dipoles_meshes
 
-    def process_simulations(self, simulation_name: str):
-        for simulation_name in tqdm(simulation_name):
+    def process_simulations(self, simulation_names: str):
+        for simulation_name in tqdm(simulation_names):
             self.__process_simulation(simulation_name)
 
     def __process_simulation(self, simulation_name: str):
