@@ -214,7 +214,7 @@ class GridPreprocessing(Preprocessing):
         bounds: Tuple,
         object_masks: np.array,
     ):
-        target_dir_name = f"processed_voxel_size_{self.voxel_size}"
+        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
         target_dir_path = osp.join(
             self.data_dir_path, PROCESSED_DIR_PATH, target_dir_name
         )
@@ -228,3 +228,51 @@ class GridPreprocessing(Preprocessing):
             f.create_dataset("efield", data=e_field)
             f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=object_masks)
+
+
+class GraphPreprocessing(Preprocessing):
+
+    def _get_masks(self, objects_meshes, bounds: Tuple):
+        coordinates = self.__get_coordinates(bounds)
+
+        object_masks = list(map(lambda x: x.contains(coordinates), objects_meshes))
+
+        dipoles_masks = list(
+            map(lambda x: x.contains(coordinates), self.dipoles_meshes)
+        )
+
+        return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
+
+    def __get_coordinates(self, bounds: Tuple):
+        x, y, z = bounds
+        xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
+        grid = np.stack((xx, yy, zz), axis=-1)
+        return grid.reshape(-1, 3)
+
+    def _format_and_write_dataset(
+        self,
+        simulation_name: str,
+        features: np.array,
+        e_field: np.array,
+        h_field: np.array,
+        bounds: Tuple,
+        object_masks: np.array,
+    ):
+        target_dir_name = "graph_processed"
+        target_dir_path = osp.join(
+            self.data_dir_path, PROCESSED_DIR_PATH, target_dir_name
+        )
+        makedirs(target_dir_path, exist_ok=True)
+
+        target_file_name = f"{simulation_name}.h5"
+        output_file_path = osp.join(target_dir_path, target_file_name)
+
+        e_field = e_field.reshape(-1, 3)
+        h_field = h_field.reshape(-1, 3)
+
+        with File(output_file_path, "w") as f:
+            f.create_dataset("input", data=features)
+            f.create_dataset("efield", data=e_field)
+            f.create_dataset("hfield", data=h_field)
+            f.create_dataset("subject", data=object_masks)
+            f.create_dataset("positions", data=self.__get_coordinates(bounds))
