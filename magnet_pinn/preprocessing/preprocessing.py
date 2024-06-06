@@ -69,21 +69,13 @@ class Preprocessing:
         e_field_reader = FieldReader(simulation_dir_path, E_FIELD_DATABASE_KEY)
         h_field_reader = FieldReader(simulation_dir_path, H_FIELD_DATABASE_KEY)
 
-        if (
-            not np.array_equal(e_field_reader.x_bounds, h_field_reader.x_bounds)
-            or not np.array_equal(e_field_reader.y_bounds, h_field_reader.y_bounds)
-            or not np.array_equal(e_field_reader.z_bounds, h_field_reader.z_bounds)
-        ):
-            raise Exception("Different coordinates for the E-field and H-field")
-        bounds = (
-            e_field_reader.x_bounds,
-            e_field_reader.y_bounds,
-            e_field_reader.z_bounds,
-        )
-        self.__sanity_check(bounds)
+        if not np.array_equal(e_field_reader.positions, h_field_reader.positions):
+            raise Exception("Different positions for the E-field and H-field")
+        
+        self.__sanity_check(e_field_reader.positions)
 
         object_properties, object_meshes = self.__get_objects_data(simulation_dir_path)
-        dipoles_masks, object_masks = self._get_masks(object_meshes, bounds)
+        dipoles_masks, object_masks = self._get_masks(object_meshes, e_field_reader.positions)
 
         features = self.__calculate_features(
             dipoles_masks, object_masks, object_properties
@@ -97,21 +89,18 @@ class Preprocessing:
             features,
             e_field_values,
             h_field_values,
-            bounds,
+            e_field_reader.positions,
             object_masks,
         )
 
-    def __sanity_check(self, bounds: Tuple):
-        x_bounds, y_bounds, z_bounds = bounds
-        data_min = np.array((x_bounds[0], y_bounds[0], z_bounds[0]))
+    def __sanity_check(self, positions: np.array):
+        data_min = np.min(positions, axis=0)
         if not np.all(self.positions_min <= data_min):
             raise Exception("Min not satisfied")
 
-        data_max = np.array((x_bounds[-1], y_bounds[-1], z_bounds[-1]))
+        data_max = np.max(positions, axis=0)
         if not np.all(self.positions_max >= data_max):
             raise Exception("Max not satisfied")
-
-        return True
 
     def __get_objects_data(self, simulation_dir_path: str):
         properties_dir_path = osp.join(simulation_dir_path, INPUT_DIR_PATH)
@@ -119,7 +108,7 @@ class Preprocessing:
         object_meshes = property_reader.read_meshes()
         return property_reader.properties, object_meshes
 
-    def _get_masks(self, objects_meshes, bounds: Tuple):
+    def _get_masks(self, objects_meshes, positions: np.array):
         raise NotImplementedError()
 
     def __calculate_features(
@@ -175,7 +164,7 @@ class Preprocessing:
         features: np.array,
         e_field: np.array,
         h_field: np.array,
-        bounds: Tuple,
+        positions: np.array,
         object_masks: np.array,
     ):
         raise NotImplementedError()
@@ -188,8 +177,8 @@ class GridPreprocessing(Preprocessing):
         super().__init__(data_dir_path, **kwargs)
         self.voxel_size = voxel_size
 
-    def _get_masks(self, objects_meshes, bounds: Tuple):
-        voxelizer = MeshVoxelizer(bounds, self.voxel_size)
+    def _get_masks(self, objects_meshes, positions: np.array):
+        voxelizer = MeshVoxelizer(positions, self.voxel_size)
         dipoles_masks = list(
             map(
                 lambda x: voxelizer.process_mesh(x),
@@ -211,7 +200,7 @@ class GridPreprocessing(Preprocessing):
         features: np.array,
         e_field: np.array,
         h_field: np.array,
-        bounds: Tuple,
+        positions: np.array,
         object_masks: np.array,
     ):
         target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
@@ -223,6 +212,22 @@ class GridPreprocessing(Preprocessing):
         target_file_name = f"{simulation_name}.h5"
         output_file_path = osp.join(target_dir_path, target_file_name)
 
+        e_field = e_field.reshape((
+            object_masks.shape[0],
+            object_masks.shape[1],
+            object_masks.shape[2],
+            3,
+            e_field.shape[-1],
+        ))
+
+        h_field = h_field.reshape((
+            object_masks.shape[0],
+            object_masks.shape[1],
+            object_masks.shape[2],
+            3,
+            h_field.shape[-1],
+        ))
+
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=features)
             f.create_dataset("efield", data=e_field)
@@ -232,22 +237,15 @@ class GridPreprocessing(Preprocessing):
 
 class GraphPreprocessing(Preprocessing):
 
-    def _get_masks(self, objects_meshes, bounds: Tuple):
-        coordinates = self.__get_coordinates(bounds)
+    def _get_masks(self, objects_meshes, positions: np.array):
 
-        object_masks = list(map(lambda x: x.contains(coordinates), objects_meshes))
+        object_masks = list(map(lambda x: x.contains(positions), objects_meshes))
 
         dipoles_masks = list(
-            map(lambda x: x.contains(coordinates), self.dipoles_meshes)
+            map(lambda x: x.contains(positions), self.dipoles_meshes)
         )
 
         return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
-
-    def __get_coordinates(self, bounds: Tuple):
-        x, y, z = bounds
-        xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-        grid = np.stack((xx, yy, zz), axis=-1)
-        return grid.reshape(-1, 3)
 
     def _format_and_write_dataset(
         self,
@@ -255,7 +253,7 @@ class GraphPreprocessing(Preprocessing):
         features: np.array,
         e_field: np.array,
         h_field: np.array,
-        bounds: Tuple,
+        positions: np.array,
         object_masks: np.array,
     ):
         target_dir_name = "graph_processed"
@@ -275,4 +273,4 @@ class GraphPreprocessing(Preprocessing):
             f.create_dataset("efield", data=e_field)
             f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=object_masks)
-            f.create_dataset("positions", data=self.__get_coordinates(bounds))
+            f.create_dataset("positions", positions)
