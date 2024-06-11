@@ -25,6 +25,8 @@ RAW_DATA_DIR_PATH = "raw"
 DIPOLES_MATERIALS_DIR_PATH = osp.join("dipoles", "simple", "raw")
 INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
+PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
+PROCESSED_DIPOLES_DIR_PATH = "dipoles"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
 AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
@@ -160,7 +162,24 @@ class GridPreprocessing(Preprocessing):
             axis=-1
         ).astype(bool)
         self.dipoles_features = self._get_features(self.dipoles_properties, dipoles_masks)
-        self.dipoles_general_mask = dipoles_masks
+        self.dipoles_masks = dipoles_masks
+
+        self._write_dipoles()
+
+    def _write_dipoles(self) -> None:
+        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
+        target_dir_path = osp.join(
+            self.data_dir_path, 
+            PROCESSED_DIR_PATH, 
+            target_dir_name, 
+            PROCESSED_DIPOLES_DIR_PATH
+        )
+
+        makedirs(target_dir_path, exist_ok=True)
+
+        target_file_name = "dipoles.h5"
+        with File(osp.join(target_dir_path, target_file_name), "w") as f:
+            f.create_dataset("Masks", data=self.dipoles_masks)
 
     def _extract_fields_data(self, out_simulation: Simulation) -> None:
         e_field_reader = FieldReaderFactory(
@@ -223,14 +242,18 @@ class GridPreprocessing(Preprocessing):
     def _get_dipoles_features_and_mask(self) -> Tuple:
         return (
             self.dipoles_features,
-            self.dipoles_general_mask
+            self.dipoles_masks
         )
 
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
         target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
         target_dir_path = osp.join(
-            self.data_dir_path, PROCESSED_DIR_PATH, target_dir_name
+            self.data_dir_path, 
+            PROCESSED_DIR_PATH, 
+            target_dir_name, 
+            PROCESSED_SIMULATIONS_DIR_PATH
         )
+
         makedirs(target_dir_path, exist_ok=True)
 
         target_file_name = f"{out_simulation.name}.h5"
