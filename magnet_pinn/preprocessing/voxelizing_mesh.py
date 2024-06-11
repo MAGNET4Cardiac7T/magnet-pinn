@@ -5,17 +5,22 @@ from trimesh.voxel.creation import local_voxelize
 
 
 class MeshVoxelizer:
-    def __init__(self, positions: np.array, voxel_size: int):
+    def __init__(self, 
+                 voxel_size: int, 
+                 x_unique: np.array, 
+                 y_unique: np.array, 
+                 z_unique: np.array
+        ):
         self.voxel_size = voxel_size
         self.center, self.radius, self.bounds = self.__get_center_radius_bounds__(
-            positions
+            x_unique, y_unique, z_unique
         )
 
-    def __get_center_radius_bounds__(self, positions: np.array):
-        x_unique = np.unique(positions[:, 0])
-        y_unique = np.unique(positions[:, 1])
-        z_unique = np.unique(positions[:, 2])
-
+    def __get_center_radius_bounds__(self, 
+                                     x_unique: np.array,
+                                     y_unique: np.array,
+                                     z_unique: np.array
+                                     ):
         x_center_index = x_unique.shape[0] // 2
         y_center_index = y_unique.shape[0] // 2
         z_center_index = z_unique.shape[0] // 2
