@@ -57,7 +57,12 @@ class Preprocessing(ABC):
     def process_simulations(self, simulation_names: str):
         for simulation_name in tqdm(simulation_names):
             self.__process_simulation(simulation_name)
-            break
+        
+        self._write_dipoles()
+
+    @abstractmethod
+    def _write_dipoles(self) -> None:
+        pass
 
     def __process_simulation(self, simulation_name: str):
         simulation = Simulation(
@@ -163,8 +168,6 @@ class GridPreprocessing(Preprocessing):
         ).astype(bool)
         self.dipoles_features = self._get_features(self.dipoles_properties, dipoles_masks)
         self.dipoles_masks = dipoles_masks
-
-        self._write_dipoles()
 
     def _write_dipoles(self) -> None:
         target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
