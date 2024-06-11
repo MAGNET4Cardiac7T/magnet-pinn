@@ -63,24 +63,23 @@ class FieldReader(ABC):
         self.files_list = files_list
         self.field_type = field_type
 
-    def extract_positions(self):
-        default_coordinates = self._read_coordinates(self.files_list[0])
+        self.coordinates = self._read_coordinates(self.files_list[0])
+        self.__validate_coordinates()
 
+    def __validate_coordinates(self):
         for other_file in self.files_list[1:]:
             other_coordinates = self._read_coordinates(other_file)
-            if not self._check_same_coordinates(default_coordinates, other_coordinates):
+            if not self._check_coordinates(other_coordinates):
                 raise Exception(
                     f"Different positions in the field value file {other_file}"
                 )
-        
-        return default_coordinates
 
     @abstractmethod
     def _read_coordinates(self, file_path: str):
         pass
 
     @abstractmethod
-    def _check_same_coordinates(self, default_coordinates, other_coordinates):
+    def _check_coordinates(self, other_coordinates):
         pass
 
     def extract_data(self):
@@ -110,8 +109,8 @@ class GridReader(FieldReader):
 
         return x_bounds, y_bounds, z_bounds
     
-    def _check_same_coordinates(self, default_coordinates, other_coordinates):
-        x_default_bound, y_default_bound, z_default_bound = default_coordinates
+    def _check_coordinates(self, other_coordinates):
+        x_default_bound, y_default_bound, z_default_bound = self.coordinates
         x_other_bound, y_other_bound, z_other_bound = other_coordinates
 
         return (
@@ -129,5 +128,5 @@ class PointReader(FieldReader):
             z = f[POSISTIONS_DATABASE_KEY]["z"][:]
         return np.column_stack((x, y, z)).astype(np.int64)
     
-    def _check_same_coordinates(self, default_coordinates, other_coordinates):
-        return np.array_equal(default_coordinates, other_coordinates)
+    def _check_coordinates(self, other_coordinates):
+        return np.array_equal(self.coordinates, other_coordinates)
