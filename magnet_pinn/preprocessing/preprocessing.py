@@ -3,8 +3,8 @@ Module for basic preprocessing functionality.
 """
 
 import os.path as osp
-from os import makedirs
 from typing import Tuple
+from os import makedirs, listdir
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -25,7 +25,9 @@ RAW_DATA_DIR_PATH = "raw"
 DIPOLES_MATERIALS_DIR_PATH = osp.join("dipoles", "simple", "raw")
 INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
+INPUT_SIMULATIONS_DIR_PATH = "simulations"
 PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
+INPUT_DIPOLES_DIR_PATH = "dipoles"
 PROCESSED_DIPOLES_DIR_PATH = "dipoles"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
@@ -38,12 +40,15 @@ class Preprocessing(ABC):
     Super class for preprocessing. Contains common read-write methods.
     """
 
-    def __init__(self, data_dir_path: str) -> None:
-        self.data_dir_path = data_dir_path
-        self.simulations_dir_path = osp.join(data_dir_path, RAW_DATA_DIR_PATH)
+    def __init__(self, batch_dir_path: str, output_dir_path: str) -> None:
+        self.batch_dir_path = batch_dir_path
+        self.simulations_dir_path = osp.join(self.batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
+
+        self.output_dir_path = output_dir_path
+        makedirs(self.output_dir_path, exist_ok=True)
 
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
-            osp.join(self.simulations_dir_path, DIPOLES_MATERIALS_DIR_PATH)
+            osp.join(batch_dir_path, INPUT_DIPOLES_DIR_PATH)
         )
 
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple:
@@ -54,15 +59,19 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: str):
+    def process_simulations(self, simulation_names: str | None = None):
+
+        full_sim_list = listdir(self.simulations_dir_path)
+
+        if simulation_names is None:
+            simulation_names = full_sim_list
+        elif not set(simulation_names).issubset(full_sim_list):
+            raise Exception("Simulations are not valid")
+
         for simulation_name in tqdm(simulation_names):
             self.__process_simulation(simulation_name)
         
         self._write_dipoles()
-
-    @abstractmethod
-    def _write_dipoles(self) -> None:
-        pass
 
     def __process_simulation(self, simulation_name: str):
         simulation = Simulation(
@@ -131,14 +140,34 @@ class Preprocessing(ABC):
     def _format_and_write_dataset(self, out_simulation: Simulation):
         pass
 
+    @abstractmethod
+    def _write_dipoles(self) -> None:
+        pass
+
 
 class GridPreprocessing(Preprocessing):
     def __init__(
-        self, data_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
+        self, batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
     ):  
-        super().__init__(data_dir_path)
+        super().__init__(batch_dir_path, output_dir_path)
 
         self.voxel_size = voxel_size
+
+        # create outoput directories
+        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
+        self.out_simmulations_dir_path = osp.join(
+            self.output_dir_path,
+            target_dir_name,
+            PROCESSED_SIMULATIONS_DIR_PATH
+        )
+        makedirs(self.out_simmulations_dir_path, exist_ok=True)
+
+        self.out_dipoles_dir_path = osp.join(
+            self.output_dir_path,
+            target_dir_name,
+            PROCESSED_DIPOLES_DIR_PATH
+        )
+        makedirs(self.out_dipoles_dir_path, exist_ok=True)
 
         # check extent for validity
         min_values = np.array(
@@ -166,22 +195,16 @@ class GridPreprocessing(Preprocessing):
             )), 
             axis=-1
         ).astype(bool)
-        self.dipoles_features = self._get_features(self.dipoles_properties, dipoles_masks)
+        self.dipoles_features = self._get_features(
+            self.dipoles_properties, dipoles_masks
+        )
         self.dipoles_masks = dipoles_masks
 
     def _write_dipoles(self) -> None:
-        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
-        target_dir_path = osp.join(
-            self.data_dir_path, 
-            PROCESSED_DIR_PATH, 
-            target_dir_name, 
-            PROCESSED_DIPOLES_DIR_PATH
-        )
-
-        makedirs(target_dir_path, exist_ok=True)
-
+        makedirs(self.out_dipoles_dir_path, exist_ok=True)
+        
         target_file_name = "dipoles.h5"
-        with File(osp.join(target_dir_path, target_file_name), "w") as f:
+        with File(osp.join(self.out_dipoles_dir_path, target_file_name), "w") as f:
             f.create_dataset("Masks", data=self.dipoles_masks)
 
     def _extract_fields_data(self, out_simulation: Simulation) -> None:
@@ -249,18 +272,12 @@ class GridPreprocessing(Preprocessing):
         )
 
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
-        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
-        target_dir_path = osp.join(
-            self.data_dir_path, 
-            PROCESSED_DIR_PATH, 
-            target_dir_name, 
-            PROCESSED_SIMULATIONS_DIR_PATH
-        )
-
-        makedirs(target_dir_path, exist_ok=True)
+        makedirs(self.out_simmulations_dir_path, exist_ok=True)
 
         target_file_name = f"{out_simulation.name}.h5"
-        output_file_path = osp.join(target_dir_path, target_file_name)
+        output_file_path = osp.join(
+            self.out_simmulations_dir_path, target_file_name
+        )
 
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=out_simulation.features)
