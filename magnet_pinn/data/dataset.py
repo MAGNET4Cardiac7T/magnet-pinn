@@ -9,25 +9,24 @@ import pandas as pd
 
 class MagnetBaseIterator:
     def __init__(self, 
-                 simulation_dir: str = "data/processed/",
-                 coils_dir: str = "data/dipoles/simple/processed") -> None:
+                 data_dir: str) -> None:
         super().__init__()
-        self.simulation_dir = simulation_dir
-        self.coils_dir = coils_dir
+        self.simulation_dir = os.path.join(data_dir, "simulations")
+        self.coils_path = coils_dir = os.path.join(data_dir, "dipoles", "dipoles.h5")
         self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
         self.simulation_names = [os.path.basename(f)[:-3] for f in self.simulation_list]
         self.coils = self._read_coils()
-        self.num_coils = len(self.coils)
+        self.num_coils = self.coils.shape[-1]
 
     def _read_coils(self):
-        materials_dipoles = pd.read_csv(os.path.join(self.coils_dir, "materials.txt"))
-        voxels = [np.load(os.path.join(self.coils_dir, f)).astype(np.float32) for f in materials_dipoles["file"]]
-        return voxels
+        with h5py.File(self.coils_path) as f:
+            coils = f['Masks'][:]
+        return coils
     
     def __len__(self):
         return len(self.simulation_list)
     
-    def __getitem__(self, index: int) -> Any:
+    def _load_simulation(self, index: int):
         with h5py.File(self.simulation_list[index]) as f:
             item = {
                 'input': f['input'][:],
@@ -38,9 +37,14 @@ class MagnetBaseIterator:
             }
         return item
     
+    def __getitem__(self, index: int) -> Any:
+        return self._load_simulation(index)
+    
 class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
-    def __init__(self, *args, phase_samples_per_simulation: int = 100, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, 
+                 data_dir: str,
+                 phase_samples_per_simulation: int = 100) -> None:
+        super().__init__(data_dir)
         self.phase_samples_per_simulation = phase_samples_per_simulation
 
     def _sample_phase_and_mask(self, phase_index: int = None):
@@ -64,7 +68,7 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         file_index = index // self.phase_samples_per_simulation
         phase_index = index % self.phase_samples_per_simulation
 
-        item = super().__getitem__(file_index)
+        item = self._load_simulation(file_index)
             
         phase, mask = self._sample_phase_and_mask(phase_index)
 
@@ -72,7 +76,7 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         item['coil_phase'] = phase
         item['coil_mask'] = mask
 
-        item['coils_complex'] = np.dot(np.stack(self.coils, axis=-1), item['coil_coefficients'])
+        item['coils_complex'] = np.dot(self.coils, item['coil_coefficients'])
         item['coils_real'] = np.stack([item['coils_complex'].real, item['coils_complex'].imag])
 
         # simulation phase shifter
@@ -82,8 +86,9 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         return item
 
 class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, 
+                 data_dir: str) -> None:
+        super().__init__(data_dir)
         self.phase_samples_per_simulation = self.num_coils
 
     def _sample_phase_and_mask(self, phase_index: int = None):
@@ -94,11 +99,3 @@ class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
         phase = phase.astype(np.float32)
         mask = mask.astype(np.float32)
         return phase, mask
-
-
-if __name__ == "__main__":
-    ds = CoilEnumerationMagnetIterator()
-    import tqdm
-
-    for item in tqdm.tqdm(ds, smoothing=0):
-        item
