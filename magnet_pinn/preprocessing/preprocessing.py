@@ -22,13 +22,13 @@ from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 from magnet_pinn.preprocessing.simulation import Simulation
 
 RAW_DATA_DIR_PATH = "raw"
-DIPOLES_MATERIALS_DIR_PATH = osp.join("dipoles", "simple", "raw")
+ANTENNA_MATERIALS_DIR_PATH = osp.join("antenna", "dipole", "raw")
 INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
 INPUT_SIMULATIONS_DIR_PATH = "simulations"
 PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
-INPUT_DIPOLES_DIR_PATH = "dipoles"
-PROCESSED_DIPOLES_DIR_PATH = "dipoles"
+INPUT_ANTENNA_DIR_PATH = "antenna"
+PROCESSED_ANTENNA_DIR_PATH = "antenna"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
 AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
@@ -48,7 +48,7 @@ class Preprocessing(ABC):
         makedirs(self.output_dir_path, exist_ok=True)
 
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
-            osp.join(batch_dir_path, INPUT_DIPOLES_DIR_PATH)
+            osp.join(batch_dir_path, INPUT_ANTENNA_DIR_PATH)
         )
 
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple:
@@ -154,7 +154,7 @@ class GridPreprocessing(Preprocessing):
         self.voxel_size = voxel_size
 
         # create outoput directories
-        target_dir_name = f"grid_processed_voxel_size_{self.voxel_size}"
+        target_dir_name = f"grid_voxel_size_{self.voxel_size}"
         self.out_simmulations_dir_path = osp.join(
             self.output_dir_path,
             target_dir_name,
@@ -165,7 +165,7 @@ class GridPreprocessing(Preprocessing):
         self.out_dipoles_dir_path = osp.join(
             self.output_dir_path,
             target_dir_name,
-            PROCESSED_DIPOLES_DIR_PATH
+            PROCESSED_ANTENNA_DIR_PATH
         )
         makedirs(self.out_dipoles_dir_path, exist_ok=True)
 
@@ -203,9 +203,9 @@ class GridPreprocessing(Preprocessing):
     def _write_dipoles(self) -> None:
         makedirs(self.out_dipoles_dir_path, exist_ok=True)
         
-        target_file_name = "dipoles.h5"
+        target_file_name = "antenna.h5"
         with File(osp.join(self.out_dipoles_dir_path, target_file_name), "w") as f:
-            f.create_dataset("Masks", data=self.dipoles_masks)
+            f.create_dataset("masks", data=self.dipoles_masks)
 
     def _extract_fields_data(self, out_simulation: Simulation) -> None:
         e_field_reader = FieldReaderFactory(
