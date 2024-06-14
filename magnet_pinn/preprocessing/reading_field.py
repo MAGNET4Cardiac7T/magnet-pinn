@@ -118,6 +118,10 @@ class GridReader(FieldReader):
             and np.array_equal(y_default_bound, y_other_bound)
             and np.array_equal(z_default_bound, z_other_bound)
             )
+    
+    def extract_data(self): # needed because h5 files are read in a different order than saved by CST
+        field = super().extract_data()
+        return np.transpose(field, axes=[3, 2, 1, 0, 4])
 
 
 class PointReader(FieldReader):
