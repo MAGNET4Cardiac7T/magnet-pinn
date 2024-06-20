@@ -12,7 +12,7 @@ class MagnetBaseIterator:
                  data_dir: str) -> None:
         super().__init__()
         self.simulation_dir = os.path.join(data_dir, "simulations")
-        self.coils_path = coils_dir = os.path.join(data_dir, "dipoles", "dipoles.h5")
+        self.coils_path = os.path.join(data_dir, "antenna", "antenna.h5")
         self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
         self.simulation_names = [os.path.basename(f)[:-3] for f in self.simulation_list]
         self.coils = self._read_coils()
@@ -20,7 +20,7 @@ class MagnetBaseIterator:
 
     def _read_coils(self):
         with h5py.File(self.coils_path) as f:
-            coils = f['Masks'][:]
+            coils = f['masks'][:]
         return coils
     
     def __len__(self):
@@ -57,7 +57,6 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
     
     def _phase_shift_field(self, field, phase_coefficients):
         field = np.dot(field, phase_coefficients)
-        field = np.transpose(field, axes=[3, 0, 1, 2])
         field = np.concatenate([field.real, field.imag], axis=0)
         return field
     
@@ -83,6 +82,15 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         item['efield'] = self._phase_shift_field(item['efield'], item['coil_coefficients'])
         item['hfield'] = self._phase_shift_field(item['hfield'], item['coil_coefficients'])
 
+        item = self.change_dtype(item, np.float32)
+
+        return item
+    
+    def change_dtype(self, item, dtype):
+        for key in item.keys():
+            if isinstance(item[key], np.ndarray):
+                if item[key].dtype == np.float64:
+                    item[key] = item[key].astype(dtype)
         return item
 
 class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
