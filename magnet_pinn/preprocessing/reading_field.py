@@ -121,7 +121,7 @@ class GridReader(FieldReader):
     
     def extract_data(self): # needed because h5 files are read in a different order than saved by CST
         field = super().extract_data()
-        return np.transpose(field, axes=[3, 2, 1, 0, 4])
+        return np.transpose(field, axes=[2, 1, 0, 3, 4])
 
 
 class PointReader(FieldReader):

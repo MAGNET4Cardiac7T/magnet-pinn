@@ -259,9 +259,9 @@ class GridPreprocessing(Preprocessing):
             )),
             axis=-1
         )
-        featues = self._get_features(properties, mask)
+        features = self._get_features(properties, mask)
         return (
-            featues,
+            features,
             mask
         ) 
         
@@ -279,12 +279,19 @@ class GridPreprocessing(Preprocessing):
             self.out_simmulations_dir_path, target_file_name
         )
 
+        self._reorder_axes(out_simulation)
+
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=out_simulation.features)
             f.create_dataset("efield", data=out_simulation.e_field)
             f.create_dataset("hfield", data=out_simulation.h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
 
+    def _reorder_axes(self, out_simulation: Simulation) -> None:
+        out_simulation.features = np.moveaxis(out_simulation.features, -1, 0)
+        out_simulation.e_field = np.moveaxis(out_simulation.e_field, -2, 0)
+        out_simulation.h_field = np.moveaxis(out_simulation.h_field, -2, 0)
+        out_simulation.object_masks = np.moveaxis(out_simulation.object_masks, -1, 0)
 
 class GraphPreprocessing(Preprocessing):
 
