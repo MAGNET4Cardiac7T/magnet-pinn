@@ -1,1 +1,1 @@
-from ._input_normalization import InputMinMaxNormalizer
+from ._normalization import StandardNormalizer, MinMaxNormalizer
