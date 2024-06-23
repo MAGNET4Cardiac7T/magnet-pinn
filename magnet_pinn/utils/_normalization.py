@@ -13,7 +13,7 @@ class Normalizer(ABC, torch.nn.Module):
                  ndims: int = 4):
         super().__init__()
         
-        self.params = params
+        self._params = params
         self.counter = 0
         self._expand_params()
             
@@ -54,15 +54,30 @@ class Normalizer(ABC, torch.nn.Module):
             self.counter += 1
             
         self._expand_params()
+
+    def load_from_numpy(self, path: str) -> None:
+        self._params = np.load(path, allow_pickle=True).item()
+        self._expand_params()
             
     
     @property
     def axes(self):
         return tuple(i for i in range(self.ndims) if i != self.axis)
     
+    @property
+    def params(self):
+        return self._params
+    
     def _expand_params(self):
         for key, value in self.params.items():
-            self.params[key] = np.expand_dims(value, axis=self.axes)
+            self._params[key] = np.expand_dims(value, axis=self.axes)
+
+    def get_params(self):
+        params_dict = {}
+        for key, value in self.params.items():
+            params_dict[key] = np.squeeze(value, axis=self.axes)
+
+        return params_dict
     
     
 class MinMaxNormalizer(Normalizer):
