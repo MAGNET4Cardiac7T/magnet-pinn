@@ -13,7 +13,4 @@ class Simulation:
     h_field: Optional[np.array] = None
     object_masks: Optional[np.array] = None
     coordinates: Optional[np.array] = None
-    x_bound: Optional[np.array] = None
-    y_bound: Optional[np.array] = None
-    z_bound: Optional[np.array] = None
     features: Optional[np.array] = None
