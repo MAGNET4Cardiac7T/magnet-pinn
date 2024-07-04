@@ -15,7 +15,8 @@ from tqdm import tqdm
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
     H_FIELD_DATABASE_KEY,
-    FieldReaderFactory
+    FieldReaderFactory,
+    GridReader
 )
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
@@ -41,15 +42,33 @@ class Preprocessing(ABC):
     """
 
     def __init__(self, batch_dir_path: str, output_dir_path: str) -> None:
-        self.batch_dir_path = batch_dir_path
-        self.simulations_dir_path = osp.join(self.batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
+        self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
 
-        self.output_dir_path = output_dir_path
-        makedirs(self.output_dir_path, exist_ok=True)
+        # create output directories
+        target_dir_name = self._output_target_dir
+        self.out_simmulations_dir_path = osp.join(
+            output_dir_path,
+            target_dir_name,
+            PROCESSED_SIMULATIONS_DIR_PATH
+        )
+        makedirs(self.out_simmulations_dir_path, exist_ok=True)
+
+        self.out_antenna_dir_path = osp.join(
+            output_dir_path,
+            target_dir_name,
+            PROCESSED_ANTENNA_DIR_PATH
+        )
+        makedirs(self.out_antenna_dir_path, exist_ok=True)
 
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
             osp.join(batch_dir_path, INPUT_ANTENNA_DIR_PATH)
         )
+        self.dipoles_features, self.dipoles_masks = None, None
+
+    @property
+    @abstractmethod
+    def _output_target_dir(self) -> str:
+        pass
 
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple:
         property_reader = PropertyReader(dir_path)
@@ -149,25 +168,8 @@ class GridPreprocessing(Preprocessing):
     def __init__(
         self, batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
     ):  
-        super().__init__(batch_dir_path, output_dir_path)
-
         self.voxel_size = voxel_size
-
-        # create outoput directories
-        target_dir_name = f"grid_voxel_size_{self.voxel_size}"
-        self.out_simmulations_dir_path = osp.join(
-            self.output_dir_path,
-            target_dir_name,
-            PROCESSED_SIMULATIONS_DIR_PATH
-        )
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
-
-        self.out_dipoles_dir_path = osp.join(
-            self.output_dir_path,
-            target_dir_name,
-            PROCESSED_ANTENNA_DIR_PATH
-        )
-        makedirs(self.out_dipoles_dir_path, exist_ok=True)
+        super().__init__(batch_dir_path, output_dir_path)
 
         # check extent for validity
         min_values = np.array(
@@ -188,23 +190,19 @@ class GridPreprocessing(Preprocessing):
         self.voxelizer = MeshVoxelizer(voxel_size, x_unique, y_unique, z_unique)
 
         # dipoles features are same for the whole batch, so we can calculate them once
-        dipoles_masks = np.stack(
-            list(map(
-                lambda x: self.voxelizer.process_mesh(x),
-                self.dipoles_meshes,
-            )), 
-            axis=-1
-        ).astype(bool)
-        self.dipoles_features = self._get_features(
-            self.dipoles_properties, dipoles_masks
+        self.dipoles_features, self.dipoles_masks = self._get_objects_features_and_mask(
+            self.dipoles_properties, self.dipoles_meshes
         )
-        self.dipoles_masks = dipoles_masks
+
+    @property
+    def _output_target_dir(self) -> str:
+        return f"grid_voxel_size_{self.voxel_size}"
 
     def _write_dipoles(self) -> None:
-        makedirs(self.out_dipoles_dir_path, exist_ok=True)
+        makedirs(self.out_antenna_dir_path, exist_ok=True)
         
         target_file_name = "antenna.h5"
-        with File(osp.join(self.out_dipoles_dir_path, target_file_name), "w") as f:
+        with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
             f.create_dataset("masks", data=self.dipoles_masks)
 
     def _extract_fields_data(self, out_simulation: Simulation) -> None:
@@ -295,32 +293,85 @@ class GridPreprocessing(Preprocessing):
 
 class GraphPreprocessing(Preprocessing):
 
-    def _get_masks(self, objects_meshes, positions: np.array):
+    _coordinates = None
 
-        object_masks = list(map(lambda x: x.contains(positions), objects_meshes))
+    @property.setter
+    def coordinates(self, coordinates):
+        if self._coordinates is None:
+            self._coordinates = coordinates
+        else:
+            if not np.array_equal(self._coordinates, coordinates):
+                raise Exception("Different coordinate systems for simulations")
 
-        dipoles_masks = list(
-            map(lambda x: x.contains(positions), self.dipoles_meshes)
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def _output_target_dir(self) -> str:
+        return f"graph"
+    
+    def _extract_fields_data(self, out_simulation: Simulation) -> None:
+        e_field_reader = FieldReaderFactory(
+            out_simulation.path, E_FIELD_DATABASE_KEY
+        ).create_reader()
+        h_field_reader = FieldReaderFactory(
+            out_simulation.path, H_FIELD_DATABASE_KEY
+        ).create_reader()
+
+        if isinstance(e_field_reader, GridReader):
+            e_field_reader.as_grid = False
+            h_field_reader.as_grid = False
+
+        e_coordinates = e_field_reader.coordinates
+        h_coordinates = h_field_reader.coordinates
+
+        if (
+            not np.array_equal(e_coordinates, h_coordinates)
+        ):
+            raise Exception("Different coordinate systems for E and H fields")
+        
+        self.coordinates = e_coordinates
+
+        out_simulation.coordinates = e_coordinates
+        out_simulation.e_field = e_field_reader.extract_data()
+        out_simulation.h_field = h_field_reader.extract_data()
+
+    def _get_objects_features_and_mask(self, properties, meshes) -> Tuple:
+        mask = np.stack(
+            list(map(
+                lambda x: x.contains(self.coordinates),
+                meshes,
+            )),
+            axis=-1
         )
-
-        return (np.stack(dipoles_masks, axis=-1), np.stack(object_masks, axis=-1))
+        features = self._get_features(properties, mask)
+        return (
+            features,
+            mask
+        )
+    
+    def _get_dipoles_features_and_mask(self) -> Tuple:
+        if self.dipoles_features is None or self.dipoles_masks is None:
+            self.dipoles_features, self.dipoles_masks = self._get_objects_features_and_mask(
+                self.dipoles_properties, self.dipoles_meshes
+            )
+        
+        return (
+            self.dipoles_features,
+            self.dipoles_masks
+        )
 
     def _format_and_write_dataset(self, out_simulation: Simulation):
-        target_dir_name = "graph_processed"
-        target_dir_path = osp.join(
-            self.data_dir_path, PROCESSED_DIR_PATH, target_dir_name
+        makedirs(self.out_simmulations_dir_path, exist_ok=True)
+        target_file_name = f"{out_simulation.name}.h5"
+        output_file_path = osp.join(
+            self.out_simmulations_dir_path, target_file_name
         )
-        makedirs(target_dir_path, exist_ok=True)
-
-        target_file_name = f"{simulation_name}.h5"
-        output_file_path = osp.join(target_dir_path, target_file_name)
-
-        e_field = e_field.reshape(-1, 3)
-        h_field = h_field.reshape(-1, 3)
 
         with File(output_file_path, "w") as f:
-            f.create_dataset("input", data=features)
-            f.create_dataset("efield", data=e_field)
-            f.create_dataset("hfield", data=h_field)
-            f.create_dataset("subject", data=object_masks)
-            f.create_dataset("positions", positions)
+            f.create_dataset("input", data=out_simulation.features)
+            f.create_dataset("efield", data=out_simulation.e_field)
+            f.create_dataset("hfield", data=out_simulation.h_field)
+            f.create_dataset("subject", data=out_simulation.object_masks)
+            f.create_dataset("positions", out_simulation.coordinates)

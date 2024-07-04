@@ -63,7 +63,7 @@ class FieldReader(ABC):
         self.files_list = files_list
         self.field_type = field_type
 
-        self.coordinates = self._read_coordinates(self.files_list[0])
+        self._coordinates = self._read_coordinates(self.files_list[0])
         self.__validate_coordinates()
 
     def __validate_coordinates(self):
@@ -73,6 +73,11 @@ class FieldReader(ABC):
                 raise Exception(
                     f"Different positions in the field value file {other_file}"
                 )
+
+    @property        
+    @abstractmethod
+    def coordinates(self):
+        pass
 
     @abstractmethod
     def _read_coordinates(self, file_path: str):
@@ -101,6 +106,11 @@ class FieldReader(ABC):
 
 
 class GridReader(FieldReader):
+
+    def __init__(self, *args, **kwargs):
+        self.as_grid = True
+        super().__init__(*args, **kwargs)
+
     def _read_coordinates(self, file_path: str):
         with File(file_path) as f:
             x_bounds = f[X_BOUNDS_DATABASE_KEY][:].astype(np.int64)
@@ -110,7 +120,7 @@ class GridReader(FieldReader):
         return x_bounds, y_bounds, z_bounds
     
     def _check_coordinates(self, other_coordinates):
-        x_default_bound, y_default_bound, z_default_bound = self.coordinates
+        x_default_bound, y_default_bound, z_default_bound = self._coordinates
         x_other_bound, y_other_bound, z_other_bound = other_coordinates
 
         return (
@@ -119,9 +129,22 @@ class GridReader(FieldReader):
             and np.array_equal(z_default_bound, z_other_bound)
             )
     
+    @property
+    def coordinates(self):
+        if self.is_grid:
+            return self._coordinates
+        else:
+            x, y, z = self._coordinates
+            xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
+            result = np.stack((xx, yy, zz), axis=-1).reshape(-1, 3, order="F")
+            return result
+    
     def extract_data(self): # needed because h5 files are read in a different order than saved by CST
         field = super().extract_data()
-        return np.transpose(field, axes=[2, 1, 0, 3, 4])
+        field = np.transpose(field, axes=[2, 1, 0, 3, 4])
+        if not self.as_grid:
+            field = field.reshape(-1, 3, order="F")
+        return field
 
 
 class PointReader(FieldReader):
@@ -133,4 +156,8 @@ class PointReader(FieldReader):
         return np.column_stack((x, y, z)).astype(np.int64)
     
     def _check_coordinates(self, other_coordinates):
-        return np.array_equal(self.coordinates, other_coordinates)
+        return np.array_equal(self._coordinates, other_coordinates)
+    
+    @property
+    def coordinates(self):
+        return self._coordinates
