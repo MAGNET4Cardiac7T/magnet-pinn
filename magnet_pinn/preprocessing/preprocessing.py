@@ -3,7 +3,7 @@ Module for basic preprocessing functionality.
 """
 
 import os.path as osp
-from typing import Tuple
+from typing import Tuple, List
 from os import makedirs, listdir
 from abc import ABC, abstractmethod
 
@@ -38,10 +38,40 @@ AIR_FEATURE_VALUES = tuple(AIR_FEATURES[feature_name] for feature_name in FEATUR
 
 class Preprocessing(ABC):
     """
-    Super class for preprocessing. Contains common read-write methods.
+    Abstract class for preprocessing. 
+    Describes the general structure of the preprocessing pipeline.
+
+    First of all we check input and output directory structures and read antenna 
+    data which will be used for the whole batch. The main method `process_simulations` 
+    make some calculations and save processed data to the output directory.
+
+    Attributes
+    ----------
+    simulations_dir_path : str
+        Simulations location in the batch directory
+    out_simmulations_dir_path : str
+        Processed simulations location in the output directory
+    out_antenna_dir_path : str
+        Processed antenna location in the output directory
+    dipoles_properties : pd.DataFrame
+        Antenna feature dataframe including dipoles meshes files
+    dipoles_meshes : list
+        A list of dipoles meshes
+    dipoles_features : np.array
+        Calculated dipoles features in each measurement point
+    dipoles_masks : np.array
+        Dipoles mask in each measurement point
     """
 
     def __init__(self, batch_dir_path: str, output_dir_path: str) -> None:
+        """
+        Parameters
+        ----------
+        batch_dir_path : str
+            Path to the batch directory
+        output_dir_path : str
+            Path to the output directory
+        """
         self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
 
         # create output directories
@@ -68,9 +98,27 @@ class Preprocessing(ABC):
     @property
     @abstractmethod
     def _output_target_dir(self) -> str:
+        """
+        Gives the name of the simulations output directory 
+        in the batch output directory
+        """
         pass
 
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple:
+        """
+        Reads properties file `materials.txt` as csv file and then 
+        loads meshes files which are mentioned in the dataframe and 
+        located in the same directory.
+        Parameters
+        ----------
+        dir_path : str
+            Path to the data directory
+
+        Returns
+        -------
+        Tuple
+            A tuple of dataframe with properties and a list of meshes
+        """
         property_reader = PropertyReader(dir_path)
         meshes = property_reader.read_meshes()
         return (
@@ -79,6 +127,21 @@ class Preprocessing(ABC):
         )
 
     def process_simulations(self, simulation_names: str | None = None):
+        """
+        Main processing method. It processes all simulations in the batch
+        or that one which are mentioned in the `simulation_names` list.
+
+        This method make iteration over all simulation directories found in the 
+        `dir_path` and calls `__process_simulation` method for each of it.
+        After the main work is done it also calls `_write_dipoles` method 
+        to save processed antenna data. 
+
+        Parameters
+        ----------
+        simulation_names : str | None
+            A list of simulation names which should be processed. 
+            If None, all simulations will be processed.
+        """
 
         full_sim_list = listdir(self.simulations_dir_path)
 
@@ -93,6 +156,19 @@ class Preprocessing(ABC):
         self._write_dipoles()
 
     def __process_simulation(self, simulation_name: str):
+        """
+        The main internal method to make simulation processing.
+
+        It creates a `Simulation` instance and then passes it one by one
+        into preprocessing steps, which save data into the instance 
+        as properties. After the simulation data is ready it calls 
+        `_format_and_write_dataset` method to save the data into the output directory.
+
+        Parameters
+        ----------
+        simulation_name : str
+            Name of the simulation which is also the simulation directory name
+        """
         simulation = Simulation(
             name=simulation_name,
             path=osp.join(self.simulations_dir_path, simulation_name),
@@ -106,14 +182,36 @@ class Preprocessing(ABC):
 
     @abstractmethod
     def _extract_fields_data(self, out_simulation: Simulation):
+        """
+        Extracts field data from the simulation directory 
+        and saves it into the `out_simulation` instance.
+
+        Parameters
+        ----------
+        out_simulation : Simulation
+            object where to save a data.
+        """
         pass
 
     def __calculate_features(self, out_simulation: Simulation) -> None:
+        """
+        Calculates or extracts masks and features for both subject and antenna.
+
+        The method use `__get_properties_and_meshes` method and 
+        `_get_objects_features_and_mask` to finally calculate object features. 
+        Also it uses the precomputed antenna data from `_get_dipoles_features_and_mask` 
+        to calculate the final features and masks for the simulation.
+
+        Parameters
+        ----------
+        out_simulation : Simulation
+            The instance to save the data
+        """
         object_properties, object_meshes = self.__get_properties_and_meshes(
             osp.join(out_simulation.path, INPUT_DIR_PATH)
         )
 
-        objects_features, object_masks = self._get_objects_features_and_mask(
+        objects_features, object_masks = self._get_features_and_mask(
             object_properties, object_meshes
         )
 
@@ -134,9 +232,24 @@ class Preprocessing(ABC):
         out_simulation.features = features
         out_simulation.object_masks = object_masks
 
-    def _get_features(self, properties: pd.DataFrame, masks:np.array) -> Tuple:
+    def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
         """
-        A shortcut for the procedure of multiplication of properties and masks
+        A shortcut for the procedure of multiplication of properties and masks.
+
+        The method duplicate features first to the number of masks available.
+        Then these features are used to calculate the final features
+
+        Parameters
+        ----------
+        properties : pd.DataFrame
+            A properties frame
+        masks : np.array
+            A mask array
+
+        Returns
+        -------
+        np.array
+            Calculated features
         """
         properties_values = properties.loc[:, FEATURE_NAMES].to_numpy().T
         extended_masks = np.repeat(
@@ -148,26 +261,58 @@ class Preprocessing(ABC):
         return features
     
     @abstractmethod
-    def _get_objects_features_and_mask(self) -> Tuple:
+    def _get_features_and_mask(self, properties: pd.DataFrame, meshes: List) -> Tuple:
+        """
+        Calculates features and masks based on given parameters.
+
+        Parameters
+        ----------
+        properties : pd.DataFrame
+            A properties frame
+        meshes : List
+            A list of meshes
+
+        Returns
+        -------
+        Tuple
+            A tuple of features and masks
+        """
         pass
 
     @abstractmethod
     def _get_dipoles_features_and_mask(self) -> Tuple:
+        """
+        Calculates features and masks for the antenna.
+
+        Returns
+        -------
+        Tuple
+            A tuple of features and masks
+        """
         pass
     
     @abstractmethod
     def _format_and_write_dataset(self, out_simulation: Simulation):
+        """
+        The final stage for the simulation processing.
+
+        The method formats data from the `out_simulation` instance 
+        and writes it to the output directory. 
+        """
         pass
 
     @abstractmethod
     def _write_dipoles(self) -> None:
+        """
+        Write dipoles masks to the output directory.
+        """
         pass
 
 
 class GridPreprocessing(Preprocessing):
     def __init__(
         self, batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
-    ):  
+    ):
         self.voxel_size = voxel_size
         super().__init__(batch_dir_path, output_dir_path)
 
@@ -190,7 +335,7 @@ class GridPreprocessing(Preprocessing):
         self.voxelizer = MeshVoxelizer(voxel_size, x_unique, y_unique, z_unique)
 
         # dipoles features are same for the whole batch, so we can calculate them once
-        self.dipoles_features, self.dipoles_masks = self._get_objects_features_and_mask(
+        self.dipoles_features, self.dipoles_masks = self._get_features_and_mask(
             self.dipoles_properties, self.dipoles_meshes
         )
 
@@ -249,7 +394,7 @@ class GridPreprocessing(Preprocessing):
         if not np.array_equal(self.positions_max, data_max):
             raise Exception("Max not satisfied")
         
-    def _get_objects_features_and_mask(self, properties, meshes) -> Tuple:
+    def _get_features_and_mask(self, properties, meshes) -> Tuple:
         mask = np.stack(
             list(map(
                 lambda x: self.voxelizer.process_mesh(x),
@@ -337,7 +482,7 @@ class GraphPreprocessing(Preprocessing):
         out_simulation.e_field = e_field_reader.extract_data()
         out_simulation.h_field = h_field_reader.extract_data()
 
-    def _get_objects_features_and_mask(self, properties, meshes) -> Tuple:
+    def _get_features_and_mask(self, properties, meshes) -> Tuple:
         mask = np.stack(
             list(map(
                 lambda x: x.contains(self.coordinates),
@@ -353,7 +498,7 @@ class GraphPreprocessing(Preprocessing):
     
     def _get_dipoles_features_and_mask(self) -> Tuple:
         if self.dipoles_features is None or self.dipoles_masks is None:
-            self.dipoles_features, self.dipoles_masks = self._get_objects_features_and_mask(
+            self.dipoles_features, self.dipoles_masks = self._get_features_and_mask(
                 self.dipoles_properties, self.dipoles_meshes
             )
         
