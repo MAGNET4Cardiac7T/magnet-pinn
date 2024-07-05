@@ -1,4 +1,14 @@
-"""Module contains data structures for simulation"""
+"""
+NAME 
+    simulation.py
+
+DESCRIPTION
+    This module contains the Simulation dataclass, 
+    which is used to store the data of a simulation.
+
+CLASSES
+    Simulation
+"""
 from dataclasses import dataclass
 from typing import Optional
 
