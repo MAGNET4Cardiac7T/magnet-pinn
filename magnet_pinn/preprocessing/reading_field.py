@@ -1,12 +1,26 @@
-"""Module for reading field values"""
+"""
+NAME
+    reading_field.py
+
+DESCRIPTION
+    This module contains classes for reading field values from the .h5 files
+
+CLASSES
+    FieldReaderFactory
+    FieldReader
+    GridReader
+    PointReader
+"""
 
 import os
 import fnmatch
 import os.path as osp
 from abc import ABC, abstractmethod
+from typing import List, Tuple, Union
 
 import numpy as np
 from h5py import File
+from einops import rearrange
 
 E_FIELD_DATABASE_KEY = "E-Field"
 H_FIELD_DATABASE_KEY = "H-Field"
@@ -20,9 +34,47 @@ H5_FILENAME_PATTERN = "*AC*.h5"
 
 
 class FieldReaderFactory:
+    """
+    Factory class for creating FieldReader objects
+
+    This class checks the type of the files we have in the field directory
+    and defines the reader we need
+
+    Parameters
+    ----------
+    field_type: str
+        Type of the field we read and key of the field database in the h5 file.
+        Also is used to define the field directory name.
+    files_list: list
+        The list of files paths with field values which has to be read.
+
+    Assumed Directory structue
+    --------------------------
+    The simulation directory consists of different field directories
+
+    simulation_dir/
+    |- E_field/
+    |  |- e-field*(f=*) [AC*]*.h5
+    |- H_field/
+    |  |- e-field*(f=*) [AC*]*.h5
+    |- SAR/
+    |  |- SAR*(f=*) [AC*]*.h5
+    """
+
     def __init__(
         self, simulation_dir_path: str, field_type: str = E_FIELD_DATABASE_KEY
     ):
+        """
+        It collects the list of source files and check if they exist.
+
+        Parameters
+        ----------
+        simulation_dir_path: str
+            Path to the simulation directory
+        field_type: str
+            Field type
+        """
+
         self.field_type = field_type
 
         field_dir_path = osp.join(simulation_dir_path, FIELD_DIR_PATH[field_type])
@@ -44,11 +96,32 @@ class FieldReaderFactory:
             )
 
     def create_reader(self):
+        """
+        Two different types are asumed to be read:
+
+        1. Grid type
+            Uses field type as a databae key and also use
+            `X_BOUNDS_DATABASE_KEY`, `Y_BOUNDS_DATABASE_KEY`, `Z_BOUNDS_DATABASE_KEY`
+            as keys for the coordinates.
+        2. Just points
+            Field values are under the field type key and the coordinates are under
+            `Positions` key.
+
+        Returns
+        -------
+        FieldReader
+            prepared reader
+        """
+
         if self.__is_grid():
             return GridReader(self.files_list, self.field_type)
         return PointReader(self.files_list, self.field_type)
 
     def __is_grid(self):
+        """
+        Checks if the `POSISTIONS_DATABASE_KEY` key is used in h5 file
+        """
+
         with File(self.files_list[0]) as f:
             database_keys = list(f.keys())
         
@@ -56,17 +129,43 @@ class FieldReaderFactory:
 
 
 class FieldReader(ABC):
-    """Class for reading H/E field values.
-    We assume values can be only packed in .h5 files"""
+    """
+    Abstract class for reading field values
+
+    The classs is fully responsible for extracting field values and point coordinates
+
+    Attributes
+    ----------
+    files_list: list
+        The list of files paths which should be read
+    field_type: str
+        The type of the field we read
+    _coordinates: np.ndarray
+        The coordinates of the field points
+    """
 
     def __init__(self, files_list: list, field_type: str):
+        """
+        It reads coordinates and makes validation
+
+        Parameters
+        ----------
+        files_list: list
+            The list of files paths which should be processed
+        field_type: str
+            The type of the field we process
+        """
+
         self.files_list = files_list
         self.field_type = field_type
 
         self._coordinates = self._read_coordinates(self.files_list[0])
         self.__validate_coordinates()
 
-    def __validate_coordinates(self):
+    def __validate_coordinates(self) -> None:
+        """
+        It validates coordinates of the field points
+        """
         for other_file in self.files_list[1:]:
             other_coordinates = self._read_coordinates(other_file)
             if not self._check_coordinates(other_coordinates):
@@ -80,46 +179,161 @@ class FieldReader(ABC):
         pass
 
     @abstractmethod
-    def _read_coordinates(self, file_path: str):
+    def _read_coordinates(self, file_path: str) -> Union[Tuple, np.array]:
+        """
+        Reads coordinates from the h5 file
+
+        Parameters
+        ----------
+        file_path: str
+            The path to the h5 file with field values
+
+        Returns
+        -------
+        Union[Tuple, np.array]
+            The coordinates of the field points
+        """
+
         pass
 
     @abstractmethod
-    def _check_coordinates(self, other_coordinates):
+    def _check_coordinates(self, other_coordinates: Union[Tuple, np.array]) -> bool:
+        """
+        Checks if the given coordinates are the same as the coordinates saved in the instance
+
+        Parameters
+        ----------
+        other_coordinates: Union[Tuple, np.array]
+            The coordinates to compare with
+
+        Returns
+        -------
+        bool
+            True if the coordinates are the same
+        """
         pass
 
-    def extract_data(self):
-        field_values = list(map(self.__read_field_data, self.files_list))
-        return np.stack(field_values, axis=-1)
+    def extract_data(self) -> np.array:
+        """
+        Extracts field values from the files
 
-    def __read_field_data(self, file_path: str):
+        This is a main method of the class. 
+        It reads field values from files and compose it into a single array
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        field_components = list(map(
+            self.__read_field_data, self.files_list
+        ))
+
+        return self._compose_field_components(field_components)
+
+    def __read_field_data(self, file_path: str) -> np.array:
+        """
+        Read on field component from the .h5 file
+
+        It reads complex data array and compose it into a single result array
+
+        Parameters
+        ----------
+        file_path: str
+            The path to the h5 file with field values
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
         with File(file_path) as f:
             values = f[self.field_type][:]
 
-        # Extract Ex,Ey,Ez as complex
         Ex = values["x"]["re"] + 1j * values["x"]["im"]
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
-
-        values = np.stack((Ex, Ey, Ez), axis=-1).astype(np.complex128)
         
-        return values
+        return self._compose_field(Ex, Ey, Ez).astype(np.complex128)
+    
+    @abstractmethod
+    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
+        """
+        Stack together field values by axes
+        
+        Parameters
+        ----------
+        Ex: np.array
+            Field values for the x-axis
+        Ey: np.array
+            Field values for the y-axis
+        Ez: np.array
+            Field values for the z-axis
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        pass
+
+    @abstractmethod
+    def _compose_field_components(field_components: List) -> np.array:
+        """
+        Here we compose together field components from different files.
+
+        Parameters
+        ----------
+        field_components: List
+            List of field components
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        pass
 
 
 class GridReader(FieldReader):
 
-    def __init__(self, *args, **kwargs):
-        self.as_grid = True
-        super().__init__(*args, **kwargs)
+    as_gris = True
 
-    def _read_coordinates(self, file_path: str):
+    def _read_coordinates(self, file_path: str) -> Tuple:
+        """
+        Read coordinates from the h5 file
+
+        In the grid case coordinates are given by the mesh lines. 
+        Their access keys are saved in the 
+        `X_BOUNDS_DATABASE_KEY`, `Y_BOUNDS_DATABASE_KEY`, `Z_BOUNDS_DATABASE_KEY`.
+
+        Parameters
+        ----------
+        file_path: str
+            The path to the h5 file with field values
+
+        Returns
+        -------
+        Tuple
+            The x, y, z coordinate bounds
+        """
         with File(file_path) as f:
-            x_bounds = f[X_BOUNDS_DATABASE_KEY][:].astype(np.int64)
-            y_bounds = f[Y_BOUNDS_DATABASE_KEY][:].astype(np.int64)
-            z_bounds = f[Z_BOUNDS_DATABASE_KEY][:].astype(np.int64)
+            x_bounds = f[X_BOUNDS_DATABASE_KEY][:].astype(np.float64)
+            y_bounds = f[Y_BOUNDS_DATABASE_KEY][:].astype(np.float64)
+            z_bounds = f[Z_BOUNDS_DATABASE_KEY][:].astype(np.float64)
 
         return x_bounds, y_bounds, z_bounds
     
-    def _check_coordinates(self, other_coordinates):
+    def _check_coordinates(self, other_coordinates: Tuple) -> bool:
+        """
+        Checks if the given coordinates are the same as the coordinates saved in the instance
+        In the grid case we check if all bounds are the same.
+
+        Parameters
+        ----------
+        other_coordinates: Tuple
+            The coordinates to compare with
+        """
         x_default_bound, y_default_bound, z_default_bound = self._coordinates
         x_other_bound, y_other_bound, z_other_bound = other_coordinates
 
@@ -131,33 +345,153 @@ class GridReader(FieldReader):
     
     @property
     def coordinates(self):
+        """
+        It suppose just to give back the coordinates list. But if the grid trigger is 
+        off, then we give the data back in the pointslist form, that is why we create
+        a grid form and reshape it into the form of the pointslist.
+        """
         if self.is_grid:
             return self._coordinates
-        else:
-            x, y, z = self._coordinates
-            xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-            result = np.stack((xx, yy, zz), axis=-1).reshape(-1, 3, order="F")
-            return result
+        
+        x, y, z = self._coordinates
+        xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
+        values = rearrange(
+            [xx, yy, zz],
+            "ax x y z -> (x y z) ax"
+        )
+        return values
     
-    def extract_data(self): # needed because h5 files are read in a different order than saved by CST
-        field = super().extract_data()
-        field = np.transpose(field, axes=[2, 1, 0, 3, 4])
-        if not self.as_grid:
-            field = field.reshape(-1, 3, order="F")
-        return field
+    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
+        """
+        Stack together field values by axes
+
+        In the grid case coordinates are structured by the x, y, z axes. 
+        Each measurement component array has a 3d grid form. 
+        Rn we expect unormal coordinates order in the .h5 file so we also
+        fix it here. 
+        Parameters
+        ----------
+        Ex: np.array
+            3-dimensional array with field values for the x-axis
+        Ey: np.array
+            3-dimensional array with field values for the y-axis
+        Ez: np.array
+            3-dimensional array with field values for the z-axis
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        return rearrange(
+            [Ex, Ey, Ez],
+            "ax z y x -> x y z ax"
+        )
+    
+    def _compose_field_components(self, field_components: List) -> np.array:
+        """
+        Compose together field components from different files
+
+        In the grid regime of work we give back the grid data, but if 
+        the grid trigger is off, we will give back the data in the pointslist form.
+
+        Parameters
+        ----------
+        field_components: List
+            List of field components
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        if self.is_grid:
+            return rearrange(
+                field_components,
+                "components x y z ax -> x y z ax components"
+            )
+        
+        return rearrange(
+            field_components,
+            "components x y z ax -> (x y z) ax components"
+        )
 
 
 class PointReader(FieldReader):
     def _read_coordinates(self, file_path: str):
+        """
+        Read coordinates from the h5 file
+
+        In the pointslist case coordinates have no structure so we just compose them 
+        as a list of points.
+        """
         with File(file_path) as f:
             x = f[POSISTIONS_DATABASE_KEY]["x"][:]
             y = f[POSISTIONS_DATABASE_KEY]["y"][:]
             z = f[POSISTIONS_DATABASE_KEY]["z"][:]
-        return np.column_stack((x, y, z)).astype(np.int64)
+        return rearrange(
+            [x, y, z],
+            "ax batch -> batch ax"
+        ).astype(np.float64)
     
-    def _check_coordinates(self, other_coordinates):
+    def _check_coordinates(self, other_coordinates) -> bool:
+        """
+        Checks if the given coordinates are the same as the coordinates saved in the instance
+
+        Parameters
+        ----------
+        other_coordinates: np.array
+            The coordinates to compare with
+
+        Returns
+        -------
+        bool
+            True if the coordinates are the same
+        """
         return np.array_equal(self._coordinates, other_coordinates)
     
     @property
     def coordinates(self):
         return self._coordinates
+    
+    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
+        """
+        Stack together field values by axes
+
+        In the pointslist case coordinates have no structure. 
+        We get the full batch of points measurements for each coordinates axis.
+
+        Parameters
+        ----------
+        Ex: np.array
+            1-dimensional array with field values for the x-axis
+        Ey: np.array
+            1-dimensional array with field values for the y-axis
+        Ez: np.array
+            1-dimensional array with field values for the z-axis
+        """
+        return rearrange(
+            [Ex, Ey, Ez],
+            "ax batch -> batch ax"
+        )
+    
+    def _compose_field_components(field_components: List) -> np.array:
+        """
+        Compose together field components from different files
+
+        Just return data as a lisst of points measurements.
+
+        Parameters
+        ----------
+        field_components: List
+            List of field components
+
+        Returns
+        -------
+        np.array
+            The field values
+        """
+        return rearrange(
+            field_components,
+            "components batch ax -> batch ax components"
+        )
