@@ -440,17 +440,17 @@ class GraphPreprocessing(Preprocessing):
 
     _coordinates = None
 
-    @property.setter
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @coordinates.setter
     def coordinates(self, coordinates):
         if self._coordinates is None:
             self._coordinates = coordinates
         else:
             if not np.array_equal(self._coordinates, coordinates):
                 raise Exception("Different coordinate systems for simulations")
-
-    @property
-    def coordinates(self):
-        return self._coordinates
 
     @property
     def _output_target_dir(self) -> str:
