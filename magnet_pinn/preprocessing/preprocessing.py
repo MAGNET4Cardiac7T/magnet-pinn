@@ -1,5 +1,14 @@
 """
-Module for basic preprocessing functionality.
+NAME
+    preprocessing.py
+
+DESCRIPTION
+    This module contains preprocessing classes for the simulation data.
+
+CLASSES
+    Preprocessing
+    GridPreprocessing
+    GraphPreprocessing
 """
 
 import os.path as osp
@@ -8,9 +17,11 @@ from os import makedirs, listdir
 from abc import ABC, abstractmethod
 
 import numpy as np
+from numpy.core.multiarray import array as array
 import pandas as pd
 from h5py import File
 from tqdm import tqdm
+from einops import rearrange, repeat, reduce, pack
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -33,7 +44,7 @@ PROCESSED_ANTENNA_DIR_PATH = "antenna"
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
 AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
-AIR_FEATURE_VALUES = tuple(AIR_FEATURES[feature_name] for feature_name in FEATURE_NAMES)
+AIR_FEATURE_VALUES = np.array(tuple(AIR_FEATURES[feature_name] for feature_name in FEATURE_NAMES))
 
 
 class Preprocessing(ABC):
@@ -219,25 +230,34 @@ class Preprocessing(ABC):
 
         features = dipoles_features + objects_features
 
-        # set air feature values
-        features[np.sum(features, axis=-1) == 0, :] = AIR_FEATURE_VALUES
+        features = self._set_air_features(features)
 
-        general_mask = np.sum(
-            np.concatenate((dipoles_mask, object_masks), axis=-1), axis=-1
-        ).astype(bool)
-        features = np.concatenate(
-            (features, np.expand_dims(general_mask, axis=-1)), axis=-1
-        )
+        features = self._combine_features(features, dipoles_mask, object_masks)
 
         out_simulation.features = features
         out_simulation.object_masks = object_masks
 
+    @abstractmethod
+    def _set_air_features(self, features: np.array) -> np.array:
+        """
+        Methods processes air features.
+        """
+        pass
+
+    @abstractmethod
+    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
+        """
+        Method combines features with masks.
+        """
+        pass
+
+    @abstractmethod
     def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
         """
         A shortcut for the procedure of multiplication of properties and masks.
 
-        The method duplicate features first to the number of masks available.
-        Then these features are used to calculate the final features
+        The method manipulates masks and properties shapes to calculate element-wise
+        product and sum over the component axis.
 
         Parameters
         ----------
@@ -251,14 +271,7 @@ class Preprocessing(ABC):
         np.array
             Calculated features
         """
-        properties_values = properties.loc[:, FEATURE_NAMES].to_numpy().T
-        extended_masks = np.repeat(
-            np.expand_dims(masks, axis=-2), len(FEATURE_NAMES), axis=-2
-        )
-        features = np.sum(
-            extended_masks * properties_values, axis=-1
-        )
-        return features
+        pass
     
     @abstractmethod
     def _get_features_and_mask(self, properties: pd.DataFrame, meshes: List) -> Tuple:
@@ -310,18 +323,60 @@ class Preprocessing(ABC):
 
 
 class GridPreprocessing(Preprocessing):
+    """
+    Class for preprocessing data for grid-based models.
+
+    The class is responsible for reading and processing antennas and subjects data in a voxel grid manner.
+
+    Attributes
+    ----------
+    voxel_size : int
+        the size of the voxel for creating a grid
+    positions_min : np.array
+        the minimum values of the extent
+    positions_max : np.array
+        the maximum values of the extent
+    simulations_dir_path : str
+        Simulations location in the batch directory
+    out_simmulations_dir_path : str
+        Processed simulations location in the output directory
+    out_antenna_dir_path : str
+        Processed antenna location in the output directory
+    dipoles_properties : pd.DataFrame
+        Antenna feature dataframe including dipoles meshes files
+    dipoles_meshes : list
+        A list of dipoles meshes
+    dipoles_features : np.array
+        Calculated dipoles features in each measurement point
+    dipoles_masks : np.array
+        Dipoles mask in each measurement point
+    """
     def __init__(
         self, batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
     ):
+        """
+        It does a standard init, checks the extent, creates a voxelizer and process antenna data.
+
+        Parameters
+        ----------
+        batch_dir_path : str
+            Path to the batch directory
+        output_dir_path : str
+            Path to the output directory
+        voxel_size : int
+            The size of the voxel for creating a grid
+        """
         self.voxel_size = voxel_size
         super().__init__(batch_dir_path, output_dir_path)
 
         # check extent for validity
         min_values = np.array(
-            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
+            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"]),
+            dtype=np.float32
         )
         max_values = np.array(
-            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
+            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"]),
+            dtype=np.float32
         )
         if not np.all((max_values - min_values) % voxel_size == 0):
             raise Exception("Extent not divisible by voxel size")
@@ -344,6 +399,9 @@ class GridPreprocessing(Preprocessing):
         return f"grid_voxel_size_{self.voxel_size}"
 
     def _write_dipoles(self) -> None:
+        """
+        Writes processed antenna masks to the output directory.
+        """
         makedirs(self.out_antenna_dir_path, exist_ok=True)
         
         target_file_name = "antenna.h5"
@@ -374,34 +432,85 @@ class GridPreprocessing(Preprocessing):
         out_simulation.h_field = h_field_reader.extract_data()
 
     def __sanity_check(self, x_bound: np.array, y_bound: np.array, z_bound: np.array) -> None:
-        data_min = np.stack(
-            (
-                np.min(x_bound),
-                np.min(y_bound),
-                np.min(z_bound),
-            ),
-        ).astype(np.int64)
+        data_min = np.array(
+            (np.min(x_bound), np.min(y_bound), np.min(z_bound)),
+            dtype=np.float32
+        )
         if not np.array_equal(self.positions_min, data_min):
             raise Exception("Min not satisfied")
 
-        data_max = np.stack(
-            (
-                np.max(x_bound),
-                np.max(y_bound),
-                np.max(z_bound),
-            ),
-        ).astype(np.int64)
+        data_max = np.array(
+            (np.max(x_bound), np.max(y_bound), np.max(z_bound)),
+            dtype=np.float32
+        )
         if not np.array_equal(self.positions_max, data_max):
             raise Exception("Max not satisfied")
+
+    def _set_air_features(self, features: np.array) -> np.array:
+        air_mask = features == 0
+
+        extneded_air_prop = repeat(
+            AIR_FEATURE_VALUES,
+            "feature -> feature x y z",
+            x=features.shape[1],
+            y=features.shape[2],
+            z=features.shape[3]
+        )
+
+        return features + extneded_air_prop * air_mask
+        
+    def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
+        """
+        A shortcut for the procedure of multiplication of properties and masks.
+
+        The method manipulates masks and properties shapes to calculate element-wise
+        product and sum over the component axis.
+
+        Parameters
+        ----------
+        properties : pd.DataFrame
+            A properties frame
+        masks : np.array
+            A mask array
+
+        Returns
+        -------
+        np.array
+            Calculated features
+        """
+        
+        props = properties.loc[:, FEATURE_NAMES].to_numpy().T
+        extended_props = repeat(
+            props,
+            "feature component -> feature x y z component",
+            x=masks.shape[0],
+            y=masks.shape[1],
+            z=masks.shape[2]
+        )
+
+        extended_masks = repeat(
+            masks,
+            "x y z component -> feature x y z component",
+            feature=len(FEATURE_NAMES)
+        )
+
+        result = reduce(
+            extended_props * extended_masks,
+            "feature x y z component -> feature x y z",
+            "sum"
+        )
+
+        return result
         
     def _get_features_and_mask(self, properties, meshes) -> Tuple:
-        mask = np.stack(
+        mask = rearrange(
             list(map(
                 lambda x: self.voxelizer.process_mesh(x),
                 meshes,
             )),
-            axis=-1
+            "component x y z -> x y z component"
         )
+        
         features = self._get_features(properties, mask)
         return (
             features,
@@ -413,6 +522,25 @@ class GridPreprocessing(Preprocessing):
             self.dipoles_features,
             self.dipoles_masks
         )
+    
+    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
+        all_masks, _ = pack(
+            (dipoles_mask, objects_mask),
+            "x y z *"
+        )
+        general_mask = reduce(
+            all_masks,
+            "x y z component -> x y z",
+            "sum"
+        ).astype(bool)
+
+        result, _ = pack(
+            (features, general_mask),
+            "* x y z"
+        )
+
+        return result
+        
 
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
         makedirs(self.out_simmulations_dir_path, exist_ok=True)
@@ -422,19 +550,12 @@ class GridPreprocessing(Preprocessing):
             self.out_simmulations_dir_path, target_file_name
         )
 
-        self._reorder_axes(out_simulation)
-
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=out_simulation.features)
             f.create_dataset("efield", data=out_simulation.e_field)
             f.create_dataset("hfield", data=out_simulation.h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
 
-    def _reorder_axes(self, out_simulation: Simulation) -> None:
-        out_simulation.features = np.moveaxis(out_simulation.features, -1, 0)
-        out_simulation.e_field = np.moveaxis(out_simulation.e_field, -2, 0)
-        out_simulation.h_field = np.moveaxis(out_simulation.h_field, -2, 0)
-        out_simulation.object_masks = np.moveaxis(out_simulation.object_masks, -1, 0)
 
 class GraphPreprocessing(Preprocessing):
 
@@ -482,6 +603,39 @@ class GraphPreprocessing(Preprocessing):
         out_simulation.e_field = e_field_reader.extract_data()
         out_simulation.h_field = h_field_reader.extract_data()
 
+    def _get_features(self, properties: pd.DataFrame, masks: np.array) -> np.array:
+        props = properties.loc[:, FEATURE_NAMES].to_numpy().T
+        extended_props = repeat(
+            props,
+            "feature component -> points feature component",
+            points=masks.shape[0]
+        )
+
+        extended_masks = repeat(
+            masks,
+            "points component -> points feature component",
+            feature=len(FEATURE_NAMES)
+        )
+
+        result = reduce(
+            extended_props * extended_masks,
+            "points feature component -> points feature",
+            "sum"
+        )
+
+        return result
+
+    def _set_air_features(self, features: np.array) -> np.array:
+        air_mask = features == 0
+
+        extneded_air_prop = repeat(
+            AIR_FEATURE_VALUES,
+            "feature -> points feature",
+            points=features.shape[0]
+        )
+
+        return features + extneded_air_prop * air_mask
+
     def _get_features_and_mask(self, properties, meshes) -> Tuple:
         mask = np.stack(
             list(map(
@@ -495,6 +649,24 @@ class GraphPreprocessing(Preprocessing):
             features,
             mask
         )
+    
+    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
+        all_masks, _ = pack(
+            (dipoles_mask, objects_mask),
+            "points *"
+        )
+        general_mask = reduce(
+            all_masks,
+            "points component -> points",
+            "sum"
+        ).astype(bool)
+
+        result, _ = pack(
+            (features, general_mask),
+            "points *"
+        )
+
+        return result
     
     def _get_dipoles_features_and_mask(self) -> Tuple:
         if self.dipoles_features is None or self.dipoles_masks is None:

@@ -296,8 +296,7 @@ class FieldReader(ABC):
 
 
 class GridReader(FieldReader):
-
-    as_gris = True
+    is_grid = True
 
     def _read_coordinates(self, file_path: str) -> Tuple:
         """
