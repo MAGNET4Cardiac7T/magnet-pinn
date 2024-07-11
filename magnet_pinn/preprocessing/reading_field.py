@@ -365,7 +365,7 @@ class GridReader(FieldReader):
         """
         Stack together field values by axes
 
-        In the grid case coordinates are structured by the x, y, z axes. 
+        In the grid case coordinates are structured by the axes, x, y, z. 
         Each measurement component array has a 3d grid form. 
         Rn we expect unormal coordinates order in the .h5 file so we also
         fix it here. 
@@ -385,8 +385,9 @@ class GridReader(FieldReader):
         """
         return rearrange(
             [Ex, Ey, Ez],
-            "ax z y x -> x y z ax"
+            "ax z y x -> ax x y z"
         )
+
     
     def _compose_field_components(self, field_components: List) -> np.array:
         """
@@ -408,12 +409,12 @@ class GridReader(FieldReader):
         if self.is_grid:
             return rearrange(
                 field_components,
-                "components x y z ax -> x y z ax components"
+                "components ax x y z -> ax x y z components"
             )
         
         return rearrange(
             field_components,
-            "components x y z ax -> (x y z) ax components"
+            "components ax x y z -> (x y z) ax components"
         )
 
 
