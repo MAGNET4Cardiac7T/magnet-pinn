@@ -375,7 +375,7 @@ class Preprocessing(ABC):
         else:
             raise Exception("Unsupported field data type")
 
-        return e_field. h_field
+        return e_field, h_field
     
     def _write_extra_data(self, simulation: Simulation, f: File):
         """
