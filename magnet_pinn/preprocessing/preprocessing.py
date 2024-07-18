@@ -21,7 +21,7 @@ from numpy.core.multiarray import array as array
 import pandas as pd
 from h5py import File
 from tqdm import tqdm
-from einops import rearrange, repeat, reduce, pack
+from einops import rearrange, repeat, reduce
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -170,7 +170,9 @@ class Preprocessing(ABC):
 
         full_sim_list = listdir(self.simulations_dir_path)
 
-        if simulation_names is None:
+        if simulation_names is not None and not set(simulation_names).issubset(set(full_sim_list)):
+            raise Exception("Simulations are not in the directory")
+        elif simulation_names is None:
             simulation_names = full_sim_list
         elif not set(simulation_names).issubset(full_sim_list):
             raise Exception("Simulations are not valid")
