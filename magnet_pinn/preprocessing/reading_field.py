@@ -253,28 +253,15 @@ class FieldReader(ABC):
         Ex = values["x"]["re"] + 1j * values["x"]["im"]
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
-        
-        return self._compose_field(Ex, Ey, Ez).astype(np.complex128)
-    
-    @abstractmethod
-    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
-        """
-        Stack together field values by axes
-        
-        Parameters
-        ----------
-        Ex: np.array
-            Field values for the x-axis
-        Ey: np.array
-            Field values for the y-axis
-        Ez: np.array
-            Field values for the z-axis
 
-        Returns
-        -------
-        np.array
-            The field values
-        """
+        return rearrange(
+            [Ex, Ey, Ez],
+            self._compose_field_pattern
+        ).astype(np.complex64)
+
+    @property
+    @abstractmethod
+    def _compose_field_pattern(self) -> str:
         pass
 
     @abstractmethod
@@ -360,32 +347,9 @@ class GridReader(FieldReader):
         )
         return values
     
-    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
-        """
-        Stack together field values by axes
-
-        In the grid case coordinates are structured by the axes, x, y, z. 
-        Each measurement component array has a 3d grid form. 
-        Rn we expect unormal coordinates order in the .h5 file so we also
-        fix it here. 
-        Parameters
-        ----------
-        Ex: np.array
-            3-dimensional array with field values for the x-axis
-        Ey: np.array
-            3-dimensional array with field values for the y-axis
-        Ez: np.array
-            3-dimensional array with field values for the z-axis
-
-        Returns
-        -------
-        np.array
-            The field values
-        """
-        return rearrange(
-            [Ex, Ey, Ez],
-            "ax z y x -> ax x y z"
-        )
+    @property
+    def _compose_field_pattern(self) -> str:
+        return "ax z y x -> ax x y z"
 
     
     def _compose_field_components(self, field_components: List) -> np.array:
@@ -454,26 +418,9 @@ class PointReader(FieldReader):
     def coordinates(self):
         return self._coordinates
     
-    def _compose_field(self, Ex: np.array, Ey: np.array, Ez: np.array) -> np.array:
-        """
-        Stack together field values by axes
-
-        In the pointslist case coordinates have no structure. 
-        We get the full batch of points measurements for each coordinates axis.
-
-        Parameters
-        ----------
-        Ex: np.array
-            1-dimensional array with field values for the x-axis
-        Ey: np.array
-            1-dimensional array with field values for the y-axis
-        Ez: np.array
-            1-dimensional array with field values for the z-axis
-        """
-        return rearrange(
-            [Ex, Ey, Ez],
-            "ax batch -> batch ax"
-        )
+    @property
+    def _compose_field_pattern(self) -> str:
+        return "ax batch -> batch ax"
     
     def _compose_field_components(field_components: List) -> np.array:
         """
