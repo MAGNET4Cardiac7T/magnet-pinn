@@ -51,6 +51,12 @@ AIR_FEATURE_VALUES = np.array(tuple(AIR_FEATURES[feature_name] for feature_name 
 COMPLEX_DTYPE_KIND = "c"
 FLOAT_DTYPE_KIND = "f"
 
+FEATURES_OUT_KEY = "input"
+E_FIELD_OUT_KEY = "efield"
+H_FIELD_OUT_KEY = "hfield"
+SUBJECT_OUT_KEY = "subject"
+COORDINATES_OUT_KEY = "positions"
+
 
 class Preprocessing(ABC):
     """
@@ -306,15 +312,32 @@ class Preprocessing(ABC):
         """
         pass
     
-    @abstractmethod
     def _format_and_write_dataset(self, out_simulation: Simulation):
         """
         The final stage for the simulation processing.
 
         The method formats data from the `out_simulation` instance 
-        and writes it to the output directory. 
+        and writes it to the output directory.
+
+        Parameters
+        ----------
+        out_simulation : Simulation
+            The instance with the processed data
         """
-        pass
+        makedirs(self.out_simmulations_dir_path, exist_ok=True)
+
+        output_file_path = osp.join(
+            self.out_simmulations_dir_path,
+            TARGET_FILE_NAME.format(name=out_simulation.name)
+        )
+
+        e_field, h_field = self._format_fields(out_simulation)
+
+        with File(output_file_path, "w") as f:
+            f.create_dataset(FEATURES_OUT_KEY, data=out_simulation.features)
+            f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
+            f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
+            f.create_dataset(SUBJECT_OUT_KEY, data=out_simulation.object_masks)
 
     @abstractmethod
     def _write_dipoles(self) -> None:
@@ -339,6 +362,7 @@ class Preprocessing(ABC):
         np.array:
             h-field data
         """
+        e_field, h_field = None, None
         if self.field_dtype.kind == COMPLEX_DTYPE_KIND:
             e_field = simulation.e_field.astype(self.field_dtype)
             h_field = simulation.h_field.astype(self.field_dtype)
@@ -351,8 +375,23 @@ class Preprocessing(ABC):
                 [simulation.h_field.real, simulation.h_field.imag],
                 dtype=[("re", self.field_dtype),("im", self.field_dtype)]
             )
+        else:
+            raise Exception("Unsupported field data type")
 
         return e_field. h_field
+    
+    def _write_extra_data(self, simulation: Simulation, f: File):
+        """
+        Writes extra data to the output .h5 file.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+        f : File
+            a h5 file descriptor
+        """
+        pass
             
 
 
@@ -567,23 +606,6 @@ class GridPreprocessing(Preprocessing):
             self.dipoles_masks
         )
 
-    def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
-
-        output_file_path = osp.join(
-            self.out_simmulations_dir_path,
-            TARGET_FILE_NAME.format(name=out_simulation.name)
-        )
-
-        e_field, h_field = self._format_fields(out_simulation)
-
-        with File(output_file_path, "w") as f:
-            f.create_dataset("input", data=out_simulation.features)
-            f.create_dataset("efield", data=e_field)
-            f.create_dataset("hfield", data=h_field)
-            f.create_dataset("subject", data=out_simulation.object_masks)
-            f.create_dataset("general_mask", data=out_simulation.general_mask)
-
 
 class GraphPreprocessing(Preprocessing):
 
@@ -691,20 +713,6 @@ class GraphPreprocessing(Preprocessing):
             self.dipoles_features,
             self.dipoles_masks
         )
-
-    def _format_and_write_dataset(self, out_simulation: Simulation):
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
-        output_file_path = osp.join(
-            self.out_simmulations_dir_path,
-            TARGET_FILE_NAME.format(name=out_simulation.name)
-        )
-
-        e_field, h_field = self._format_fields(out_simulation)
-
-        with File(output_file_path, "w") as f:
-            f.create_dataset("input", data=out_simulation.features)
-            f.create_dataset("efield", data=e_field)
-            f.create_dataset("hfield", data=h_field)
-            f.create_dataset("subject", data=out_simulation.object_masks)
-            f.create_dataset("positions", out_simulation.coordinates)
-            f.create_dataset("general_mask", data=out_simulation.general_mask)
+    
+    def _write_extra_data(self, simulation: Simulation, f: File):
+        f.create_dataset(COORDINATES_OUT_KEY, data=simulation.coordinates)
