@@ -246,10 +246,7 @@ class Preprocessing(ABC):
 
         features = self._set_air_features(features)
 
-        generak_mask = self._get_general_mask(dipoles_mask, object_masks)
-
         out_simulation.features = features
-        out_simulation.general_mask = generak_mask
         out_simulation.object_masks = object_masks
 
     @abstractmethod
@@ -393,7 +390,6 @@ class Preprocessing(ABC):
         """
         pass
             
-
 
 class GridPreprocessing(Preprocessing):
     """
@@ -608,7 +604,6 @@ class GridPreprocessing(Preprocessing):
 
 
 class GraphPreprocessing(Preprocessing):
-
     _coordinates = None
 
     @property
