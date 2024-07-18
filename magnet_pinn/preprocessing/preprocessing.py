@@ -240,9 +240,10 @@ class Preprocessing(ABC):
 
         features = self._set_air_features(features)
 
-        features = self._combine_features(features, dipoles_mask, object_masks)
+        generak_mask = self._get_general_mask(dipoles_mask, object_masks)
 
         out_simulation.features = features
+        out_simulation.general_mask = generak_mask
         out_simulation.object_masks = object_masks
 
     @abstractmethod
@@ -252,11 +253,27 @@ class Preprocessing(ABC):
         """
         pass
 
+    def _get_general_mask(self, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
+        all_masks, _ = pack(
+            (dipoles_mask, objects_mask),
+            self._concat_masks_pattern
+        )
+        general_mask = reduce(
+            all_masks,
+            self._sum_masks_pattern,
+            "sum"
+        ).astype(bool)
+
+        return general_mask
+    
+    @property
     @abstractmethod
-    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
-        """
-        Method combines features with masks.
-        """
+    def _concat_masks_pattern():
+        pass
+
+    @property
+    @abstractmethod
+    def _sum_masks_pattern():
         pass
 
     @abstractmethod
@@ -573,24 +590,13 @@ class GridPreprocessing(Preprocessing):
             self.dipoles_masks
         )
     
-    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
-        all_masks, _ = pack(
-            (dipoles_mask, objects_mask),
-            "x y z *"
-        )
-        general_mask = reduce(
-            all_masks,
-            "x y z component -> x y z",
-            "sum"
-        ).astype(bool)
+    @property
+    def _concat_masks_pattern():
+        return "x y z *"
 
-        result, _ = pack(
-            (features, general_mask),
-            "* x y z"
-        )
-
-        return result
-        
+    @property
+    def _sum_masks_pattern():
+        return "x y z component -> x y z"
 
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
         makedirs(self.out_simmulations_dir_path, exist_ok=True)
@@ -607,6 +613,7 @@ class GridPreprocessing(Preprocessing):
             f.create_dataset("efield", data=e_field)
             f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
+            f.create_dataset("general_mask", data=out_simulation.general_mask)
 
 
 class GraphPreprocessing(Preprocessing):
@@ -705,23 +712,13 @@ class GraphPreprocessing(Preprocessing):
             mask
         )
     
-    def _combine_features(self, features: np.array, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
-        all_masks, _ = pack(
-            (dipoles_mask, objects_mask),
-            "points *"
-        )
-        general_mask = reduce(
-            all_masks,
-            "points component -> points",
-            "sum"
-        ).astype(bool)
+    @property
+    def _concat_masks_pattern():
+        return "points *"
 
-        result, _ = pack(
-            (features, general_mask),
-            "points *"
-        )
-
-        return result
+    @property
+    def _sum_masks_pattern():
+        return "points component -> points"
     
     def _get_dipoles_features_and_mask(self) -> Tuple:
         if self.dipoles_features is None or self.dipoles_masks is None:
@@ -749,3 +746,4 @@ class GraphPreprocessing(Preprocessing):
             f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
             f.create_dataset("positions", out_simulation.coordinates)
+            f.create_dataset("general_mask", data=out_simulation.general_mask)
