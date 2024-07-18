@@ -24,4 +24,3 @@ class Simulation:
     object_masks: Optional[np.array] = None
     coordinates: Optional[np.array] = None
     features: Optional[np.array] = None
-    general_mask: Optional[np.array] = None
