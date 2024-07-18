@@ -253,29 +253,6 @@ class Preprocessing(ABC):
         """
         pass
 
-    def _get_general_mask(self, dipoles_mask: np.array, objects_mask: np.array) -> np.array:
-        all_masks, _ = pack(
-            (dipoles_mask, objects_mask),
-            self._concat_masks_pattern
-        )
-        general_mask = reduce(
-            all_masks,
-            self._sum_masks_pattern,
-            "sum"
-        ).astype(bool)
-
-        return general_mask
-    
-    @property
-    @abstractmethod
-    def _concat_masks_pattern():
-        pass
-
-    @property
-    @abstractmethod
-    def _sum_masks_pattern():
-        pass
-
     @abstractmethod
     def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
         """
@@ -589,14 +566,6 @@ class GridPreprocessing(Preprocessing):
             self.dipoles_features,
             self.dipoles_masks
         )
-    
-    @property
-    def _concat_masks_pattern():
-        return "x y z *"
-
-    @property
-    def _sum_masks_pattern():
-        return "x y z component -> x y z"
 
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
         makedirs(self.out_simmulations_dir_path, exist_ok=True)
@@ -711,14 +680,6 @@ class GraphPreprocessing(Preprocessing):
             features,
             mask
         )
-    
-    @property
-    def _concat_masks_pattern():
-        return "points *"
-
-    @property
-    def _sum_masks_pattern():
-        return "points component -> points"
     
     def _get_dipoles_features_and_mask(self) -> Tuple:
         if self.dipoles_features is None or self.dipoles_masks is None:
