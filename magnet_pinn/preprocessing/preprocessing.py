@@ -41,10 +41,15 @@ INPUT_SIMULATIONS_DIR_PATH = "simulations"
 PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
 INPUT_ANTENNA_DIR_PATH = "antenna"
 PROCESSED_ANTENNA_DIR_PATH = "antenna"
+TARGET_FILE_NAME = "{name}.h5"
+
 STANDARD_VOXEL_SIZE = 4
 FEATURE_NAMES = ("conductivity", "permittivity", "density")
 AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
 AIR_FEATURE_VALUES = np.array(tuple(AIR_FEATURES[feature_name] for feature_name in FEATURE_NAMES))
+
+COMPLEX_DTYPE_KIND = "c"
+FLOAT_DTYPE_KIND = "f"
 
 
 class Preprocessing(ABC):
@@ -58,6 +63,8 @@ class Preprocessing(ABC):
 
     Attributes
     ----------
+    field_dtype : np.dtype
+        type of saving field data
     simulations_dir_path : str
         Simulations location in the batch directory
     out_simmulations_dir_path : str
@@ -74,7 +81,7 @@ class Preprocessing(ABC):
         Dipoles mask in each measurement point
     """
 
-    def __init__(self, batch_dir_path: str, output_dir_path: str) -> None:
+    def __init__(self, batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64) -> None:
         """
         Parameters
         ----------
@@ -83,6 +90,7 @@ class Preprocessing(ABC):
         output_dir_path : str
             Path to the output directory
         """
+        self.field_dtype = np.dtype(field_dtype)
         self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
 
         # create output directories
@@ -321,6 +329,38 @@ class Preprocessing(ABC):
         """
         pass
 
+    def _format_fields(self, simulation: Simulation) -> Tuple[np.array, np.array]:
+        """
+        Formats fields data.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+
+        Returns
+        -------
+        np.array:
+            e-fiel data
+        np.array:
+            h-field data
+        """
+        if self.field_dtype.kind == COMPLEX_DTYPE_KIND:
+            e_field = simulation.e_field.astype(self.field_dtype)
+            h_field = simulation.h_field.astype(self.field_dtype)
+        elif self.field_dtype.kind == FLOAT_DTYPE_KIND:
+            e_field = np.array(
+                [simulation.e_field.real, simulation.e_field.imag],
+                dtype=[("re", self.field_dtype),("im", self.field_dtype)]
+            )
+            h_field = np.array(
+                [simulation.h_field.real, simulation.h_field.imag],
+                dtype=[("re", self.field_dtype),("im", self.field_dtype)]
+            )
+
+        return e_field. h_field
+            
+
 
 class GridPreprocessing(Preprocessing):
     """
@@ -336,6 +376,8 @@ class GridPreprocessing(Preprocessing):
         the minimum values of the extent
     positions_max : np.array
         the maximum values of the extent
+    field_dtype : np.dtype
+        type of saving field data
     simulations_dir_path : str
         Simulations location in the batch directory
     out_simmulations_dir_path : str
@@ -352,7 +394,11 @@ class GridPreprocessing(Preprocessing):
         Dipoles mask in each measurement point
     """
     def __init__(
-        self, batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, **kwargs
+        self, batch_dir_path: str, 
+        output_dir_path: str, 
+        voxel_size: int = STANDARD_VOXEL_SIZE, 
+        field_dtype: np.dtype = np.complex64, 
+        **kwargs
     ):
         """
         It does a standard init, checks the extent, creates a voxelizer and process antenna data.
@@ -367,7 +413,7 @@ class GridPreprocessing(Preprocessing):
             The size of the voxel for creating a grid
         """
         self.voxel_size = voxel_size
-        super().__init__(batch_dir_path, output_dir_path)
+        super().__init__(batch_dir_path, output_dir_path, field_dtype)
 
         # check extent for validity
         min_values = np.array(
@@ -396,7 +442,11 @@ class GridPreprocessing(Preprocessing):
 
     @property
     def _output_target_dir(self) -> str:
-        return f"grid_voxel_size_{self.voxel_size}"
+        """
+        Gives a name of the simulation out directory based on 
+        voxel grid and data type we use to save the field data.
+        """
+        return f"grid_voxel_size_{self.voxel_size}_data_type_{self.field_dtype.name}"
 
     def _write_dipoles(self) -> None:
         """
@@ -428,8 +478,8 @@ class GridPreprocessing(Preprocessing):
         
         self.__sanity_check(e_x_bound, e_y_bound, e_z_bound)
 
-        out_simulation.e_field = e_field_reader.extract_data()
-        out_simulation.h_field = h_field_reader.extract_data()
+        out_simulation.e_field = e_field_reader.extract_data().astype(np.complex64)
+        out_simulation.h_field = h_field_reader.extract_data().astype(np.complex64)
 
     def __sanity_check(self, x_bound: np.array, y_bound: np.array, z_bound: np.array) -> None:
         data_min = np.array(
@@ -545,15 +595,17 @@ class GridPreprocessing(Preprocessing):
     def _format_and_write_dataset(self, out_simulation: Simulation) -> None:
         makedirs(self.out_simmulations_dir_path, exist_ok=True)
 
-        target_file_name = f"{out_simulation.name}.h5"
         output_file_path = osp.join(
-            self.out_simmulations_dir_path, target_file_name
+            self.out_simmulations_dir_path,
+            TARGET_FILE_NAME.format(name=out_simulation.name)
         )
+
+        e_field, h_field = self._format_fields(out_simulation)
 
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=out_simulation.features)
-            f.create_dataset("efield", data=out_simulation.e_field)
-            f.create_dataset("hfield", data=out_simulation.h_field)
+            f.create_dataset("efield", data=e_field)
+            f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
 
 
@@ -575,7 +627,10 @@ class GraphPreprocessing(Preprocessing):
 
     @property
     def _output_target_dir(self) -> str:
-        return f"graph"
+        """
+        Names the out simulation directory.
+        """
+        return f"graph_data_type_{self.field_dtype.name}"
     
     def _extract_fields_data(self, out_simulation: Simulation) -> None:
         e_field_reader = FieldReaderFactory(
@@ -600,8 +655,8 @@ class GraphPreprocessing(Preprocessing):
         self.coordinates = e_coordinates
 
         out_simulation.coordinates = e_coordinates
-        out_simulation.e_field = e_field_reader.extract_data()
-        out_simulation.h_field = h_field_reader.extract_data()
+        out_simulation.e_field = e_field_reader.extract_data().astype(np.complex64)
+        out_simulation.h_field = h_field_reader.extract_data().astype(np.complex64)
 
     def _get_features(self, properties: pd.DataFrame, masks: np.array) -> np.array:
         props = properties.loc[:, FEATURE_NAMES].to_numpy().T
@@ -681,14 +736,16 @@ class GraphPreprocessing(Preprocessing):
 
     def _format_and_write_dataset(self, out_simulation: Simulation):
         makedirs(self.out_simmulations_dir_path, exist_ok=True)
-        target_file_name = f"{out_simulation.name}.h5"
         output_file_path = osp.join(
-            self.out_simmulations_dir_path, target_file_name
+            self.out_simmulations_dir_path,
+            TARGET_FILE_NAME.format(name=out_simulation.name)
         )
+
+        e_field, h_field = self._format_fields(out_simulation)
 
         with File(output_file_path, "w") as f:
             f.create_dataset("input", data=out_simulation.features)
-            f.create_dataset("efield", data=out_simulation.e_field)
-            f.create_dataset("hfield", data=out_simulation.h_field)
+            f.create_dataset("efield", data=e_field)
+            f.create_dataset("hfield", data=h_field)
             f.create_dataset("subject", data=out_simulation.object_masks)
             f.create_dataset("positions", out_simulation.coordinates)
