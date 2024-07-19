@@ -12,7 +12,7 @@ import os.path as osp
 from typing import List
 
 import pandas as pd
-from trimesh import load_mesh
+from trimesh import load_mesh, Trimesh
 
 MATERIALS_FILE_NAME = "materials.txt"
 
@@ -50,7 +50,7 @@ class PropertyReader:
             osp.join(self.properties_dir_path, MATERIALS_FILE_NAME)
         )
 
-    def read_meshes(self) -> List:
+    def read_meshes(self) -> List[Trimesh]:
         """
         Reads the meshes of the materials
 

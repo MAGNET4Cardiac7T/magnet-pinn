@@ -21,13 +21,15 @@ from numpy.core.multiarray import array as array
 import pandas as pd
 from h5py import File
 from tqdm import tqdm
+from trimesh import Trimesh
 from einops import rearrange, repeat, reduce
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
     H_FIELD_DATABASE_KEY,
     FieldReaderFactory,
-    GridReader
+    GridReader,
+    FieldReader
 )
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
@@ -87,6 +89,25 @@ class Preprocessing(ABC):
         Dipoles mask in each measurement point
     """
 
+    __dipoles_masks = None
+    __dipoles_features = None
+
+    @property
+    def _dipoles_masks(self) -> np.array:
+        if self.__dipoles_masks is None:
+            self.__dipoles_masks, self.__dipoles_features = self._get_features_and_mask(
+                self.dipoles_properties, self.dipoles_meshes
+            )
+        return self.__dipoles_masks
+    
+    @property
+    def _dipoles_features(self) -> np.array:
+        if self.__dipoles_features is None:
+            self.__dipoles_features, self.__dipoles_masks = self._get_features_and_mask(
+                self.dipoles_properties, self.dipoles_meshes
+            )
+        return self.__dipoles_features
+
     def __init__(self, batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64) -> None:
         """
         Parameters
@@ -118,7 +139,6 @@ class Preprocessing(ABC):
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
             osp.join(batch_dir_path, INPUT_ANTENNA_DIR_PATH)
         )
-        self.dipoles_features, self.dipoles_masks = None, None
 
     @property
     @abstractmethod
@@ -129,7 +149,7 @@ class Preprocessing(ABC):
         """
         pass
 
-    def __get_properties_and_meshes(self, dir_path: str) -> Tuple:
+    def __get_properties_and_meshes(self, dir_path: str) -> Tuple[pd.DataFrame, List[Trimesh]]:
         """
         Reads properties file `materials.txt` as csv file and then 
         loads meshes files which are mentioned in the dataframe and 
@@ -141,8 +161,10 @@ class Preprocessing(ABC):
 
         Returns
         -------
-        Tuple
-            A tuple of dataframe with properties and a list of meshes
+        pd.DataFrame
+            a dataframe with properties
+        List[Trimesh]
+            a list of meshes
         """
         property_reader = PropertyReader(dir_path)
         meshes = property_reader.read_meshes()
@@ -151,7 +173,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: str | None = None):
+    def process_simulations(self, simulation_names: List[str] | None = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -163,7 +185,7 @@ class Preprocessing(ABC):
 
         Parameters
         ----------
-        simulation_names : str | None
+        simulation_names : List[str] | None
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
@@ -177,8 +199,10 @@ class Preprocessing(ABC):
         elif not set(simulation_names).issubset(full_sim_list):
             raise Exception("Simulations are not valid")
 
-        for simulation_name in tqdm(simulation_names):
+        pbar = tqdm(simulation_names, total=len(simulation_names))
+        for simulation_name in pbar:
             self.__process_simulation(simulation_name)
+            pbar.set_postfix({"done": simulation_name}, refresh=True)
         
         self._write_dipoles()
 
@@ -207,7 +231,6 @@ class Preprocessing(ABC):
 
         self._format_and_write_dataset(simulation)
 
-    @abstractmethod
     def _extract_fields_data(self, out_simulation: Simulation):
         """
         Extracts field data from the simulation directory 
@@ -218,6 +241,30 @@ class Preprocessing(ABC):
         out_simulation : Simulation
             object where to save a data.
         """
+        e_field_reader = FieldReaderFactory(
+            out_simulation.path, E_FIELD_DATABASE_KEY
+        ).create_reader(not isinstance(self, GraphPreprocessing))
+        h_field_reader = FieldReaderFactory(
+            out_simulation.path, H_FIELD_DATABASE_KEY
+        ).create_reader(not isinstance(self, GraphPreprocessing))
+        
+        self._check_coordinates(e_field_reader, h_field_reader)
+
+        out_simulation.e_field = e_field_reader.extract_data()
+        out_simulation.h_field = h_field_reader.extract_data()
+
+    @abstractmethod
+    def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
+        """
+        Checks the coordinates of the fields readers.
+
+        Parameters
+        ----------
+        e_reader : FieldReader
+            E-field reader
+        h_reader : FieldReader
+            H-field reader
+        """
         pass
 
     def __calculate_features(self, out_simulation: Simulation) -> None:
@@ -226,8 +273,8 @@ class Preprocessing(ABC):
 
         The method use `__get_properties_and_meshes` method and 
         `_get_objects_features_and_mask` to finally calculate object features. 
-        Also it uses the precomputed antenna data from `_get_dipoles_features_and_mask` 
-        to calculate the final features and masks for the simulation.
+        Also it uses the precomputed antenna data from to calculate the final 
+        features and masks for the simulation.
 
         Parameters
         ----------
@@ -242,9 +289,7 @@ class Preprocessing(ABC):
             object_properties, object_meshes
         )
 
-        dipoles_features, dipoles_mask = self._get_dipoles_features_and_mask()
-
-        features = dipoles_features + objects_features
+        features = self._dipoles_features + objects_features
 
         features = self._set_air_features(features)
 
@@ -257,8 +302,46 @@ class Preprocessing(ABC):
         Methods processes air features.
         """
         pass
+    
+    def _get_features_and_mask(self, properties: pd.DataFrame, meshes: List) -> Tuple:
+        """
+        Calculates features and masks based on given parameters.
 
+        Parameters
+        ----------
+        properties : pd.DataFrame
+            A properties frame
+        meshes : List
+            A list of meshes
+
+        Returns
+        -------
+        Tuple
+            A tuple of features and masks
+        """
+        mask = rearrange(
+            list(map(
+                self._get_mask,
+                meshes,
+            )),
+            self._masks_stack_pattern
+        )
+        
+        features = self._get_features(properties, mask)
+        return (
+            features,
+            mask
+        )
+    
     @abstractmethod
+    def _get_mask(self, mesh: Trimesh) -> np.array:
+        pass
+
+    @property
+    @abstractmethod
+    def _masks_stack_pattern(self) -> str:
+        pass
+
     def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
         """
         A shortcut for the procedure of multiplication of properties and masks.
@@ -278,37 +361,34 @@ class Preprocessing(ABC):
         np.array
             Calculated features
         """
-        pass
-    
-    @abstractmethod
-    def _get_features_and_mask(self, properties: pd.DataFrame, meshes: List) -> Tuple:
-        """
-        Calculates features and masks based on given parameters.
+        props = properties.loc[:, FEATURE_NAMES].to_numpy().T
+        extended_props = self._extend_props(props, masks)
 
-        Parameters
-        ----------
-        properties : pd.DataFrame
-            A properties frame
-        meshes : List
-            A list of meshes
+        extended_masks = repeat(
+            masks,
+            self._extend_masks_pattern,
+            feature=len(FEATURE_NAMES)
+        )
 
-        Returns
-        -------
-        Tuple
-            A tuple of features and masks
-        """
-        pass
+        result = reduce(
+            extended_props * extended_masks,
+            self._features_sum_pattern,
+            "sum"
+        )
+        return result
 
     @abstractmethod
-    def _get_dipoles_features_and_mask(self) -> Tuple:
-        """
-        Calculates features and masks for the antenna.
+    def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        pass
 
-        Returns
-        -------
-        Tuple
-            A tuple of features and masks
-        """
+    @property
+    @abstractmethod
+    def _extend_masks_pattern(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def _features_sum_pattern(self) -> str:
         pass
     
     def _format_and_write_dataset(self, out_simulation: Simulation):
@@ -337,13 +417,6 @@ class Preprocessing(ABC):
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
             f.create_dataset(SUBJECT_OUT_KEY, data=out_simulation.object_masks)
-
-    @abstractmethod
-    def _write_dipoles(self) -> None:
-        """
-        Write dipoles masks to the output directory.
-        """
-        pass
 
     def _format_fields(self, simulation: Simulation) -> Tuple[np.array, np.array]:
         """
@@ -391,6 +464,16 @@ class Preprocessing(ABC):
             a h5 file descriptor
         """
         pass
+
+    def _write_dipoles(self) -> None:
+        """
+        Write dipoles masks to the output directory.
+        """
+        makedirs(self.out_antenna_dir_path, exist_ok=True)
+        
+        target_file_name = TARGET_FILE_NAME.format(name="antenna")
+        with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
+            f.create_dataset("masks", data=self._dipoles_masks)
             
 
 class GridPreprocessing(Preprocessing):
@@ -466,11 +549,6 @@ class GridPreprocessing(Preprocessing):
         z_unique = np.arange(min_values[2], max_values[2] + voxel_size, voxel_size)
         self.voxelizer = MeshVoxelizer(voxel_size, x_unique, y_unique, z_unique)
 
-        # dipoles features are same for the whole batch, so we can calculate them once
-        self.dipoles_features, self.dipoles_masks = self._get_features_and_mask(
-            self.dipoles_properties, self.dipoles_meshes
-        )
-
     @property
     def _output_target_dir(self) -> str:
         """
@@ -479,40 +557,27 @@ class GridPreprocessing(Preprocessing):
         """
         return f"grid_voxel_size_{self.voxel_size}_data_type_{self.field_dtype.name}"
 
-    def _write_dipoles(self) -> None:
+    def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
         """
-        Writes processed antenna masks to the output directory.
+        Checks the coordinates of the fields
+
+        Parameters
+        ----------
+        e_reader : FieldReader
+            E-field reader
+        h_reader : FieldReader
+            H-field reader
         """
-        makedirs(self.out_antenna_dir_path, exist_ok=True)
-        
-        target_file_name = "antenna.h5"
-        with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
-            f.create_dataset("masks", data=self.dipoles_masks)
-
-    def _extract_fields_data(self, out_simulation: Simulation) -> None:
-        e_field_reader = FieldReaderFactory(
-            out_simulation.path, E_FIELD_DATABASE_KEY
-        ).create_reader()
-        h_field_reader = FieldReaderFactory(
-            out_simulation.path, H_FIELD_DATABASE_KEY
-        ).create_reader()
-
-        e_x_bound, e_y_bound, e_z_bound = e_field_reader.coordinates
-        h_x_bound, h_y_bound, h_z_bound = h_field_reader.coordinates
+        x_bound, y_bound, z_bound = e_reader.coordinates
+        h_x_bound, h_y_bound, h_z_bound = h_reader.coordinates
 
         if (
-            not np.array_equal(e_x_bound, h_x_bound) 
-            or not np.array_equal(e_y_bound, h_y_bound) 
-            or not np.array_equal(e_z_bound, h_z_bound)
+            not np.array_equal(x_bound, h_x_bound) 
+            or not np.array_equal(y_bound, h_y_bound) 
+            or not np.array_equal(z_bound, h_z_bound)
         ):
             raise Exception("Different coordinate systems for E and H fields")
         
-        self.__sanity_check(e_x_bound, e_y_bound, e_z_bound)
-
-        out_simulation.e_field = e_field_reader.extract_data().astype(np.complex64)
-        out_simulation.h_field = h_field_reader.extract_data().astype(np.complex64)
-
-    def __sanity_check(self, x_bound: np.array, y_bound: np.array, z_bound: np.array) -> None:
         data_min = np.array(
             (np.min(x_bound), np.min(y_bound), np.min(z_bound)),
             dtype=np.float32
@@ -539,70 +604,30 @@ class GridPreprocessing(Preprocessing):
         )
 
         return features + extneded_air_prop * air_mask
-        
-    def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
-        """
-        A shortcut for the procedure of multiplication of properties and masks.
 
-        The method manipulates masks and properties shapes to calculate element-wise
-        product and sum over the component axis.
-
-        Parameters
-        ----------
-        properties : pd.DataFrame
-            A properties frame
-        masks : np.array
-            A mask array
-
-        Returns
-        -------
-        np.array
-            Calculated features
-        """
-        
-        props = properties.loc[:, FEATURE_NAMES].to_numpy().T
-        extended_props = repeat(
+    def _get_mask(self, mesh: Trimesh) -> np.array:
+        return self.voxelizer.process_mesh(mesh)
+    
+    @property
+    def _masks_stack_pattern(self) -> str:
+        return "component x y z -> x y z component"
+    
+    def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        return repeat(
             props,
             "feature component -> feature x y z component",
             x=masks.shape[0],
             y=masks.shape[1],
             z=masks.shape[2]
         )
-
-        extended_masks = repeat(
-            masks,
-            "x y z component -> feature x y z component",
-            feature=len(FEATURE_NAMES)
-        )
-
-        result = reduce(
-            extended_props * extended_masks,
-            "feature x y z component -> feature x y z",
-            "sum"
-        )
-
-        return result
-        
-    def _get_features_and_mask(self, properties, meshes) -> Tuple:
-        mask = rearrange(
-            list(map(
-                lambda x: self.voxelizer.process_mesh(x),
-                meshes,
-            )),
-            "component x y z -> x y z component"
-        )
-        
-        features = self._get_features(properties, mask)
-        return (
-            features,
-            mask
-        ) 
-        
-    def _get_dipoles_features_and_mask(self) -> Tuple:
-        return (
-            self.dipoles_features,
-            self.dipoles_masks
-        )
+    
+    @property
+    def _extend_masks_pattern(self) -> str:
+        return "x y z component -> feature x y z component"
+    
+    @property
+    def _features_sum_pattern(self) -> str:
+        return "feature x y z component -> feature x y z"
 
 
 class GraphPreprocessing(Preprocessing):
@@ -626,21 +651,20 @@ class GraphPreprocessing(Preprocessing):
         Names the out simulation directory.
         """
         return f"graph_data_type_{self.field_dtype.name}"
-    
-    def _extract_fields_data(self, out_simulation: Simulation) -> None:
-        e_field_reader = FieldReaderFactory(
-            out_simulation.path, E_FIELD_DATABASE_KEY
-        ).create_reader()
-        h_field_reader = FieldReaderFactory(
-            out_simulation.path, H_FIELD_DATABASE_KEY
-        ).create_reader()
 
-        if isinstance(e_field_reader, GridReader):
-            e_field_reader.as_grid = False
-            h_field_reader.as_grid = False
+    def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
+        """
+        Checks the coordinates of the fields
 
-        e_coordinates = e_field_reader.coordinates
-        h_coordinates = h_field_reader.coordinates
+        Parameters
+        ----------
+        e_reader : FieldReader
+            E-field reader
+        h_reader : FieldReader
+            H-field reader
+        """
+        e_coordinates = e_reader.coordinates
+        h_coordinates = h_reader.coordinates
 
         if (
             not np.array_equal(e_coordinates, h_coordinates)
@@ -649,31 +673,20 @@ class GraphPreprocessing(Preprocessing):
         
         self.coordinates = e_coordinates
 
-        out_simulation.coordinates = e_coordinates
-        out_simulation.e_field = e_field_reader.extract_data().astype(np.complex64)
-        out_simulation.h_field = h_field_reader.extract_data().astype(np.complex64)
-
-    def _get_features(self, properties: pd.DataFrame, masks: np.array) -> np.array:
-        props = properties.loc[:, FEATURE_NAMES].to_numpy().T
-        extended_props = repeat(
+    def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        return repeat(
             props,
             "feature component -> points feature component",
             points=masks.shape[0]
         )
-
-        extended_masks = repeat(
-            masks,
-            "points component -> points feature component",
-            feature=len(FEATURE_NAMES)
-        )
-
-        result = reduce(
-            extended_props * extended_masks,
-            "points feature component -> points feature",
-            "sum"
-        )
-
-        return result
+    
+    @property
+    def _extend_masks_pattern(self) -> str:
+        return "points component -> points feature component"
+    
+    @property
+    def _features_sum_pattern(self) -> str:
+        return "points feature component -> points feature"
 
     def _set_air_features(self, features: np.array) -> np.array:
         air_mask = features == 0
@@ -685,31 +698,13 @@ class GraphPreprocessing(Preprocessing):
         )
 
         return features + extneded_air_prop * air_mask
-
-    def _get_features_and_mask(self, properties, meshes) -> Tuple:
-        mask = np.stack(
-            list(map(
-                lambda x: x.contains(self.coordinates),
-                meshes,
-            )),
-            axis=-1
-        )
-        features = self._get_features(properties, mask)
-        return (
-            features,
-            mask
-        )
     
-    def _get_dipoles_features_and_mask(self) -> Tuple:
-        if self.dipoles_features is None or self.dipoles_masks is None:
-            self.dipoles_features, self.dipoles_masks = self._get_features_and_mask(
-                self.dipoles_properties, self.dipoles_meshes
-            )
-        
-        return (
-            self.dipoles_features,
-            self.dipoles_masks
-        )
+    def _get_mask(self, mesh: Trimesh) -> np.array:
+        return mesh.contains(self.coordinates)
+    
+    @property
+    def _masks_stack_pattern(self) -> str:
+        return "component points -> points component"
     
     def _write_extra_data(self, simulation: Simulation, f: File):
         f.create_dataset(COORDINATES_OUT_KEY, data=simulation.coordinates)

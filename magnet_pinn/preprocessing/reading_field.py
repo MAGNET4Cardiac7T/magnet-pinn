@@ -95,7 +95,7 @@ class FieldReaderFactory:
                 """
             )
 
-    def create_reader(self):
+    def create_reader(self, keep_grid_output_format: bool = True):
         """
         Two different types are asumed to be read:
 
@@ -107,6 +107,11 @@ class FieldReaderFactory:
             Field values are under the field type key and the coordinates are under
             `Positions` key.
 
+        Parameters
+        ----------
+        format_points_list: bool
+            if True, the reader will return the data in the pointslist form
+
         Returns
         -------
         FieldReader
@@ -114,8 +119,13 @@ class FieldReaderFactory:
         """
 
         if self.__is_grid():
-            return GridReader(self.files_list, self.field_type)
-        return PointReader(self.files_list, self.field_type)
+            instance =  GridReader(self.files_list, self.field_type)
+            instance.is_grid = keep_grid_output_format
+
+        else:
+            instance = PointReader(self.files_list, self.field_type)
+    
+        return instance
 
     def __is_grid(self):
         """
