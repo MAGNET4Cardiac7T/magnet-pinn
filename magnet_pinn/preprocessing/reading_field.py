@@ -264,10 +264,10 @@ class FieldReader(ABC):
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
 
-        return rearrange(
+        return np.ascontiguousarray(rearrange(
             [Ex, Ey, Ez],
             self._compose_field_pattern
-        ).astype(np.complex64)
+        ), dtype=np.complex64)
 
     @property
     @abstractmethod
@@ -351,10 +351,10 @@ class GridReader(FieldReader):
         
         x, y, z = self._coordinates
         xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-        values = rearrange(
+        values = np.ascontiguousarray(rearrange(
             [xx, yy, zz],
             "ax x y z -> (x y z) ax"
-        )
+        ), dtype=np.float32)
         return values
     
     @property
@@ -380,15 +380,17 @@ class GridReader(FieldReader):
             The field values
         """
         if self.is_grid:
-            return rearrange(
+            result = rearrange(
                 field_components,
                 "components ax x y z -> ax x y z components"
             )
-        
-        return rearrange(
-            field_components,
-            "components ax x y z -> (x y z) ax components"
-        )
+        else:
+            result = rearrange(
+                field_components,
+                "components ax x y z -> (x y z) ax components"
+            )
+
+        return np.ascontiguousarray(result, dtype=np.complex64)
 
 
 class PointReader(FieldReader):
@@ -403,10 +405,10 @@ class PointReader(FieldReader):
             x = f[POSISTIONS_DATABASE_KEY]["x"][:]
             y = f[POSISTIONS_DATABASE_KEY]["y"][:]
             z = f[POSISTIONS_DATABASE_KEY]["z"][:]
-        return rearrange(
+        return np.ascontiguousarray(rearrange(
             [x, y, z],
             "ax batch -> batch ax"
-        ).astype(np.float64)
+        ), dtype=np.float32)
     
     def _check_coordinates(self, other_coordinates) -> bool:
         """
@@ -448,7 +450,7 @@ class PointReader(FieldReader):
         np.array
             The field values
         """
-        return rearrange(
+        return np.ascontiguousarray(rearrange(
             field_components,
             "components batch ax -> batch ax components"
-        )
+        ), dtype=np.complex64)

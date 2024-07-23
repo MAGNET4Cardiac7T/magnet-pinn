@@ -10,25 +10,23 @@ CLASSES
     GridPreprocessing
     GraphPreprocessing
 """
-
 import os.path as osp
-from typing import Tuple, List
 from os import makedirs, listdir
 from abc import ABC, abstractmethod
+from typing import Tuple, List, Union
 
 import numpy as np
-from numpy.core.multiarray import array as array
 import pandas as pd
 from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
 from einops import rearrange, repeat, reduce
+from igl import fast_winding_number_for_meshes
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
     H_FIELD_DATABASE_KEY,
     FieldReaderFactory,
-    GridReader,
     FieldReader
 )
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
@@ -83,9 +81,9 @@ class Preprocessing(ABC):
         Antenna feature dataframe including dipoles meshes files
     dipoles_meshes : list
         A list of dipoles meshes
-    dipoles_features : np.array
+    _dipoles_features : np.array
         Calculated dipoles features in each measurement point
-    dipoles_masks : np.array
+    _dipoles_masks : np.array
         Dipoles mask in each measurement point
     """
 
@@ -94,6 +92,9 @@ class Preprocessing(ABC):
 
     @property
     def _dipoles_masks(self) -> np.array:
+        """
+        A getter for the dipoles masks, caclulates it when the user first needs it together with features.
+        """
         if self.__dipoles_masks is None:
             self.__dipoles_masks, self.__dipoles_features = self._get_features_and_mask(
                 self.dipoles_properties, self.dipoles_meshes
@@ -102,6 +103,9 @@ class Preprocessing(ABC):
     
     @property
     def _dipoles_features(self) -> np.array:
+        """
+        A getter for the dipoles features, caclulates it when the user first needs it together with masks.
+        """
         if self.__dipoles_features is None:
             self.__dipoles_features, self.__dipoles_masks = self._get_features_and_mask(
                 self.dipoles_properties, self.dipoles_meshes
@@ -173,7 +177,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: List[str] | None = None):
+    def process_simulations(self, simulation_names: Union[List[str], None] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -319,13 +323,13 @@ class Preprocessing(ABC):
         Tuple
             A tuple of features and masks
         """
-        mask = rearrange(
+        mask = np.ascontiguousarray(rearrange(
             list(map(
                 self._get_mask,
                 meshes,
             )),
             self._masks_stack_pattern
-        )
+        ))
         
         features = self._get_features(properties, mask)
         return (
@@ -335,11 +339,17 @@ class Preprocessing(ABC):
     
     @abstractmethod
     def _get_mask(self, mesh: Trimesh) -> np.array:
+        """
+        A method how to get a mask from the mesh.
+        """
         pass
 
     @property
     @abstractmethod
     def _masks_stack_pattern(self) -> str:
+        """
+        An einops pattern how to stack masks arrys axis.
+        """
         pass
 
     def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
@@ -364,31 +374,52 @@ class Preprocessing(ABC):
         props = properties.loc[:, FEATURE_NAMES].to_numpy().T
         extended_props = self._extend_props(props, masks)
 
-        extended_masks = repeat(
+        extended_masks = np.ascontiguousarray(repeat(
             masks,
             self._extend_masks_pattern,
             feature=len(FEATURE_NAMES)
-        )
+        ))
 
-        result = reduce(
+        result = np.ascontiguousarray(reduce(
             extended_props * extended_masks,
             self._features_sum_pattern,
             "sum"
-        )
+        ), dtype=np.float32)
         return result
 
     @abstractmethod
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        """
+        Calculation of features need to extend properties array to the same shape as masks.
+
+        Parameters
+        ----------
+        props : np.array
+            a properties array
+        masks : np.array
+            a mask array
+
+        Returns
+        -------
+        np.array
+            an extended properties array
+        """
         pass
 
     @property
     @abstractmethod
     def _extend_masks_pattern(self) -> str:
+        """
+        An einops pattern how to shape masks to the expected resulting shape.
+        """
         pass
 
     @property
     @abstractmethod
     def _features_sum_pattern(self) -> str:
+        """
+        An einops pattern how to sum features over the component axis.
+        """
         pass
     
     def _format_and_write_dataset(self, out_simulation: Simulation):
@@ -595,13 +626,13 @@ class GridPreprocessing(Preprocessing):
     def _set_air_features(self, features: np.array) -> np.array:
         air_mask = features == 0
 
-        extneded_air_prop = repeat(
+        extneded_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
             "feature -> feature x y z",
             x=features.shape[1],
             y=features.shape[2],
             z=features.shape[3]
-        )
+        ))
 
         return features + extneded_air_prop * air_mask
 
@@ -613,13 +644,13 @@ class GridPreprocessing(Preprocessing):
         return "component x y z -> x y z component"
     
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
-        return repeat(
+        return np.ascontiguousarray(repeat(
             props,
             "feature component -> feature x y z component",
             x=masks.shape[0],
             y=masks.shape[1],
             z=masks.shape[2]
-        )
+        ))
     
     @property
     def _extend_masks_pattern(self) -> str:
@@ -674,11 +705,11 @@ class GraphPreprocessing(Preprocessing):
         self.coordinates = e_coordinates
 
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
-        return repeat(
+        return np.ascontiguousarray(repeat(
             props,
             "feature component -> points feature component",
             points=masks.shape[0]
-        )
+        ))
     
     @property
     def _extend_masks_pattern(self) -> str:
@@ -691,16 +722,20 @@ class GraphPreprocessing(Preprocessing):
     def _set_air_features(self, features: np.array) -> np.array:
         air_mask = features == 0
 
-        extneded_air_prop = repeat(
+        extneded_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
             "feature -> points feature",
             points=features.shape[0]
-        )
+        ))
 
         return features + extneded_air_prop * air_mask
     
     def _get_mask(self, mesh: Trimesh) -> np.array:
-        return mesh.contains(self.coordinates)
+        return fast_winding_number_for_meshes(
+            mesh.vertices.astype(np.float32),
+            mesh.faces.astype(np.int32),
+            self.coordinates.astype(np.float32)
+        ) > 0.5
     
     @property
     def _masks_stack_pattern(self) -> str:
