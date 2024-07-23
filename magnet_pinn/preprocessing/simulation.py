@@ -22,5 +22,4 @@ class Simulation:
     e_field: Optional[np.array] = None
     h_field: Optional[np.array] = None
     object_masks: Optional[np.array] = None
-    coordinates: Optional[np.array] = None
     features: Optional[np.array] = None

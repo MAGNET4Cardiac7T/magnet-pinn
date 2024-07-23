@@ -448,6 +448,7 @@ class Preprocessing(ABC):
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
             f.create_dataset(SUBJECT_OUT_KEY, data=out_simulation.object_masks)
+            self._write_extra_data(out_simulation, f)
 
     def _format_fields(self, simulation: Simulation) -> Tuple[np.array, np.array]:
         """
@@ -717,6 +718,24 @@ class GridPreprocessing(Preprocessing):
         An einops pattern how to sum features over the component axis.
         """
         return "feature x y z component -> feature x y z"
+    
+    def _write_extra_data(self, simulation: Simulation, f: File):
+        """
+        Writes extra data to the output .h5 file.
+
+        Grid preprocessing needs to save voxel size and coordinates
+        extent as metadata.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+        f: h5py.File:
+            a h5 file descriptor
+        """
+        f.attrs["voxel_size"] = self.voxel_size
+        f.attrs["min_extent"] = self.positions_min
+        f.attrs["max_extent"] = self.positions_max
 
 
 class GraphPreprocessing(Preprocessing):
@@ -874,4 +893,4 @@ class GraphPreprocessing(Preprocessing):
         f: h5py.File:
             a h5 file descriptor
         """
-        f.create_dataset(COORDINATES_OUT_KEY, data=simulation.coordinates)
+        f.create_dataset(COORDINATES_OUT_KEY, data=self.coordinates.astype(np.float32))
