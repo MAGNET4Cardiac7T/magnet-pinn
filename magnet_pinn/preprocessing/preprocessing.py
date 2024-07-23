@@ -533,9 +533,9 @@ class GridPreprocessing(Preprocessing):
         Antenna feature dataframe including dipoles meshes files
     dipoles_meshes : list
         A list of dipoles meshes
-    dipoles_features : np.array
+    _dipoles_features : np.array
         Calculated dipoles features in each measurement point
-    dipoles_masks : np.array
+    _dipoles_masks : np.array
         Dipoles mask in each measurement point
     """
     def __init__(
@@ -556,6 +556,8 @@ class GridPreprocessing(Preprocessing):
             Path to the output directory
         voxel_size : int
             The size of the voxel for creating a grid
+        field_dtype : np.dtype
+            type of saving field data
         """
         self.voxel_size = voxel_size
         super().__init__(batch_dir_path, output_dir_path, field_dtype)
@@ -624,6 +626,19 @@ class GridPreprocessing(Preprocessing):
             raise Exception("Max not satisfied")
 
     def _set_air_features(self, features: np.array) -> np.array:
+        """
+        A method checks which voxels are in the air and sets air features to them.
+
+        Parameters
+        ----------
+        features : np.array
+            a precalculated features array
+        
+        Returns
+        -------
+        np.array
+            a features array
+        """
         air_mask = features == 0
 
         extneded_air_prop = np.ascontiguousarray(repeat(
@@ -637,13 +652,50 @@ class GridPreprocessing(Preprocessing):
         return features + extneded_air_prop * air_mask
 
     def _get_mask(self, mesh: Trimesh) -> np.array:
+        """
+        A method returns mask for the mesh.
+
+        For the grid preprocessing we use a voxelizer to get a mask.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+        
+        Returns
+        -------
+        np.array
+            a mask array
+        """
         return self.voxelizer.process_mesh(mesh)
     
     @property
     def _masks_stack_pattern(self) -> str:
+        """
+        An einops pattern how to stack masks arrys axis.
+
+        We store 3D grid first and the last axis is a component axis.
+
+        Returns
+        -------
+        str
+            an einops pattern
+        """
         return "component x y z -> x y z component"
     
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        """
+        Extends properties array to the same shape as masks.
+
+        In the grid preprocessing we keep features axis first, then 3D grid and the last axis is a component axis.
+
+        Parameters
+        ----------
+        props : np.array
+            a properties array
+        masks : np.array
+            a mask array
+        """
         return np.ascontiguousarray(repeat(
             props,
             "feature component -> feature x y z component",
@@ -654,10 +706,16 @@ class GridPreprocessing(Preprocessing):
     
     @property
     def _extend_masks_pattern(self) -> str:
+        """
+        An einops pattern how to shape masks to the expected resulting shape.
+        """
         return "x y z component -> feature x y z component"
     
     @property
     def _features_sum_pattern(self) -> str:
+        """
+        An einops pattern how to sum features over the component axis.
+        """
         return "feature x y z component -> feature x y z"
 
 
@@ -666,10 +724,16 @@ class GraphPreprocessing(Preprocessing):
 
     @property
     def coordinates(self):
+        """
+        Getter for the coordinates
+        """
         return self._coordinates
 
     @coordinates.setter
     def coordinates(self, coordinates):
+        """
+        For graph preprocessing there are no extent so we check each simulation coordinates if they are the same.
+        """
         if self._coordinates is None:
             self._coordinates = coordinates
         else:
@@ -705,6 +769,23 @@ class GraphPreprocessing(Preprocessing):
         self.coordinates = e_coordinates
 
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
+        """
+        Extends properties array to the same shape as masks.
+
+        In graph preprocessing we store first the point axis, then property axis and then component axis.
+
+        Parameters
+        ----------
+        props : np.array
+            a properties array
+        masks : np.array
+            a mask array
+
+        Returns
+        -------
+        np.array
+            an extended properties array
+        """
         return np.ascontiguousarray(repeat(
             props,
             "feature component -> points feature component",
@@ -713,13 +794,32 @@ class GraphPreprocessing(Preprocessing):
     
     @property
     def _extend_masks_pattern(self) -> str:
+        """
+        An einops pattern how to shape masks to the expected resulting shape.
+        """
         return "points component -> points feature component"
     
     @property
     def _features_sum_pattern(self) -> str:
+        """
+        An einops pattern how to sum features over the component axis.
+        """
         return "points feature component -> points feature"
 
     def _set_air_features(self, features: np.array) -> np.array:
+        """
+        A method checks which points are in the air and sets air features to them.
+
+        Parameters
+        ----------
+        features : np.array
+            a precalculated features array
+
+        Returns
+        -------
+        np.array
+            a features array
+        """
         air_mask = features == 0
 
         extneded_air_prop = np.ascontiguousarray(repeat(
@@ -731,6 +831,23 @@ class GraphPreprocessing(Preprocessing):
         return features + extneded_air_prop * air_mask
     
     def _get_mask(self, mesh: Trimesh) -> np.array:
+        """
+        A method returns mask for the mesh.
+
+        In graph preprocessing we check each point if it is inside the mesh.
+        That is why we calculate the fast winding number and set a threshold 
+        to check if is closer to 0 or 1.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+
+        Returns
+        -------
+        np.array
+            a mask array
+        """
         return fast_winding_number_for_meshes(
             mesh.vertices.astype(np.float32),
             mesh.faces.astype(np.int32),
@@ -739,7 +856,22 @@ class GraphPreprocessing(Preprocessing):
     
     @property
     def _masks_stack_pattern(self) -> str:
+        """
+        An einops pattern how to stack masks arrys axis.
+        """
         return "component points -> points component"
     
-    def _write_extra_data(self, simulation: Simulation, f: File):
+    def _write_extra_data(self, simulation: Simulation, f: File) -> None:
+        """
+        Writes extra data to the output .h5 file.
+
+        Graph preprocessing data needs to save coordinates.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+        f: h5py.File:
+            a h5 file descriptor
+        """
         f.create_dataset(COORDINATES_OUT_KEY, data=simulation.coordinates)
