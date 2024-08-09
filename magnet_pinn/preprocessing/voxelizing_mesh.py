@@ -24,9 +24,15 @@ class MeshVoxelizer:
         an array with float x, y, z center coordinates
     radius: int
         a number of voxels we create in each direction
-    bounds: 2 * 3 shaped array where the first row saves 
-    bottom border for cropping voxelized mesh, and the second 
-    row does the same for the top border. 
+    bounds: np.array
+        2 * 3 shaped array where the first row saves bottom border for cropping voxelized mesh, and the second row does the same for the top border. 
+
+    Methods
+    -------
+    __init__(voxel_size, x_unique, y_unique, z_unique)
+        Prepare voxelizing parameters.
+    process_mesh(mesh)
+        Convert the mesh to a voxel grid.
     """
     def __init__(self, 
                  voxel_size: float, 

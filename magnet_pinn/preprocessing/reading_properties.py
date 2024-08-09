@@ -22,18 +22,24 @@ class PropertyReader:
     This class is responsible for reading the properties of the materials.
 
     We assumed directory mentioned in the `properties_dir_path` has such a structure:
-    ./properties_dir_path
-    ├── materials.txt
-    ├── *.stl
+
+    | ./properties_dir_path
+    |    ├── materials.txt
+    |    ├── \*.stl
 
     Attributes
     ----------
-
     properties_dir_path : str
         Directory path of the material properties
-
     properties : pd.DataFrame
         Dataframe containing the properties of the materials
+
+    Methods
+    -------
+    __init__(properties_dir_path)
+        Reads and saves material properties from the directory
+    read_meshes()
+        Reads the meshes of the materials
     """
 
     def __init__(self, properties_dir_path: str) -> None:

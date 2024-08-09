@@ -85,6 +85,13 @@ class Preprocessing(ABC):
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
         Dipoles mask in each measurement point
+
+    Methods
+    -------
+    __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
+        Initializes the preprocessing object
+    process_simulations(simulation_names: Union[List[str], None] = None)
+        Main processing method. It processes all simulations in the batch
     """
 
     __dipoles_masks = None
@@ -120,6 +127,8 @@ class Preprocessing(ABC):
             Path to the batch directory
         output_dir_path : str
             Path to the output directory
+        field_dtype : np.dtype
+            type of saving field data
         """
         self.field_dtype = np.dtype(field_dtype)
         self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
@@ -538,6 +547,13 @@ class GridPreprocessing(Preprocessing):
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
         Dipoles mask in each measurement point
+
+    Methods
+    -------
+    __init__(batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, field_dtype: np.dtype = np.complex64)
+        Initializes the grid preprocessing object.
+    process_simulations(simulation_names: Union[List[str], None] = None)
+        Main processing method. It processes all simulations in the batch
     """
     def __init__(
         self, batch_dir_path: str, 
@@ -739,6 +755,37 @@ class GridPreprocessing(Preprocessing):
 
 
 class GraphPreprocessing(Preprocessing):
+    """
+    Class for preprocessing data for graph-based models.
+
+    The class is responsible for reading and processing antennas and subjects data in a point cloud manner.
+
+    Attributes
+    ----------
+    field_dtype : np.dtype
+        type of saving field data
+    simulations_dir_path : str
+        Simulations location in the batch directory
+    out_simmulations_dir_path : str
+        Processed simulations location in the output directory
+    out_antenna_dir_path : str
+        Processed antenna location in the output directory
+    dipoles_properties : pd.DataFrame
+        Antenna feature dataframe including dipoles meshes files
+    dipoles_meshes : list
+        A list of dipoles meshes
+    _dipoles_features : np.array
+        Calculated dipoles features in each measurement point
+    _dipoles_masks : np.array
+        Dipoles mask in each measurement point
+
+    Methods
+    -------
+    __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
+        Initializes the graph preprocessing object.
+    process_simulations(simulation_names: Union[List[str], None] = None)
+        Main processing method. It processes all simulations in the batch
+    """
     _coordinates = None
 
     @property

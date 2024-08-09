@@ -53,12 +53,20 @@ class FieldReaderFactory:
     The simulation directory consists of different field directories
 
     simulation_dir/
+
     |- E_field/
     |  |- e-field*(f=*) [AC*]*.h5
     |- H_field/
     |  |- e-field*(f=*) [AC*]*.h5
     |- SAR/
     |  |- SAR*(f=*) [AC*]*.h5
+
+    Methods
+    -------
+    __init__(simulation_dir_path, field_type)
+        It collects the list of source files and check if they exist.
+    create_reader(keep_grid_output_format)
+        Creates a reader for the field
     """
 
     def __init__(
@@ -73,6 +81,11 @@ class FieldReaderFactory:
             Path to the simulation directory
         field_type: str
             Field type
+        
+        Raises
+        ------
+        Exception
+            If there are no field values for the simulation
         """
 
         self.field_type = field_type
@@ -152,6 +165,13 @@ class FieldReader(ABC):
         The type of the field we read
     _coordinates: np.ndarray
         The coordinates of the field points
+
+    Methods
+    -------
+    __init__(files_list, field_type)
+        It reads coordinates and validates if the coordinates are the same in all files
+    extract_data()
+        Extracts field values from the files
     """
 
     def __init__(self, files_list: list, field_type: str):
@@ -293,6 +313,28 @@ class FieldReader(ABC):
 
 
 class GridReader(FieldReader):
+    """
+        Class for reading field values in the grid form, i.e the field values are given on the mesh lines
+
+        Attributes
+        ----------
+        is_grid: bool
+            Flag set to true, as the field values are given in the grid form
+        files_list: list
+            The list of files paths which should be read
+        field_type: str
+            The type of the field we read
+        _coordinates: np.ndarray
+            The coordinates of the field points
+        
+        Methods
+        -------
+        __init__(files_list, field_type)
+            It reads coordinates and validates if the coordinates are the same in all files
+        extract_data()
+            Extracts field values from the files
+        
+    """
     is_grid = True
 
     def _read_coordinates(self, file_path: str) -> Tuple:
@@ -394,6 +436,26 @@ class GridReader(FieldReader):
 
 
 class PointReader(FieldReader):
+    """
+    Class for reading field values in the pointslist form, i.e the field values are given at arbitrary point locations.
+
+    Attributes
+    ----------
+    files_list: list
+        The list of files paths which should be read
+    field_type: str
+        The type of the field we read
+    _coordinates: np.ndarray
+        The coordinates of the field points
+
+    Methods
+    -------
+    __init__(files_list, field_type)
+        It reads coordinates and validates if the coordinates are the same in all files
+    extract_data()
+        Extracts field values from the files
+    """
+
     def _read_coordinates(self, file_path: str):
         """
         Read coordinates from the h5 file
