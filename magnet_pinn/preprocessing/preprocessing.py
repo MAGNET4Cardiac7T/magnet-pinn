@@ -8,7 +8,7 @@ DESCRIPTION
 CLASSES
     Preprocessing
     GridPreprocessing
-    GraphPreprocessing
+    PointPreprocessing
 """
 import os.path as osp
 from os import makedirs, listdir
@@ -256,10 +256,10 @@ class Preprocessing(ABC):
         """
         e_field_reader = FieldReaderFactory(
             out_simulation.path, E_FIELD_DATABASE_KEY
-        ).create_reader(not isinstance(self, GraphPreprocessing))
+        ).create_reader(not isinstance(self, PointPreprocessing))
         h_field_reader = FieldReaderFactory(
             out_simulation.path, H_FIELD_DATABASE_KEY
-        ).create_reader(not isinstance(self, GraphPreprocessing))
+        ).create_reader(not isinstance(self, PointPreprocessing))
         
         self._check_coordinates(e_field_reader, h_field_reader)
 
@@ -754,9 +754,9 @@ class GridPreprocessing(Preprocessing):
         f.attrs["max_extent"] = self.positions_max
 
 
-class GraphPreprocessing(Preprocessing):
+class PointPreprocessing(Preprocessing):
     """
-    Class for preprocessing data for graph-based models.
+    Class for preprocessing data for point cloud-based models.
 
     The class is responsible for reading and processing antennas and subjects data in a point cloud manner.
 
@@ -782,7 +782,7 @@ class GraphPreprocessing(Preprocessing):
     Methods
     -------
     __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
-        Initializes the graph preprocessing object.
+        Initializes the point preprocessing object.
     process_simulations(simulation_names: Union[List[str], None] = None)
         Main processing method. It processes all simulations in the batch
     """
@@ -798,7 +798,7 @@ class GraphPreprocessing(Preprocessing):
     @coordinates.setter
     def coordinates(self, coordinates):
         """
-        For graph preprocessing there are no extent so we check each simulation coordinates if they are the same.
+        For point preprocessing there are no extent so we check each simulation coordinates if they are the same.
         """
         if self._coordinates is None:
             self._coordinates = coordinates
@@ -811,7 +811,7 @@ class GraphPreprocessing(Preprocessing):
         """
         Names the out simulation directory.
         """
-        return f"graph_data_type_{self.field_dtype.name}"
+        return f"point_data_type_{self.field_dtype.name}"
 
     def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
         """
@@ -838,7 +838,7 @@ class GraphPreprocessing(Preprocessing):
         """
         Extends properties array to the same shape as masks.
 
-        In graph preprocessing we store first the point axis, then property axis and then component axis.
+        In point preprocessing we store first the point axis, then property axis and then component axis.
 
         Parameters
         ----------
@@ -900,7 +900,7 @@ class GraphPreprocessing(Preprocessing):
         """
         A method returns mask for the mesh.
 
-        In graph preprocessing we check each point if it is inside the mesh.
+        In point preprocessing we check each point if it is inside the mesh.
         That is why we calculate the fast winding number and set a threshold 
         to check if is closer to 0 or 1.
 
@@ -931,7 +931,7 @@ class GraphPreprocessing(Preprocessing):
         """
         Writes extra data to the output .h5 file.
 
-        Graph preprocessing data needs to save coordinates.
+        Point preprocessing data needs to save coordinates.
 
         Parameters
         ----------

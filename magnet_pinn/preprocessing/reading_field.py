@@ -496,7 +496,7 @@ class PointReader(FieldReader):
     def _compose_field_pattern(self) -> str:
         return "ax batch -> batch ax"
     
-    def _compose_field_components(field_components: List) -> np.array:
+    def _compose_field_components(self, field_components: List) -> np.array:
         """
         Compose together field components from different files
 
