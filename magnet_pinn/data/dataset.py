@@ -1,4 +1,5 @@
 import os
+import sys
 import h5py
 from dataclasses import dataclass
 from typing import Dict, Optional, Any, Tuple
@@ -7,6 +8,21 @@ import glob
 import numpy as np
 import pandas as pd
 import numpy.typing as npt
+
+sys.path.append("../../")
+
+from magnet_pinn.preprocessing.preprocessing import (
+    VOXEL_SIZE_OUT_KEY,
+    ANTENNA_MASKS_OUT_KEY,
+    MIN_EXTENT_OUT_KEY,
+    MAX_EXTENT_OUT_KEY,
+    FEATURES_OUT_KEY,
+    E_FIELD_OUT_KEY,
+    H_FIELD_OUT_KEY,
+    SUBJECT_OUT_KEY,
+    PROCESSED_SIMULATIONS_DIR_PATH,
+    PROCESSED_ANTENNA_DIR_PATH
+)
 
 
 OLD_LOWER_BOUND = np.array(
@@ -44,8 +60,8 @@ class MagnetBaseIterator:
                  crop_left_shift: bool = True
                  ) -> None:
         super().__init__()
-        self.simulation_dir = os.path.join(data_dir, "simulations")
-        self.coils_path = os.path.join(data_dir, "antenna", "antenna.h5")
+        self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
+        self.coils_path = os.path.join(data_dir, PROCESSED_ANTENNA_DIR_PATH, "antenna.h5")
         self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
         self.simulation_names = [os.path.basename(f)[:-3] for f in self.simulation_list]
         self.coils = self._read_coils()
@@ -57,15 +73,15 @@ class MagnetBaseIterator:
 
     def _read_coils(self):
         with h5py.File(self.coils_path) as f:
-            coils = f['masks'][:]
+            coils = f[ANTENNA_MASKS_OUT_KEY][:]
         return coils
     
     def _set_crop_mask(self):
         with h5py.File(self.simulation_list[0]) as f:
-            min_extent = f.attrs["min_extent"]
-            max_extent = f.attrs["max_extent"]
-            voxel_size = f.attrs["voxel_size"]
-            shape = f["efield"][:].shape[1:-1]
+            min_extent = f.attrs[MIN_EXTENT_OUT_KEY]
+            max_extent = f.attrs[MAX_EXTENT_OUT_KEY]
+            voxel_size = f.attrs[VOXEL_SIZE_OUT_KEY]
+            shape = f[E_FIELD_OUT_KEY][:].shape[1:-1]
 
         if not self.crop_data:
             self.crop_mask = (
@@ -95,12 +111,12 @@ class MagnetBaseIterator:
     
     def _load_simulation(self, index: int) -> DataItem:
         with h5py.File(self.simulation_list[index]) as f:
-            re_efield, im_efield = self._read_field(f, 'efield')
-            re_hfield, im_hfield = self._read_field(f, 'hfield')
+            re_efield, im_efield = self._read_field(f, E_FIELD_OUT_KEY)
+            re_hfield, im_hfield = self._read_field(f, H_FIELD_OUT_KEY)
 
             return DataItem(
-                input=f['input'][:, *self.crop_mask].astype(np.float32),
-                subject=f['subject'][*self.crop_mask, :].astype(np.bool_),
+                input=f[FEATURES_OUT_KEY][:, *self.crop_mask].astype(np.float32),
+                subject=f[SUBJECT_OUT_KEY][*self.crop_mask, :].astype(np.bool_),
                 simulation=self.simulation_names[index],
                 re_efield=re_efield,
                 im_efield=im_efield,
