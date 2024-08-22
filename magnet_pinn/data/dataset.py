@@ -8,6 +8,7 @@ import glob
 import numpy as np
 import pandas as pd
 import numpy.typing as npt
+from einops import reduce, pack
 
 sys.path.append("../../")
 
@@ -48,6 +49,7 @@ class DataItem:
     mask: Optional[npt.NDArray[np.bool_]] = None
     re_coils: Optional[npt.NDArray[np.float32]] = None
     im_coils: Optional[npt.NDArray[np.float32]] = None
+    general_mask: Optional[npt.NDArray[np.bool_]] = None
 
 
 class MagnetBaseIterator:
@@ -113,15 +115,28 @@ class MagnetBaseIterator:
         with h5py.File(self.simulation_list[index]) as f:
             re_efield, im_efield = self._read_field(f, E_FIELD_OUT_KEY)
             re_hfield, im_hfield = self._read_field(f, H_FIELD_OUT_KEY)
+            subject = f[SUBJECT_OUT_KEY][*self.crop_mask, :].astype(np.bool_)
+            coils = self.coils[*self.crop_mask, :]
+            stacked_arr, _ = pack(
+                [subject, coils],
+                "x y z *"
+            )
+            stacked_arr = np.ascontiguousarray(stacked_arr)
+            general_mask = np.ascontiguousarray(reduce(
+                stacked_arr,
+                "x y z c -> x y z",
+                "sum"
+            )).astype(np.bool_)
 
             return DataItem(
                 input=f[FEATURES_OUT_KEY][:, *self.crop_mask].astype(np.float32),
-                subject=f[SUBJECT_OUT_KEY][*self.crop_mask, :].astype(np.bool_),
+                subject=subject,
                 simulation=self.simulation_names[index],
                 re_efield=re_efield,
                 im_efield=im_efield,
                 re_hfield=re_hfield,
-                im_hfield=im_hfield
+                im_hfield=im_hfield,
+                general_mask=general_mask
             )
     
     def _read_field(self, f: h5py.File, field_key: str) -> Dict:
