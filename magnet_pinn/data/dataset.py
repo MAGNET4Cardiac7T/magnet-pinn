@@ -1,3 +1,9 @@
+"""
+NAME
+    dataset.py
+DESCRIPTION
+    This module contains classes for loading the magnetostatic simulation data.
+"""
 import os
 import sys
 import h5py
@@ -53,7 +59,11 @@ class DataItem:
 
 
 class MagnetBaseIterator:
+    """
+    Base class for loading the data.
 
+    It saves the directories structure and reads antenna masks. 
+    """
     crop_mask: Optional[Tuple] = None
 
     def __init__(self, 
@@ -73,12 +83,26 @@ class MagnetBaseIterator:
         self.crop_left_shift = crop_left_shift
         self._set_crop_mask()
 
-    def _read_coils(self):
+    def _read_coils(self) -> npt.NDArray[np.bool_]:
+        """
+        Method reads coils masks from the h5 file.
+
+        Returns
+        -------
+        npt.NDArray[np.bool_]
+            Coils masks array
+        """
         with h5py.File(self.coils_path) as f:
             coils = f[ANTENNA_MASKS_OUT_KEY][:]
         return coils
     
     def _set_crop_mask(self):
+        """
+        Method sets the crop mask for the data.
+
+        Crop data for the using with old models with lower extent mentionied in
+        `OLD_LOWER_BOUND` and `OLD_UPPER_BOUND`.
+        """
         with h5py.File(self.simulation_list[0]) as f:
             min_extent = f.attrs[MIN_EXTENT_OUT_KEY]
             max_extent = f.attrs[MAX_EXTENT_OUT_KEY]
@@ -112,6 +136,18 @@ class MagnetBaseIterator:
         return len(self.simulation_list)
     
     def _load_simulation(self, index: int) -> DataItem:
+        """
+        Loads simulation data from the h5 file.
+        Parameters
+        ----------
+        index : int
+            Index of the simulation file
+        
+        Returns
+        -------
+        DataItem
+            DataItem object with the loaded data
+        """
         with h5py.File(self.simulation_list[index]) as f:
             re_efield, im_efield = self._read_field(f, E_FIELD_OUT_KEY)
             re_hfield, im_hfield = self._read_field(f, H_FIELD_OUT_KEY)
@@ -168,13 +204,32 @@ class MagnetBaseIterator:
 
 
 class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
+    """
+    Class for loading the data with phase augmentation.
+    """
     def __init__(self, 
                  data_dir: str,
                  phase_samples_per_simulation: int = 100, *args, **kwargs) -> None:
         super().__init__(data_dir, *args, **kwargs)
         self.phase_samples_per_simulation = phase_samples_per_simulation
 
-    def _sample_phase_and_mask(self, phase_index: int = None):
+    def _sample_phase_and_mask(self, 
+                               phase_index: int = None
+                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
+        """
+        Method for sampling the phase and mask for the simulation.
+        Parameters
+        ----------
+        phase_index : int
+            Index of the phase sample
+        
+        Returns
+        -------
+        npt.NDArray[np.float32]:
+            phase coefficients
+        npt.NDArray[np.bool_]:
+            mask for the phase coefficients
+        """
         phase = np.random.uniform(0, 2*np.pi, self.num_coils)
         mask = np.random.choice([0, 1], self.num_coils, replace=True)
         while np.sum(mask) == 0:
@@ -197,6 +252,22 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         return len(self.simulation_list)*self.phase_samples_per_simulation
     
     def __getitem__(self, index) -> Any:
+        """
+        Method for getting the data item by index.
+
+        It loads the simulations and applies the phase augmentation but considering
+        real and imaginary parts of the fields separately.
+
+        Parameters
+        ----------
+        index : int
+            Index of the simulation
+
+        Returns
+        -------
+        DataItem
+            DataItem object with the loaded data 
+        """
         file_index = index // self.phase_samples_per_simulation
         phase_index = index % self.phase_samples_per_simulation
 
@@ -227,6 +298,21 @@ class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
         self.phase_samples_per_simulation = self.num_coils
 
     def _sample_phase_and_mask(self, phase_index: int = None):
+        """
+        Method for sampling the phase and mask for the simulation.
+
+        Parameters
+        ----------
+        phase_index : int
+            Index of the phase sample
+
+        Returns
+        -------
+        npt.NDArray[np.float32]:
+            phase coefficients
+        npt.NDArray[np.bool_]:
+            mask for the phase coefficients
+        """
         phase = np.zeros(self.num_coils)
         mask = np.zeros(self.num_coils)
         mask[phase_index] = 1
