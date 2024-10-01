@@ -55,6 +55,10 @@ E_FIELD_OUT_KEY = "efield"
 H_FIELD_OUT_KEY = "hfield"
 SUBJECT_OUT_KEY = "subject"
 COORDINATES_OUT_KEY = "positions"
+MIN_EXTENT_OUT_KEY = "min_extent"
+MAX_EXTENT_OUT_KEY = "max_extent"
+VOXEL_SIZE_OUT_KEY = "voxel_size"
+ANTENNA_MASKS_OUT_KEY = "masks"
 
 
 class Preprocessing(ABC):
@@ -513,7 +517,7 @@ class Preprocessing(ABC):
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
-            f.create_dataset("masks", data=self._dipoles_masks)
+            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks)
             
 
 class GridPreprocessing(Preprocessing):
@@ -748,9 +752,9 @@ class GridPreprocessing(Preprocessing):
         f: h5py.File:
             a h5 file descriptor
         """
-        f.attrs["voxel_size"] = self.voxel_size
-        f.attrs["min_extent"] = self.positions_min
-        f.attrs["max_extent"] = self.positions_max
+        f.attrs[VOXEL_SIZE_OUT_KEY] = self.voxel_size
+        f.attrs[MIN_EXTENT_OUT_KEY] = self.positions_min
+        f.attrs[MAX_EXTENT_OUT_KEY] = self.positions_max
 
 
 class PointPreprocessing(Preprocessing):
