@@ -14,7 +14,11 @@ from typing import List
 import pandas as pd
 from trimesh import load_mesh, Trimesh
 
+
 MATERIALS_FILE_NAME = "materials.txt"
+AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
+FEATURE_NAMES = list(AIR_FEATURES.keys())
+FILE_COLUMN_NAME = "file"
 
 
 class PropertyReader:
@@ -25,7 +29,7 @@ class PropertyReader:
 
     | ./properties_dir_path
     |    ├── materials.txt
-    |    ├── \*.stl
+    |    ├── *.stl
 
     Attributes
     ----------
@@ -52,9 +56,14 @@ class PropertyReader:
             Directory path of the material properties
         """
         self.properties_dir_path = properties_dir_path
-        self.properties = pd.read_csv(
-            osp.join(self.properties_dir_path, MATERIALS_FILE_NAME)
-        )
+        materials_file = osp.join(self.properties_dir_path, MATERIALS_FILE_NAME)
+        if not osp.exists(materials_file):
+            raise FileNotFoundError(f"File {materials_file} not found")
+        
+        prop = pd.read_csv(materials_file)
+        if not set([FILE_COLUMN_NAME] + FEATURE_NAMES).issubset(prop.columns):
+            raise ValueError(f"File {materials_file} does not have the required columns")
+        self.properties = prop
 
     def read_meshes(self) -> List[Trimesh]:
         """
@@ -69,7 +78,24 @@ class PropertyReader:
         List
             List of the meshes of the materials
         """
-        return list(map(
-                lambda x: load_mesh(osp.join(self.properties_dir_path, x)),
-                self.properties["file"].tolist(),
-            ))
+        return self.properties[FILE_COLUMN_NAME].apply(self._load_mesh).tolist()
+    
+    def _load_mesh(self, file_name) -> Trimesh:
+        """
+        Loads a mesh from the file
+
+        Parameters
+        ----------
+        file_name: str
+            a file name of the mesh
+
+        Returns
+        -------
+        Trimesh
+            Mesh object
+        """
+        file_path = osp.join(self.properties_dir_path, file_name)
+        if not osp.exists(osp.join(file_path)):
+            raise FileNotFoundError(f"Mesh file {file_path} not found")
+        
+        return load_mesh(file_path)

@@ -29,9 +29,10 @@ from magnet_pinn.preprocessing.reading_field import (
     FieldReaderFactory,
     FieldReader
 )
-from magnet_pinn.preprocessing.reading_properties import PropertyReader
-from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 from magnet_pinn.preprocessing.simulation import Simulation
+from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
+from magnet_pinn.preprocessing.reading_properties import PropertyReader
+from magnet_pinn.preprocessing.reading_properties import FEATURE_NAMES, AIR_FEATURES
 
 RAW_DATA_DIR_PATH = "raw"
 ANTENNA_MATERIALS_DIR_PATH = osp.join("antenna", "dipole", "raw")
@@ -44,9 +45,7 @@ PROCESSED_ANTENNA_DIR_PATH = "antenna"
 TARGET_FILE_NAME = "{name}.h5"
 
 STANDARD_VOXEL_SIZE = 4
-FEATURE_NAMES = ("conductivity", "permittivity", "density")
-AIR_FEATURES = {"conductivity": 0.0, "permittivity": 1.0006, "density": 1.293}
-AIR_FEATURE_VALUES = np.array(tuple(AIR_FEATURES[feature_name] for feature_name in FEATURE_NAMES))
+AIR_FEATURE_VALUES = np.array(tuple(AIR_FEATURES.values()), dtype=np.float32)
 
 COMPLEX_DTYPE_KIND = "c"
 FLOAT_DTYPE_KIND = "f"
