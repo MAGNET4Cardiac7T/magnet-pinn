@@ -42,6 +42,7 @@ sphinx-conestack-theme = "^1.0b3"
 sphinx-rtd-theme = "^2.0.0"
 sphinx-design = "^0.5.0"
 pandas = "^2.2.2"
+pytest = "^8.3.2"
 
 [tool.poetry.extras]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
