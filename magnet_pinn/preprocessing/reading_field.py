@@ -422,6 +422,8 @@ class GridReader(FieldReader):
         }
         if data_shape == tuple(expected_shape.values()):
             axis_order = "x y z"
+        elif not np.array_equal(np.sort(data_shape), np.sort(list(expected_shape.values()))):
+            raise ValueError("Inconsistent data shape")
         else:
             indices_we_got = np.array(data_shape).argsort()
             indices_we_expect = np.array(list(expected_shape.values())).argsort()
@@ -524,6 +526,9 @@ class PointReader(FieldReader):
         """
         This method ignores the existing data because of assumption of 1d
         """
+        if data_shape[0] != self._coordinates.shape[0]:
+            raise ValueError("Inconsistent data shape")
+        
         return "ax batch -> batch ax"
     
     def _compose_field_components(self, field_components: List) -> np.array:
