@@ -24,7 +24,7 @@ from einops import rearrange
 
 E_FIELD_DATABASE_KEY = "E-Field"
 H_FIELD_DATABASE_KEY = "H-Field"
-POSISTIONS_DATABASE_KEY = "Position"
+POSITIONS_DATABASE_KEY = "Position"
 X_BOUNDS_DATABASE_KEY = "Mesh line x"
 Y_BOUNDS_DATABASE_KEY = "Mesh line y"
 Z_BOUNDS_DATABASE_KEY = "Mesh line z"
@@ -122,7 +122,7 @@ class FieldReaderFactory:
 
         Parameters
         ----------
-        format_points_list: bool
+        keep_grid_output_format: bool
             if True, the reader will return the data in the pointslist form
 
         Returns
@@ -148,7 +148,7 @@ class FieldReaderFactory:
         with File(self.files_list[0]) as f:
             database_keys = list(f.keys())
         
-        return POSISTIONS_DATABASE_KEY not in database_keys
+        return POSITIONS_DATABASE_KEY not in database_keys
 
 
 class FieldReader(ABC):
@@ -286,12 +286,24 @@ class FieldReader(ABC):
 
         return np.ascontiguousarray(rearrange(
             [Ex, Ey, Ez],
-            self._compose_field_pattern
+            self._compose_field_pattern(Ex.shape)
         ), dtype=np.complex64)
 
-    @property
     @abstractmethod
-    def _compose_field_pattern(self) -> str:
+    def _compose_field_pattern(self, data_shape: Tuple) -> str:
+        """
+        Method returns field array pattern.
+
+        Parameters
+        ----------
+        data: Tuple
+            The field components
+
+        Returns
+        -------
+        str
+            The field array pattern
+        """
         pass
 
     @abstractmethod
@@ -399,11 +411,26 @@ class GridReader(FieldReader):
         ), dtype=np.float32)
         return values
     
-    @property
-    def _compose_field_pattern(self) -> str:
-        return "ax z y x -> ax x y z"
+    def _compose_field_pattern(self, data_shape: Tuple) -> str:
+        """
+        The grid data field is an array with 3d grid structure (x, y, z). It checks and fixes axis order.
+        """
+        expected_shape = {
+            "x": self._coordinates[0].shape[0],
+            "y": self._coordinates[1].shape[0],
+            "z": self._coordinates[2].shape[0]
+        }
+        if data_shape == tuple(expected_shape.values()):
+            axis_order = "x y z"
+        else:
+            indices_we_got = np.array(data_shape).argsort()
+            indices_we_expect = np.array(list(expected_shape.values())).argsort()
+            real_order = np.zeros(3, dtype=int)
+            real_order[indices_we_got] = indices_we_expect
+            real_order_axis_symbols = np.array(list(expected_shape.keys()))[real_order]
+            axis_order = " ".join(real_order_axis_symbols)
+        return f"ax {axis_order} -> ax x y z"
 
-    
     def _compose_field_components(self, field_components: List) -> np.array:
         """
         Compose together field components from different files
@@ -464,9 +491,9 @@ class PointReader(FieldReader):
         as a list of points.
         """
         with File(file_path) as f:
-            x = f[POSISTIONS_DATABASE_KEY]["x"][:]
-            y = f[POSISTIONS_DATABASE_KEY]["y"][:]
-            z = f[POSISTIONS_DATABASE_KEY]["z"][:]
+            x = f[POSITIONS_DATABASE_KEY]["x"][:]
+            y = f[POSITIONS_DATABASE_KEY]["y"][:]
+            z = f[POSITIONS_DATABASE_KEY]["z"][:]
         return np.ascontiguousarray(rearrange(
             [x, y, z],
             "ax batch -> batch ax"
@@ -493,7 +520,10 @@ class PointReader(FieldReader):
         return self._coordinates
     
     @property
-    def _compose_field_pattern(self) -> str:
+    def _compose_field_pattern(self, data_shape: Tuple) -> str:
+        """
+        This method ignores the existing data because of assumption of 1d
+        """
         return "ax batch -> batch ax"
     
     def _compose_field_components(self, field_components: List) -> np.array:
