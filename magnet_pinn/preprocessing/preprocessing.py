@@ -483,14 +483,15 @@ class Preprocessing(ABC):
             e_field = simulation.e_field.astype(self.field_dtype)
             h_field = simulation.h_field.astype(self.field_dtype)
         elif self.field_dtype.kind == FLOAT_DTYPE_KIND:
-            e_field = np.array(
-                [simulation.e_field.real, simulation.e_field.imag],
-                dtype=[("re", self.field_dtype),("im", self.field_dtype)]
-            )
-            h_field = np.array(
-                [simulation.h_field.real, simulation.h_field.imag],
-                dtype=[("re", self.field_dtype),("im", self.field_dtype)]
-            )
+            e_field = np.empty_like(simulation.e_field,
+                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+            e_field["re"] = simulation.e_field.real
+            e_field["im"] = simulation.e_field.imag
+            
+            h_field = np.empty_like(simulation.h_field,
+                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+            h_field["re"] = simulation.h_field.real
+            h_field["im"] = simulation.h_field.imag
         else:
             raise Exception("Unsupported field data type")
 
