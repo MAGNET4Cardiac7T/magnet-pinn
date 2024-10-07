@@ -569,7 +569,7 @@ class Preprocessing(ABC):
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
-            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks)
+            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
 
             
 
