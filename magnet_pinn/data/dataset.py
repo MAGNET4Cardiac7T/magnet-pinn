@@ -249,7 +249,7 @@ class MagnetIterator:
 
     def __getitem__(self, index: int) -> Any:
         item = self._load_simulation(index)
-        return asdict(item)
+        return item.__dict__
 
 
 class PhaseAugmentedMagnetIterator(MagnetIterator):
