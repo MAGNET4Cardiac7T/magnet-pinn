@@ -59,6 +59,8 @@ MIN_EXTENT_OUT_KEY = "min_extent"
 MAX_EXTENT_OUT_KEY = "max_extent"
 VOXEL_SIZE_OUT_KEY = "voxel_size"
 ANTENNA_MASKS_OUT_KEY = "masks"
+DTYPE_OUT_KEY = "dtype"
+TRUNCATION_COEFFICIENTS_OUT_KEY = "truncation_coefficients"
 
 
 class Preprocessing(ABC):
@@ -454,13 +456,60 @@ class Preprocessing(ABC):
         )
 
         e_field, h_field = self._format_fields(out_simulation)
+        self._feature_truncate_coefficients(out_simulation)
+        object_masks = self._format_masks(out_simulation)
+        features = self._format_features(out_simulation)
 
         with File(output_file_path, "w") as f:
-            f.create_dataset(FEATURES_OUT_KEY, data=out_simulation.features)
+            f.create_dataset(FEATURES_OUT_KEY, data=features)
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
-            f.create_dataset(SUBJECT_OUT_KEY, data=out_simulation.object_masks)
+            f.create_dataset(SUBJECT_OUT_KEY, data=object_masks)
             self._write_extra_data(out_simulation, f)
+
+    def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
+        """
+            Calculates the coefficients for truncating the features based on the given feature type, to prevent overflow 
+            when saving the data as float16.
+        """
+        if self.field_dtype.name == "float16":
+            return np.array([1e+4, 1, 1], dtype=np.float32)
+        return np.array([1, 1, 1], dtype=np.float32)
+
+    def _format_masks(self, simulation: Simulation) -> np.array:
+        """
+        Formats masks data.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+
+        Returns
+        -------
+        np.array:
+            masks data
+        """
+
+        return simulation.object_masks.astype(np.bool_)
+    
+    @abstractmethod
+    def _format_features(self, simulation: Simulation) -> np.array:
+        """
+        Formats features data.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+
+        Returns
+        -------
+        np.array:
+            features data
+        """
+        pass
+
 
     def _format_fields(self, simulation: Simulation) -> Tuple[np.array, np.array]:
         """
@@ -474,7 +523,7 @@ class Preprocessing(ABC):
         Returns
         -------
         np.array:
-            e-fiel data
+            e-field data
         np.array:
             h-field data
         """
@@ -508,7 +557,9 @@ class Preprocessing(ABC):
         f : File
             a h5 file descriptor
         """
-        pass
+        f.attrs[DTYPE_OUT_KEY] = self.field_dtype.name
+        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = self._feature_truncate_coefficients(simulation)
+
 
     def _write_dipoles(self) -> None:
         """
@@ -518,7 +569,8 @@ class Preprocessing(ABC):
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
-            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks)
+            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
+
             
 
 class GridPreprocessing(Preprocessing):
@@ -739,6 +791,25 @@ class GridPreprocessing(Preprocessing):
         """
         return "feature x y z component -> feature x y z"
     
+    def _format_features(self, simulation: Simulation) -> np.array:
+        """
+        Formats features data.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+
+        Returns
+        -------
+        np.array:
+            features data
+        """
+        truncation_coefficients = self._feature_truncate_coefficients(simulation)
+        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=(1, 2, 3))
+        features = simulation.features / truncation_coefficients
+        return features.astype(self.field_dtype.type(0).real)
+    
     def _write_extra_data(self, simulation: Simulation, f: File):
         """
         Writes extra data to the output .h5 file.
@@ -753,6 +824,7 @@ class GridPreprocessing(Preprocessing):
         f: h5py.File:
             a h5 file descriptor
         """
+        super()._write_extra_data(simulation, f)
         f.attrs[VOXEL_SIZE_OUT_KEY] = self.voxel_size
         f.attrs[MIN_EXTENT_OUT_KEY] = self.positions_min
         f.attrs[MAX_EXTENT_OUT_KEY] = self.positions_max
@@ -931,6 +1003,25 @@ class PointPreprocessing(Preprocessing):
         """
         return "component points -> points component"
     
+    def _format_features(self, simulation: Simulation) -> np.array:
+        """
+        Formats features data.
+
+        Parameters
+        ----------
+        simulation : Simulation
+            a simulation data object
+
+        Returns
+        -------
+        np.array:
+            features data
+        """
+        truncation_coefficients = self._feature_truncate_coefficients(simulation)
+        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=0)
+        features = simulation.features / truncation_coefficients
+        return features.astype(self.field_dtype.type(0).real)
+    
     def _write_extra_data(self, simulation: Simulation, f: File) -> None:
         """
         Writes extra data to the output .h5 file.
@@ -944,4 +1035,5 @@ class PointPreprocessing(Preprocessing):
         f: h5py.File:
             a h5 file descriptor
         """
+        super()._write_extra_data(simulation, f)
         f.create_dataset(COORDINATES_OUT_KEY, data=self.coordinates.astype(np.float32))

@@ -157,5 +157,5 @@ cython_debug/
 .idea
 .vscode
 poetry.lock
-data
+/data
 notebooks

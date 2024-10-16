@@ -7,7 +7,7 @@ DESCRIPTION
 import os
 import sys
 import h5py
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Dict, Optional, Any, Tuple
 
 import glob
@@ -28,7 +28,9 @@ from magnet_pinn.preprocessing.preprocessing import (
     H_FIELD_OUT_KEY,
     SUBJECT_OUT_KEY,
     PROCESSED_SIMULATIONS_DIR_PATH,
-    PROCESSED_ANTENNA_DIR_PATH
+    PROCESSED_ANTENNA_DIR_PATH,
+    TRUNCATION_COEFFICIENTS_OUT_KEY,
+    DTYPE_OUT_KEY
 )
 
 
@@ -49,16 +51,17 @@ class DataItem:
     im_efield: Optional[npt.NDArray[np.float32]] = None
     re_hfield: Optional[npt.NDArray[np.float32]] = None
     im_hfield: Optional[npt.NDArray[np.float32]] = None
-    re_phase: Optional[npt.NDArray[np.float32]] = None
-    im_phase: Optional[npt.NDArray[np.float32]] = None
-    phase: Optional[npt.NDArray[np.float32]] = None
-    mask: Optional[npt.NDArray[np.bool_]] = None
-    re_coils: Optional[npt.NDArray[np.float32]] = None
-    im_coils: Optional[npt.NDArray[np.float32]] = None
+#    re_phase: Optional[npt.NDArray[np.float32]] = None
+#    im_phase: Optional[npt.NDArray[np.float32]] = None
+#    phase: Optional[npt.NDArray[np.float32]] = None
+#    mask: Optional[npt.NDArray[np.bool_]] = None
+#    re_coils: Optional[npt.NDArray[np.float32]] = None
+#    im_coils: Optional[npt.NDArray[np.float32]] = None
     general_mask: Optional[npt.NDArray[np.bool_]] = None
+    dtype: Optional[str] = None,
+    truncation_coefficients: Optional[npt.NDArray] = None
 
-
-class MagnetBaseIterator:
+class MagnetIterator:
     """
     Base class for loading the data.
 
@@ -151,7 +154,8 @@ class MagnetBaseIterator:
         with h5py.File(self.simulation_list[index]) as f:
             re_efield, im_efield = self._read_field(f, E_FIELD_OUT_KEY)
             re_hfield, im_hfield = self._read_field(f, H_FIELD_OUT_KEY)
-            subject = f[SUBJECT_OUT_KEY][*self.crop_mask, :].astype(np.bool_)
+            input_features = self._read_input_features(f, FEATURES_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY)
+            subject = self._read_subject(f, SUBJECT_OUT_KEY)
             coils = self.coils[*self.crop_mask, :]
             stacked_arr, _ = pack(
                 [subject, coils],
@@ -161,18 +165,20 @@ class MagnetBaseIterator:
             general_mask = np.ascontiguousarray(reduce(
                 stacked_arr,
                 "x y z c -> x y z",
-                "sum"
+                "max"
             )).astype(np.bool_)
 
             return DataItem(
-                input=f[FEATURES_OUT_KEY][:, *self.crop_mask].astype(np.float32),
-                subject=subject,
+                input=input_features,
+                subject=np.max(subject, axis=-1),
                 simulation=self.simulation_names[index],
                 re_efield=re_efield,
                 im_efield=im_efield,
                 re_hfield=re_hfield,
                 im_hfield=im_hfield,
-                general_mask=general_mask
+                general_mask=general_mask,
+                dtype=f.attrs[DTYPE_OUT_KEY],
+                truncation_coefficients=f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY]
             )
     
     def _read_field(self, f: h5py.File, field_key: str) -> Dict:
@@ -195,15 +201,58 @@ class MagnetBaseIterator:
         """
         field_val = f[field_key][:, *self.crop_mask, :] 
         if field_val.dtype.names is None:
-            return field_val.real.astype(np.float32), field_val.imag.astype(np.float32)
+            return field_val.real, field_val.imag
         
-        return field_val["re"].astype(np.float32), field_val["im"].astype(np.float32)
+        return field_val["re"], field_val["im"]
     
+
+    def _read_input_features(self, f: h5py.File, features_key: str, truncation_key: str) -> npt.NDArray[np.float32]:
+        """
+        Method for reading the input features from the h5 file.
+
+        Parameters
+        ----------
+        f : h5py.File
+            h5 file descriptor
+        features_key : str
+            key for the features
+        truncation_key : str
+            key for the truncation coefficients
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            input features array
+        """
+        features = f[features_key][:, *self.crop_mask]
+        return features
+    
+    def _read_subject(self, f: h5py.File, subject_key: str) -> Tuple[npt.NDArray[np.bool_], npt.NDArray[np.int8]]:
+        """
+        Method for reading the subject from the h5 file.
+
+        Parameters
+        ----------
+        f : h5py.File
+            h5 file descriptor
+        subject_key : str
+            key for the subject
+
+        Returns
+        -------
+        Tuple[npt.NDArray[np.bool_], npt.NDArray[np.int8]]
+            subject array as bool (one-hot) and subject integer array (as labels)
+        """
+        subject = f[subject_key][*self.crop_mask, :]
+        return subject
+    
+
     def __getitem__(self, index: int) -> Any:
-        return self._load_simulation(index)
+        item = self._load_simulation(index)
+        return item.__dict__
 
 
-class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
+class PhaseAugmentedMagnetIterator(MagnetIterator):
     """
     Class for loading the data with phase augmentation.
     """
@@ -214,7 +263,8 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         self.phase_samples_per_simulation = phase_samples_per_simulation
 
     def _sample_phase_and_mask(self, 
-                               phase_index: int = None
+                               phase_index: int = None,
+                               dtype: str = None
                                ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
         Method for sampling the phase and mask for the simulation.
@@ -235,7 +285,7 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         while np.sum(mask) == 0:
             mask = np.random.choice([0, 1], self.num_coils, replace=True)
 
-        return phase.astype(np.float32), mask.astype(np.bool_)    
+        return phase.astype(dtype), mask.astype(np.bool_)    
     
     def _phase_shift_field(self, 
                            re_field: npt.NDArray[np.float32], 
@@ -272,15 +322,22 @@ class PhaseAugmentedMagnetIterator(MagnetBaseIterator):
         phase_index = index % self.phase_samples_per_simulation
 
         item = self._load_simulation(file_index)
-            
-        item.phase, item.mask = self._sample_phase_and_mask(phase_index)
 
+        return item
+            
+        item.phase, item.mask = self._sample_phase_and_mask(phase_index, dtype=item.dtype)
+        
+
+        # the phase augmentation is now done in the training loop
         # e^(i * phase) * mask = cos(phase) * mask + i * sin(phase) * mask
         item.re_phase = np.cos(item.phase) * item.mask
         item.im_phase = np.sin(item.phase) * item.mask
 
         item.re_coils = self.coils * item.re_phase
         item.im_coils = self.coils * item.im_phase
+
+        return item
+
 
         # split dot product of complex numbers array
         item.re_efield = item.re_efield * item.re_phase - item.im_efield * item.im_phase
@@ -297,7 +354,7 @@ class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
         super().__init__(data_dir, *args, **kwargs)
         self.phase_samples_per_simulation = self.num_coils
 
-    def _sample_phase_and_mask(self, phase_index: int = None):
+    def _sample_phase_and_mask(self, phase_index: int = None, dtype: str = None) -> Tuple[npt.NDArray, npt.NDArray[np.bool_]]:
         """
         Method for sampling the phase and mask for the simulation.
 
@@ -308,7 +365,7 @@ class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
 
         Returns
         -------
-        npt.NDArray[np.float32]:
+        npt.NDArray:
             phase coefficients
         npt.NDArray[np.bool_]:
             mask for the phase coefficients
@@ -317,6 +374,6 @@ class CoilEnumerationMagnetIterator(PhaseAugmentedMagnetIterator):
         mask = np.zeros(self.num_coils)
         mask[phase_index] = 1
         
-        phase = phase.astype(np.float32)
-        mask = mask.astype(np.float32)
+        phase = phase.astype(dtype)
+        mask = mask.astype(dtype)
         return phase, mask
