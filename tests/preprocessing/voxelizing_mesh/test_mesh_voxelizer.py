@@ -1,0 +1,113 @@
+import numpy as np
+from math import pi
+
+from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
+
+
+def test_unit_sphere_mesh_fills_grid(sphere_unit_mesh):
+    """
+    We expect a spehere mesh with radius equal to the voxel size. The mesh should fill the grid.
+    """
+    center = sphere_unit_mesh.center
+    left_bound = sphere_unit_mesh.bounds[0]
+    right_bound = sphere_unit_mesh.bounds[1]
+    left_x_bound = left_bound[0]
+    right_x_bound = right_bound[0]
+
+    voxel_size = radius = np.abs(left_x_bound - center[0])
+    steps = ((right_x_bound - left_x_bound) / voxel_size).astype(int) + 1
+    grid_x = np.linspace(left_x_bound, right_x_bound, steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(sphere_unit_mesh)
+    supposed_voxels = np.ones((steps, steps, steps))
+    
+    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert result.shape == (steps, steps, steps)
+    assert np.sum(result) == steps ** 3
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_sphere_mesh_fills_center_of_grid(sphere_unit_mesh):
+    """
+    We use a sphere mesh with radius equal to the voxel size but 
+    this time the grid size is increased by 1 voxel.
+    """
+    center = sphere_unit_mesh.center
+    left_bound = sphere_unit_mesh.bounds[0]
+    right_bound = sphere_unit_mesh.bounds[1]
+
+    voxel_size = radius = np.abs(left_bound[0] - center[0])
+    left_bound -= voxel_size
+    right_bound += voxel_size
+    steps = ((right_bound[0] - left_bound[0]) / voxel_size).astype(int) + 1
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_y)
+    result = voxelizer.process_mesh(sphere_unit_mesh)
+    supposed_voxels = np.zeros((steps, steps, steps))
+    supposed_voxels[1:-1, 1:-1, 1:-1] = 1
+
+    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert result.shape == (steps, steps, steps)
+    assert np.sum(result) == (steps - 2) ** 3
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_sphere_mesh_grid_is_smaller(sphere_unit_mesh):
+    """
+    We use a sphere primitive mesh. In this test case we would use a 
+    voxel size of 0.5 of a raduis and grid size of 3.
+    """
+    center = sphere_unit_mesh.center
+    left_x_bound = sphere_unit_mesh.bounds[0][0]
+    radius = np.abs(left_x_bound - center[0])
+
+    voxel_size = 0.5 * radius
+    steps = 3
+    left_bound = center - voxel_size
+    right_bound = center + voxel_size
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(sphere_unit_mesh)
+    supposed_voxels = np.ones((steps, steps, steps))
+
+    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert result.shape == (steps, steps, steps)
+    assert np.sum(result) == steps ** 3
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_sphere_mesh_grid_includes_object_in_the_center(sphere_unit_mesh):
+    """
+    We use a sphere primitive mesh. In this test case the voxel grid is a sprehe diameter. 
+    We take grid of size 3 so the only existing voxel is the center one.
+    """
+    center = sphere_unit_mesh.center
+    left_x_bound = sphere_unit_mesh.bounds[0][0]
+    radius = np.abs(left_x_bound - center[0])
+
+    voxel_size = 2 * radius
+    steps = 3
+    left_bound = center - voxel_size
+    right_bound = center + voxel_size
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(sphere_unit_mesh)
+    supposed_voxels = np.zeros((steps, steps, steps))
+    supposed_voxels[steps // 2, steps // 2, steps // 2] = 1
+
+    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert result.shape == (steps, steps, steps)
+    assert np.sum(result) == 1
+    assert np.equal(result, supposed_voxels).all()
