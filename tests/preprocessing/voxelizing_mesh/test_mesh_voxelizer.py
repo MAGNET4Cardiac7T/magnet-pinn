@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from math import pi
 
@@ -111,3 +112,29 @@ def test_unit_sphere_mesh_grid_includes_object_in_the_center(sphere_unit_mesh):
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == 1
     assert np.equal(result, supposed_voxels).all()
+
+
+def test_invalid_grid_with_broken_spacing():
+    """
+    Checks if a mesh voxelizer class is able to detect invalid grid.
+    """
+    valid_grid = np.linspace(0, 5, 6)
+    invalid_grid = np.linspace(0, 5, 8)
+    with pytest.raises(ValueError):
+        MeshVoxelizer(1, invalid_grid, valid_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, invalid_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, valid_grid, invalid_grid)
+
+
+def test_invalid_grid_with_broken_bounds():
+    valid_grid = np.linspace(0, 5, 6)
+    invalid_equal_grid = np.array(6 * [0])
+    invalid_unsorted_grid = np.random.shuffle(valid_grid)
+
+    with pytest.raises(ValueError):
+        MeshVoxelizer(1, invalid_equal_grid, valid_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, invalid_equal_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, valid_grid, invalid_equal_grid)
+        MeshVoxelizer(1, invalid_unsorted_grid, valid_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, invalid_unsorted_grid, valid_grid)
+        MeshVoxelizer(1, valid_grid, valid_grid, invalid_unsorted_grid)

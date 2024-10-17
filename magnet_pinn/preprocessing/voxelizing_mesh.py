@@ -8,6 +8,7 @@ DESCRIPTION
 from typing import Tuple
 
 import numpy as np
+import numpy.typing as npt
 from trimesh import Trimesh
 from trimesh.voxel.creation import local_voxelize
 
@@ -58,9 +59,24 @@ class MeshVoxelizer:
             z grid
         """
         self.voxel_size = voxel_size
+
+        self.__validate_input(x_unique, "x")
+        self.__validate_input(y_unique, "y")
+        self.__validate_input(z_unique, "z")
+
         self.center, self.radius, self.bounds = self.__get_center_radius_bounds__(
             x_unique, y_unique, z_unique
         )
+
+    def __validate_input(self, grid: npt.NDArray[np.float_], axis: str):
+        if grid[0] >= grid[-1]:
+            raise ValueError("Grid must be sorted in ascending order.")
+        
+        steps = ((grid[-1] - grid[0]) / self.voxel_size).astype(int) + 1
+        supposed_grid = np.linspace(grid[0], grid[-1], steps)
+
+        if not np.equal(grid, supposed_grid).all():
+            raise ValueError(f"Invalid {axis} grid {grid} for the {self.voxel_size} vixel size.")
 
     def __get_center_radius_bounds__(self, 
                                      x_unique: np.array,
