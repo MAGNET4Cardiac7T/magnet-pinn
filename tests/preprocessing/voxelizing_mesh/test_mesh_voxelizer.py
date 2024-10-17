@@ -127,6 +127,9 @@ def test_invalid_grid_with_broken_spacing():
 
 
 def test_invalid_grid_with_broken_bounds():
+    """
+    Check if a mesh voxelizer class is able to detect unsorted or equal grid values.
+    """
     valid_grid = np.linspace(0, 5, 6)
     invalid_equal_grid = np.array(6 * [0])
     invalid_unsorted_grid = np.random.shuffle(valid_grid)
@@ -138,3 +141,42 @@ def test_invalid_grid_with_broken_bounds():
         MeshVoxelizer(1, invalid_unsorted_grid, valid_grid, valid_grid)
         MeshVoxelizer(1, valid_grid, invalid_unsorted_grid, valid_grid)
         MeshVoxelizer(1, valid_grid, valid_grid, invalid_unsorted_grid)
+
+
+def test_unit_box_mesh_fills_grid(box_unit_mesh):
+    bounds = np.array(box_unit_mesh.bounds)
+    voxel_size = np.abs(bounds[1][0] - bounds[0][0]) / 2
+    steps = 3
+    grid_x = np.linspace(bounds[0][0], bounds[1][0], steps)
+    grid_y = np.linspace(bounds[0][1], bounds[1][1], steps)
+    grid_z = np.linspace(bounds[0][2], bounds[1][2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(box_unit_mesh)
+    supposed_voxels = np.ones((steps, steps, steps))
+
+    assert np.sum(result) == steps ** 3
+    assert result.shape == (steps, steps, steps)
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
+    bounds = np.array(box_unit_mesh.bounds)
+    left_bound = bounds[0]
+    right_bound = bounds[1]
+    voxel_size = np.abs(bounds[1][0] - bounds[0][0]) / 2
+    steps = 5
+    left_bound -= voxel_size
+    right_bound += voxel_size
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(box_unit_mesh)
+    supposed_voxels = np.zeros((steps, steps, steps))
+    supposed_voxels[1:-1, 1:-1, 1:-1] = 1
+
+    assert np.sum(result) == (steps - 2) ** 3
+    assert result.shape == (steps, steps, steps)
+    assert np.equal(result, supposed_voxels).all()
