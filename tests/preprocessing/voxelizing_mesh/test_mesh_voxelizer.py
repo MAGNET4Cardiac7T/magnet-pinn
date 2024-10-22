@@ -144,6 +144,11 @@ def test_invalid_grid_with_broken_bounds():
 
 
 def test_unit_box_mesh_fills_grid(box_unit_mesh):
+    """
+    We used a squared box mesh. The voxel size is exactly the 
+    same as half of the box side. The grid would have 3 voxels in a row.
+    So the as a result we will have the whole grid filled.
+    """
     bounds = np.array(box_unit_mesh.bounds)
     voxel_size = np.abs(bounds[1][0] - bounds[0][0]) / 2
     steps = 3
@@ -161,6 +166,11 @@ def test_unit_box_mesh_fills_grid(box_unit_mesh):
 
 
 def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
+    """
+    We used a squared box mesh. The voxel size is exactly the same as 
+    the half box size. Tre grid would have 5 voxels in a row. So the as a
+    result we will have 3 * 3 * 3 = 27 voxels filled in the center.
+    """
     bounds = np.array(box_unit_mesh.bounds)
     left_bound = bounds[0]
     right_bound = bounds[1]
@@ -178,5 +188,54 @@ def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
     supposed_voxels[1:-1, 1:-1, 1:-1] = 1
 
     assert np.sum(result) == (steps - 2) ** 3
+    assert result.shape == (steps, steps, steps)
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_box_mesh_grid_is_smaller(box_unit_mesh):
+    """
+    We used a squared box mesh. The voxel size is 0.75 of the half of the 
+    box side. The grid will be just 3 voxels in a row. So the as a result 
+    we will have the whole grid filled.
+    """
+    bounds = np.array(box_unit_mesh.bounds)
+    voxel_size = 0.75 * np.abs(bounds[1][0] - bounds[0][0]) / 2
+    steps = 3
+    left_bound = box_unit_mesh.center_mass - voxel_size
+    right_bound = box_unit_mesh.center_mass + voxel_size
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(box_unit_mesh)
+    supposed_voxels = np.ones((steps, steps, steps))
+
+    assert np.sum(result) == steps ** 3
+    assert result.shape == (steps, steps, steps)
+    assert np.equal(result, supposed_voxels).all()
+
+
+def test_unit_box_mesh_grid_is_bigger(box_unit_mesh):
+    """
+    We used a squared box mesh. The voxel size is exactly the same as the
+    box side. And the grid will have just 3 voxels in a row. So the as a 
+    result we will have only one voxel in the center of the grid.
+    """
+    bounds = np.array(box_unit_mesh.bounds)
+    voxel_size = np.abs(bounds[1][0] - bounds[0][0])
+    steps = 3
+    left_bound = box_unit_mesh.center_mass - voxel_size
+    right_bound = box_unit_mesh.center_mass + voxel_size
+    grid_x = np.linspace(left_bound[0], right_bound[0], steps)
+    grid_y = np.linspace(left_bound[1], right_bound[1], steps)
+    grid_z = np.linspace(left_bound[2], right_bound[2], steps)
+
+    voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
+    result = voxelizer.process_mesh(box_unit_mesh)
+    supposed_voxels = np.zeros((steps, steps, steps))
+    supposed_voxels[1, 1, 1] = 1
+
+    assert np.sum(result) == 1
     assert result.shape == (steps, steps, steps)
     assert np.equal(result, supposed_voxels).all()
