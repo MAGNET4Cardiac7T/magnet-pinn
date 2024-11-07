@@ -5,7 +5,9 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 from h5py import File
+import numpy.typing as npt
 from trimesh import Trimesh
+from trimesh.primitives import Sphere, Box
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -13,9 +15,136 @@ from magnet_pinn.preprocessing.reading_field import (
     H_FIELD_DATABASE_KEY
 )
 from magnet_pinn.preprocessing.reading_properties import (
-    MATERIALS_FILE_NAME, FILE_COLUMN_NAME
+    MATERIALS_FILE_NAME, FILE_COLUMN_NAME, FEATURE_NAMES
 )
-from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
+from magnet_pinn.preprocessing.preprocessing import (
+    INPUT_DIR_PATH, RAW_DATA_DIR_PATH, PROCESSED_DIR_PATH,
+    INPUT_SIMULATIONS_DIR_PATH, INPUT_ANTENNA_DIR_PATH
+)
+
+
+BATCH_DIR_NAME = "batch"
+FIRST_SIM_NAME = "children_0_tubes_0_id_0"
+
+@pytest.fixture(scope='session')
+def data_dir_path(tmp_path_factory):
+    data_path = tmp_path_factory.mktemp('data')
+    yield data_path
+    """shutil.rmtree(data_path)"""
+
+
+@pytest.fixture(scope='session')
+def processed_batch_dir_path(data_dir_path):
+    batch_path = data_dir_path / PROCESSED_DIR_PATH / BATCH_DIR_NAME
+    batch_path.mkdir(parents=True, exist_ok=True)
+    return batch_path
+
+
+@pytest.fixture(scope='session')
+def raw_batch_dir_path(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / BATCH_DIR_NAME
+
+    __create_antenna_test_data(batch_dir_path)
+    __create_simulations(batch_dir_path)
+
+    return batch_dir_path
+
+
+def __create_antenna_test_data(batch_dir_path: str):
+    """
+    The method creates coils as boxes with their center of mass on 
+    the X and Y axes correspondently. The are also symmetric to each
+    others considering the point (0, 0, 0). It saves meshes to the antenna 
+    directory. It also stores files names in the corresponding materials file 
+    together with unit values of the features.
+    """
+    antenna_path = batch_dir_path / INPUT_ANTENNA_DIR_PATH
+
+    coils_meshes = (
+        Box(bounds=np.array([
+            [2, -1, -1],
+            [4, 1, 1]
+        ])),
+        Box(bounds=np.array([
+            [-4, -1, -1],
+            [-2, 1, 1]
+        ])),
+        Box(bounds=np.array([
+            [-1, 2, -1],
+            [1, 4, 1]
+        ])),
+        Box(bounds=np.array([
+            [-1, -4, -1],
+            [1, -2, 1]
+        ]))
+    )
+
+    __create_test_properties(antenna_path, coils_meshes)
+
+
+def __create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
+    """
+    Creates a materials file with feeling each property just with 1.
+    """
+    prop_dir_path.mkdir(parents=True, exist_ok=True)
+    
+    mesh_names = []
+    for i, mesh in enumerate(meshes):
+        mesh_name = f"mesh_{i}.stl"
+        mesh.export(prop_dir_path / mesh_name)
+        mesh_names.append(mesh_name)
+        
+
+    df = pd.DataFrame(
+        {
+            FILE_COLUMN_NAME: mesh_names,
+            **{name: np.ones(len(mesh_names)) for name in FEATURE_NAMES}
+        }
+    )
+    df.to_csv(prop_dir_path / MATERIALS_FILE_NAME, index=False)
+
+
+def __create_simulations(batch_dir_path: str):
+    sims_dir_path = batch_dir_path / INPUT_SIMULATIONS_DIR_PATH
+
+    __create_simulation_data(sims_dir_path, FIRST_SIM_NAME)
+
+
+def __create_simulation_data(simulations_dir_path: str, sim_name: str):
+    simulation_dir_path = simulations_dir_path / sim_name
+
+    __create_input_data(simulation_dir_path)
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9))
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9))
+
+
+def __create_input_data(simulation_dir_path: str):
+    input_dir_path = simulation_dir_path / INPUT_DIR_PATH
+
+    meshes = [
+        Sphere(
+            center=[0, 0, 0],
+            radius=1
+        )
+    ]
+    __create_test_properties(input_dir_path, meshes)
+
+
+def __create_field(sim_path: str, field_type: str, shape: Tuple):
+    field_dir_path = sim_path / FIELD_DIR_PATH[field_type]
+    field_dir_path.mkdir(parents=True, exist_ok=True)
+
+    file_path = field_dir_path / "e-field (f=297.2) [AC1].h5"
+    bounds = np.array([[-4, -4, -4], [4, 4, 4]])
+
+    create_grid_field(file_path, field_type, shape, bounds)
+
+
+@pytest.fixture(scope='session')
+def processed_batch_dir_path(data_dir_path):
+    batch_path = data_dir_path / PROCESSED_DIR_PATH / BATCH_DIR_NAME
+    batch_path.mkdir(parents=True, exist_ok=True)
+    return batch_path
 
 
 @pytest.fixture(scope='session')
@@ -25,7 +154,7 @@ def grid_simulation_path(tmp_path_factory):
     shutil.rmtree(simulation_path)
 
 
-def create_grid_field(path: str, type: str, shape: Tuple) -> None:
+def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float_]) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
 
@@ -38,7 +167,7 @@ def create_grid_field(path: str, type: str, shape: Tuple) -> None:
     shape : tuple
         Shape of the field
     """
-    with File(path, "w") as f:
+    with File(file_path, "w") as f:
         f.create_dataset(
             type,
             data=np.array(
@@ -46,9 +175,14 @@ def create_grid_field(path: str, type: str, shape: Tuple) -> None:
                 dtype=[('x', [('re', '<f4'), ('im', '<f4')]), ('y', [('re', '<f4'), ('im', '<f4')]), ('z', [('re', '<f4'), ('im', '<f4')])]
             )
         )
-        f.create_dataset("Mesh line x", data=np.zeros(shape[0]), dtype=np.float64)
-        f.create_dataset("Mesh line y", data=np.zeros(shape[1]), dtype=np.float64)
-        f.create_dataset("Mesh line z", data=np.zeros(shape[2]), dtype=np.float64)
+        min_bounds = bounds[0]
+        min_x, min_y, min_z = min_bounds
+        max_bounds = bounds[1]
+        max_x, max_y, max_z = max_bounds
+
+        f.create_dataset("Mesh line x", data=np.linspace(min_x, max_x, shape[0]), dtype=np.float64)
+        f.create_dataset("Mesh line y", data=np.linspace(min_y, max_y, shape[1]), dtype=np.float64)
+        f.create_dataset("Mesh line z", data=np.linspace(min_z, max_z, shape[2]), dtype=np.float64)
 
 
 @pytest.fixture(scope='session')
@@ -56,16 +190,20 @@ def e_field_grid_data(grid_simulation_path):
     field_path = grid_simulation_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
+    bounds = np.array([[-240, -220, -250], [240, 220, 250]])
+
     create_grid_field(
         field_path / "e-field (f=297.2) [AC1].h5",
         E_FIELD_DATABASE_KEY,
-        (121, 111, 126)
+        (121, 111, 126),
+        bounds
     )
 
     create_grid_field(
         field_path / "e-field (f=297.2) [AC2].h5",
         E_FIELD_DATABASE_KEY,
-        (121, 111, 126)
+        (121, 111, 126),
+        bounds
     )
 
     return grid_simulation_path
@@ -76,16 +214,20 @@ def h_field_grid_data(grid_simulation_path):
     field_path = grid_simulation_path / FIELD_DIR_PATH[H_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
+    bounds = np.array([[-240, -220, -250], [240, 220, 250]])
+
     create_grid_field(
         field_path / "h-field (f=297.2) [AC1].h5",
         H_FIELD_DATABASE_KEY,
-        (121, 111, 126)
+        (121, 111, 126),
+        bounds
     )
 
     create_grid_field(
         field_path / "h-field (f=297.2) [AC2].h5",
         H_FIELD_DATABASE_KEY,
-        (121, 111, 126)
+        (121, 111, 126),
+        bounds
     )
 
     return grid_simulation_path
