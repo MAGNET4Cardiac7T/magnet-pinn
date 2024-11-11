@@ -55,6 +55,7 @@ E_FIELD_OUT_KEY = "efield"
 H_FIELD_OUT_KEY = "hfield"
 SUBJECT_OUT_KEY = "subject"
 COORDINATES_OUT_KEY = "positions"
+MASKS_DATABASE_KEY = "masks"
 
 
 class Preprocessing(ABC):
@@ -513,7 +514,7 @@ class Preprocessing(ABC):
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
-            f.create_dataset("masks", data=self._dipoles_masks)
+            f.create_dataset(MASKS_DATABASE_KEY, data=self._dipoles_masks)
             
 
 class GridPreprocessing(Preprocessing):
