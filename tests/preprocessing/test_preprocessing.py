@@ -10,7 +10,7 @@ from tests.conftest import FIRST_SIM_NAME
 from magnet_pinn.preprocessing.preprocessing import (
     GridPreprocessing, PROCESSED_ANTENNA_DIR_PATH,
     PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
-    MASKS_DATABASE_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
+    ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
     FEATURES_OUT_KEY, SUBJECT_OUT_KEY
 )
 
@@ -46,7 +46,11 @@ def test_grid_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, pro
 
     assert len(list(listdir(out_simulations_dir))) == 1
 
-    check_central_no_shifted_complex_simulation(out_simulation_file)
+    with File(out_simulation_file) as f:
+        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_complex_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
 
 
 def check_antenna(out_dir: str):
@@ -57,10 +61,10 @@ def check_antenna(out_dir: str):
     assert out_antenna_file.exists()
 
     with File(out_antenna_file) as f:
-        assert list(f.keys()) == [MASKS_DATABASE_KEY]
-        masks = f[MASKS_DATABASE_KEY][:]
+        assert list(f.keys()) == [ANTENNA_MASKS_OUT_KEY]
+        masks = f[ANTENNA_MASKS_OUT_KEY][:]
         assert masks.shape == (9, 9, 9, 4)
-        assert masks.dtype == np.float64
+        assert masks.dtype == np.bool_
 
         received_mask = np.sum(masks[:, :, 3, :], axis=-1)
         expected_mask = np.zeros((9, 9))
@@ -69,39 +73,6 @@ def check_antenna(out_dir: str):
         expected_mask[0:3, 3:6] = 1
         expected_mask[6:9, 3:6] = 1
         assert np.equal(received_mask, expected_mask).all()
-
-
-def check_central_no_shifted_complex_simulation(out_simulation_file: str):
-    with File(out_simulation_file) as f:
-        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
-
-        expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.complex64)
-
-        e_field = f[E_FIELD_OUT_KEY][:]
-        assert e_field.shape == (3, 9, 9, 9, 1)
-        assert e_field.dtype == np.complex64
-        assert np.equal(e_field, expected_field).all()
-
-        h_field = f[H_FIELD_OUT_KEY][:]
-        assert h_field.shape == (3, 9, 9, 9, 1)
-        assert h_field.dtype == np.complex64
-        assert np.equal(h_field, expected_field).all()
-
-        subject_mask = f[SUBJECT_OUT_KEY][:]
-        assert subject_mask.shape == (9, 9, 9, 1)
-        assert subject_mask.dtype == np.float64
-        expected_subject_mask = np.zeros((9, 9), dtype=np.float64)
-        expected_subject_mask[3:6, 3:6] = 1
-        assert np.equal(subject_mask[:, :, 3, 0], expected_subject_mask).all()
-
-        features = f[FEATURES_OUT_KEY][:]
-        assert features.shape == (3, 9, 9, 9)
-        assert features.dtype == np.float32
-        expected_features = np.zeros((9, 9), dtype=np.float32)
-        expected_features[0:3, 3:6] = 1
-        expected_features[3:6, :] = 1
-        expected_features[6:9, 3:6] = 1
-        assert np.equal(features[0, :, :, 3], expected_features).all()
 
 
 def test_grid_float_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
@@ -135,44 +106,62 @@ def test_grid_float_one_simulation_valid_preprocessing(raw_batch_dir_path, proce
 
     assert len(list(listdir(out_simulations_dir))) == 1
 
-    check_central_no_shifted_float_simulation(out_simulation_file)
-
-
-def check_central_no_shifted_float_simulation(out_simulation_file: str):
     with File(out_simulation_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_float_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
 
-        expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.float32)
 
-        e_field = f[E_FIELD_OUT_KEY][:]
-        assert e_field.shape == (3, 9, 9, 9, 1)
-        assert e_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
-        re = e_field["re"]
-        assert np.equal(re, expected_field).all()
-        im = e_field["im"]
-        assert np.equal(im, expected_field).all()
+def check_complex_fields(f: File):
+    expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.complex64)
 
-        h_field = f[H_FIELD_OUT_KEY][:]
-        assert h_field.shape == (3, 9, 9, 9, 1)
-        assert h_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
-        re = h_field["re"]
-        assert np.equal(re, expected_field).all()
-        im = h_field["im"]
-        assert np.equal(im, expected_field).all()
+    e_field = f[E_FIELD_OUT_KEY][:]
+    assert e_field.shape == (3, 9, 9, 9, 1)
+    assert e_field.dtype == np.complex64
+    assert np.equal(e_field, expected_field).all()
 
-        subject_mask = f[SUBJECT_OUT_KEY][:]
-        assert subject_mask.shape == (9, 9, 9, 1)
-        assert subject_mask.dtype == np.float64
-        expected_subject_mask = np.zeros((9, 9), dtype=np.float64)
-        expected_subject_mask[3:6, 3:6] = 1
-        assert np.equal(subject_mask[:, :, 3, 0], expected_subject_mask).all()
+    h_field = f[H_FIELD_OUT_KEY][:]
+    assert h_field.shape == (3, 9, 9, 9, 1)
+    assert h_field.dtype == np.complex64
+    assert np.equal(h_field, expected_field).all()
 
-        features = f[FEATURES_OUT_KEY][:]
-        assert features.shape == (3, 9, 9, 9)
-        assert features.dtype == np.float32
-        expected_features = np.zeros((9, 9), dtype=np.float32)
-        expected_features[0:3, 3:6] = 1
-        expected_features[3:6, :] = 1
-        expected_features[6:9, 3:6] = 1
-        assert np.equal(features[0, :, :, 3], expected_features).all()
 
+def check_float_fields(f: File):
+    expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.float32)
+
+    e_field = f[E_FIELD_OUT_KEY][:]
+    assert e_field.shape == (3, 9, 9, 9, 1)
+    assert e_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+    re_e_field = e_field["re"]
+    assert np.equal(re_e_field, expected_field).all()
+    im_e_field = e_field["im"]
+    assert np.equal(im_e_field, expected_field).all()
+
+    h_field = f[H_FIELD_OUT_KEY][:]
+    assert h_field.shape == (3, 9, 9, 9, 1)
+    assert h_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+    re_h_field = h_field["re"]
+    assert np.equal(re_h_field, expected_field).all()
+    im_h_field = h_field["im"]
+    assert np.equal(im_h_field, expected_field).all()
+
+
+def check_central_subject_mask(f: File):
+    subject_mask = f[SUBJECT_OUT_KEY][:]
+    assert subject_mask.shape == (9, 9, 9, 1)
+    assert subject_mask.dtype == np.bool_
+    expected_subject_mask = np.zeros((9, 9), dtype=np.float64)
+    expected_subject_mask[3:6, 3:6] = 1
+    assert np.equal(subject_mask[:, :, 3, 0], expected_subject_mask).all()
+
+
+def check_central_features(f: File):
+    features = f[FEATURES_OUT_KEY][:]
+    assert features.shape == (3, 9, 9, 9)
+    assert features.dtype == np.float32
+    expected_features = np.zeros((9, 9), dtype=np.float32)
+    expected_features[0:3, 3:6] = 1
+    expected_features[3:6, :] = 1
+    expected_features[6:9, 3:6] = 1
+    assert np.equal(features[0, :, :, 3], expected_features).all()
