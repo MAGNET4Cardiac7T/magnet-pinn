@@ -5,19 +5,17 @@ DESCRIPTION
     This module contains classes for loading the magnetostatic simulation data.
 """
 import os
-import sys
 import h5py
 from dataclasses import dataclass, asdict
 from typing import Dict, Optional, Any, Tuple
+
 
 import glob
 import numpy as np
 import pandas as pd
 import numpy.typing as npt
-from einops import reduce, pack
+from einops import reduce, pack, einsum, repeat
 
-import queue
-import threading
 import random
 import torch
 
@@ -42,17 +40,10 @@ class DataItem:
     input: npt.NDArray[np.float32]
     subject: npt.NDArray[np.bool_]
     simulation: str
-    re_efield: Optional[npt.NDArray[np.float32]] = None
-    im_efield: Optional[npt.NDArray[np.float32]] = None
-    re_hfield: Optional[npt.NDArray[np.float32]] = None
-    im_hfield: Optional[npt.NDArray[np.float32]] = None
-    re_phase: Optional[npt.NDArray[np.float32]] = None
-    im_phase: Optional[npt.NDArray[np.float32]] = None
+    field: Optional[npt.NDArray[np.float32]] = None
     phase: Optional[npt.NDArray[np.float32]] = None
     mask: Optional[npt.NDArray[np.bool_]] = None
-    re_coils: Optional[npt.NDArray[np.float32]] = None
-    im_coils: Optional[npt.NDArray[np.float32]] = None
-    general_mask: Optional[npt.NDArray[np.bool_]] = None
+    coils: Optional[npt.NDArray[np.bool_]] = None
     dtype: Optional[str] = None,
     truncation_coefficients: Optional[npt.NDArray] = None
 
@@ -103,37 +94,29 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
             DataItem object with the loaded data
         """
         with h5py.File(simulation_path) as f:
-            re_efield, im_efield = self._read_field(f, E_FIELD_OUT_KEY)
-            re_hfield, im_hfield = self._read_field(f, H_FIELD_OUT_KEY)
-            input_features = self._read_input_features(f, FEATURES_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY)
-            subject = self._read_subject(f, SUBJECT_OUT_KEY)
-            coils = self.coils[:]
-            stacked_arr, _ = pack(
-                [subject, coils],
-                "x y z *"
-            )
-            stacked_arr = np.ascontiguousarray(stacked_arr)
-            general_mask = np.ascontiguousarray(reduce(
-                stacked_arr,
-                "x y z c -> x y z",
-                "max"
-            )).astype(np.bool_)
+            field = self._read_fields(f, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY)
+            input_features = f[FEATURES_OUT_KEY][:]
+            subject = f[SUBJECT_OUT_KEY][:]
 
             return DataItem(
                 input=input_features,
                 subject=np.max(subject, axis=-1),
                 simulation=self._get_simulation_name(simulation_path),
-                re_efield=re_efield,
-                im_efield=im_efield,
-                re_hfield=re_hfield,
-                im_hfield=im_hfield,
-                general_mask=general_mask,
+                field=field,
+                phase=np.zeros(self.num_coils),
+                mask=np.ones(self.num_coils),
+                coils=self.coils,
                 dtype=f.attrs[DTYPE_OUT_KEY],
                 truncation_coefficients=f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY]
             )
         
 
-    def _read_field(self, f: h5py.File, field_key: str) -> Dict:
+    def _read_fields(self, f: h5py.File, efield_key: str, hfield_key: str) -> npt.NDArray[np.float32]:
+        def read_field(field_key: str) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+            field_val = f[field_key][:]
+            if field_val.dtype.names is None:
+                return field_val.real, field_val.imag
+            return field_val["re"], field_val["im"]
         """
         A method for reading the field from the h5 file.
         Reads and splits the field into real and imaginary parts.
@@ -149,58 +132,17 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
             A dictionary with `re_field_key` and `im_field_key` keys
             with real and imaginary parts of the field
         """
-        field_val = f[field_key][:] 
-        if field_val.dtype.names is None:
-            return field_val.real, field_val.imag
+        re_efield, im_efield = read_field(efield_key)
+        re_hfield, im_hfield = read_field(hfield_key)
         
-        return field_val["re"], field_val["im"]
+        return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
     
-
-    def _read_input_features(self, f: h5py.File, features_key: str, truncation_key: str) -> npt.NDArray[np.float32]:
-        """
-        Method for reading the input features from the h5 file.
-
-        Parameters
-        ----------
-        f : h5py.File
-            h5 file descriptor
-        features_key : str
-            key for the features
-        truncation_key : str
-            key for the truncation coefficients
-
-        Returns
-        -------
-        npt.NDArray[np.float32]
-            input features array
-        """
-        features = f[features_key][:]
-        return features
-    
-    def _read_subject(self, f: h5py.File, subject_key: str) -> Tuple[npt.NDArray[np.bool_], npt.NDArray[np.int8]]:
-        """
-        Method for reading the subject from the h5 file.
-
-        Parameters
-        ----------
-        f : h5py.File
-            h5 file descriptor
-        subject_key : str
-            key for the subject
-
-        Returns
-        -------
-        Tuple[npt.NDArray[np.bool_], npt.NDArray[np.int8]]
-            subject array as bool (one-hot) and subject integer array (as labels)
-        """
-        subject = f[subject_key][:]
-        return subject
     
     def __iter__(self):
         random.shuffle(self.simulation_list)
         for simulation in self.simulation_list:
+            loaded_simulation = self._load_simulation(simulation)
             for i in range(self.phase_samples_per_simulation):
-                loaded_simulation = self._load_simulation(simulation)
                 augmented_simulation = self._augment_simulation(loaded_simulation, index=i)
                 yield augmented_simulation.__dict__
     
@@ -221,34 +163,16 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
             augmented DataItem object
         """
         phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype, phase_index=index)
-        re_efield_shift, im_efield_shift = self._phase_shift_field(
-            simulation.re_efield, simulation.im_efield, phase, mask
-        )
-        re_hfield_shift, im_hfield_shift = self._phase_shift_field(
-            simulation.re_hfield, simulation.im_hfield, phase, mask
-        )
-
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-
-        re_coils = self.coils * re_phase
-        im_coils = self.coils * im_phase
+        field_shifted = self._phase_shift_field(simulation.field, phase, mask)
         
         return DataItem(
             input=simulation.input,
             subject=simulation.subject,
             simulation=simulation.simulation,
-            re_efield=re_efield_shift,
-            im_efield=im_efield_shift,
-            re_hfield=re_hfield_shift,
-            im_hfield=im_hfield_shift,
-            re_phase=re_phase,
-            im_phase=im_phase,
+            field=field_shifted,
             phase=phase,
             mask=mask,
-            re_coils=re_coils,
-            im_coils=im_coils,
-            general_mask=simulation.general_mask,
+            coils=simulation.coils,
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients
         )
@@ -279,12 +203,15 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
         return phase.astype(dtype), mask.astype(np.bool_)    
     
     def _phase_shift_field(self, 
-                           re_field: npt.NDArray[np.float32], 
-                           im_field: npt.NDArray[np.float32], 
-                           re_phase: npt.NDArray[np.float32], 
-                           im_phase: npt.NDArray[np.float32]
-                           ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        re_field_shift = re_field * re_phase - im_field * im_phase
-        im_field_shift = re_field * re_phase + im_field * im_phase
-        
-        return re_field_shift, im_field_shift
+                           fields: npt.NDArray[np.float32], 
+                           phase: npt.NDArray[np.float32], 
+                           mask: npt.NDArray[np.float32], 
+                           ) -> npt.NDArray[np.float32]:
+        re_phase = np.cos(phase) * mask
+        im_phase = np.sin(phase) * mask
+        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
+        coeffs_im = np.stack((re_phase, im_phase), axis=0)
+        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
+        coeffs = repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
+        field_shift = einsum(fields, coeffs, 'hf reim fieldxyz x y z coils, hf reimout reim coils -> hf reimout fieldxyz x y z')
+        return field_shift
