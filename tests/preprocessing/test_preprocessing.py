@@ -41,7 +41,7 @@ def test_antenna_processing(raw_batch_dir_path, processed_batch_dir_path):
     check_antenna(out_dir)
 
 
-def test_grid_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
+def test_grid_central_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_batch_dir_path,
         processed_batch_dir_path,
@@ -76,7 +76,7 @@ def test_grid_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, pro
         check_central_subject_mask(f)
 
 
-def test_grid_complex_multiple_simulations_valid_preprcessing(raw_batch_dir_path, processed_batch_dir_path):
+def test_grid_central_complex_multiple_simulations_valid_preprcessing(raw_batch_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_batch_dir_path,
         processed_batch_dir_path,
@@ -142,7 +142,7 @@ def check_antenna(out_dir: str):
         assert np.equal(received_mask, expected_mask).all()
 
 
-def test_grid_float_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
+def test_grid_central_float_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_batch_dir_path,
         processed_batch_dir_path,
@@ -178,7 +178,7 @@ def test_grid_float_one_simulation_valid_preprocessing(raw_batch_dir_path, proce
         check_central_subject_mask(f)
 
 
-def test_grid_float_multiple_simulations_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
+def test_grid_central_float_multiple_simulations_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_batch_dir_path,
         processed_batch_dir_path,
