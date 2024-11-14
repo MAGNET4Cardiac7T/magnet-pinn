@@ -24,8 +24,10 @@ from magnet_pinn.preprocessing.preprocessing import (
 
 
 BATCH_DIR_NAME = "batch"
-FIRST_SIM_NAME = "children_0_tubes_0_id_0"
-SECOND_SIM_NAME = "children_0_tubes_0_id_1"
+CENTRAL_SPHERE_SIM_NAME = "children_0_tubes_0_id_0"
+CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
+SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
+SHIFTED_BOX_SIM_NAME = "children_0_tubes_0_id_3"
 
 @pytest.fixture(scope='session')
 def data_dir_path(tmp_path_factory):
@@ -108,9 +110,10 @@ def __create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
 def __create_simulations(batch_dir_path: str):
     sims_dir_path = batch_dir_path / INPUT_SIMULATIONS_DIR_PATH
 
-    __create_simulation_data(sims_dir_path, FIRST_SIM_NAME)
-    __create_simulation_data(sims_dir_path, SECOND_SIM_NAME, __create_box_input_data)
-
+    __create_simulation_data(sims_dir_path, CENTRAL_SPHERE_SIM_NAME)
+    __create_simulation_data(sims_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
+    __create_simulation_data(sims_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
+    __create_simulation_data(sims_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
 
 def __create_sphere_input_data(simulation_dir_path: str):
     input_dir_path = simulation_dir_path / INPUT_DIR_PATH
@@ -130,6 +133,27 @@ def __create_box_input_data(simulation_dir_path: str):
     meshes = [Box(bounds=np.array([
         [-1, -1, -1],
         [1, 1, 1]
+    ]))]
+    __create_test_properties(input_dir_path, meshes)
+
+
+def __create_shifted_sphere_input_data(simulation_dir_path: str):
+    input_dir_path = simulation_dir_path / INPUT_DIR_PATH
+
+    meshes = [
+        Sphere(
+            center=[1, 1, 0],
+            radius=1
+        )
+    ]
+    __create_test_properties(input_dir_path, meshes)
+
+
+def __create_shifted_box_input_data(simulation_dir_path: str):
+    input_dir_path = simulation_dir_path / INPUT_DIR_PATH
+    meshes = [Box(bounds=np.array([
+        [0, 0, -1],
+        [2, 2, 1]
     ]))]
     __create_test_properties(input_dir_path, meshes)
 
