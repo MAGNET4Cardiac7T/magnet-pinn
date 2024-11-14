@@ -4,7 +4,10 @@ import pytest
 import numpy as np
 from h5py import File
 
-from tests.conftest import FIRST_SIM_NAME
+from tests.conftest import (
+    CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
+    SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
+)
 
 
 from magnet_pinn.preprocessing.preprocessing import (
@@ -13,6 +16,29 @@ from magnet_pinn.preprocessing.preprocessing import (
     ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
     FEATURES_OUT_KEY, SUBJECT_OUT_KEY
 )
+
+def test_antenna_processing(raw_batch_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME]
+    )
+
+    case_name = f"grid_voxel_size_1_data_type_complex64"
+    out_dir = processed_batch_dir_path / case_name
+    assert out_dir.exists()
+
+    check_antenna(out_dir)
 
 
 def test_grid_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
@@ -29,24 +55,65 @@ def test_grid_complex_one_simulation_valid_preprocessing(raw_batch_dir_path, pro
         voxel_size=1
     )
     grid_preprocessor.process_simulations(
-        [FIRST_SIM_NAME]
+        [CENTRAL_SPHERE_SIM_NAME]
     )
 
     case_name = f"grid_voxel_size_1_data_type_complex64"
     out_dir = processed_batch_dir_path / case_name
-    assert out_dir.exists()
-
-    check_antenna(out_dir)
 
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     assert out_simulations_dir.exists()
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=FIRST_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert out_simulation_file.exists()
 
     assert len(list(listdir(out_simulations_dir))) == 1
 
     with File(out_simulation_file) as f:
+        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_complex_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
+
+
+def test_grid_complex_multiple_simulations_valid_preprcessing(raw_batch_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+    )
+
+    case_name = f"grid_voxel_size_1_data_type_complex64"
+    out_dir = processed_batch_dir_path / case_name
+
+    out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    assert out_simulations_dir.exists()
+
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert out_simulation_file.exists()
+
+    assert len(list(listdir(out_simulations_dir))) == 2
+
+    with File(out_simulation_file) as f:
+        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_complex_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
+
+    next_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    assert next_sim_file.exists()
+
+    with File(next_sim_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
         check_complex_fields(f)
         check_central_features(f)
@@ -89,24 +156,67 @@ def test_grid_float_one_simulation_valid_preprocessing(raw_batch_dir_path, proce
         voxel_size=1
     )
     grid_preprocessor.process_simulations(
-        [FIRST_SIM_NAME]
+        [CENTRAL_SPHERE_SIM_NAME]
     )
 
     case_name = f"grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     assert out_dir.exists()
 
-    check_antenna(out_dir)
+    out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    assert out_simulations_dir.exists()
+
+    assert len(list(listdir(out_simulations_dir))) == 1
+
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert out_simulation_file.exists()
+
+    with File(out_simulation_file) as f:
+        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_float_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
+
+
+def test_grid_float_multiple_simulations_valid_preprocessing(raw_batch_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+    )
+
+    case_name = f"grid_voxel_size_1_data_type_float32"
+    out_dir = processed_batch_dir_path / case_name
+    assert out_dir.exists()
 
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     assert out_simulations_dir.exists()
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=FIRST_SIM_NAME)
+    assert len(list(listdir(out_simulations_dir))) == 2
+
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert out_simulation_file.exists()
 
-    assert len(list(listdir(out_simulations_dir))) == 1
-
     with File(out_simulation_file) as f:
+        list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
+        check_float_fields(f)
+        check_central_features(f)
+        check_central_subject_mask(f)
+
+    another_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    assert another_sim_file.exists()
+
+    with File(another_sim_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
         check_float_fields(f)
         check_central_features(f)
