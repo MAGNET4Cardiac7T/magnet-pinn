@@ -1,6 +1,6 @@
 import shutil
 import pytest
-from typing import Tuple
+from typing import Tuple, Callable
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from magnet_pinn.preprocessing.preprocessing import (
 
 BATCH_DIR_NAME = "batch"
 FIRST_SIM_NAME = "children_0_tubes_0_id_0"
+SECOND_SIM_NAME = "children_0_tubes_0_id_1"
 
 @pytest.fixture(scope='session')
 def data_dir_path(tmp_path_factory):
@@ -108,17 +109,10 @@ def __create_simulations(batch_dir_path: str):
     sims_dir_path = batch_dir_path / INPUT_SIMULATIONS_DIR_PATH
 
     __create_simulation_data(sims_dir_path, FIRST_SIM_NAME)
+    __create_simulation_data(sims_dir_path, SECOND_SIM_NAME, __create_box_input_data)
 
 
-def __create_simulation_data(simulations_dir_path: str, sim_name: str):
-    simulation_dir_path = simulations_dir_path / sim_name
-
-    __create_input_data(simulation_dir_path)
-    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9))
-    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9))
-
-
-def __create_input_data(simulation_dir_path: str):
+def __create_sphere_input_data(simulation_dir_path: str):
     input_dir_path = simulation_dir_path / INPUT_DIR_PATH
 
     meshes = [
@@ -130,7 +124,29 @@ def __create_input_data(simulation_dir_path: str):
     __create_test_properties(input_dir_path, meshes)
 
 
-def __create_field(sim_path: str, field_type: str, shape: Tuple):
+def __create_box_input_data(simulation_dir_path: str):
+    input_dir_path = simulation_dir_path / INPUT_DIR_PATH
+
+    meshes = [Box(bounds=np.array([
+        [-1, -1, -1],
+        [1, 1, 1]
+    ]))]
+    __create_test_properties(input_dir_path, meshes)
+
+
+def __create_simulation_data(simulations_dir_path: str, sim_name: str, subject_func: Callable = __create_sphere_input_data):
+    simulation_dir_path = simulations_dir_path / sim_name
+
+    subject_func(simulation_dir_path)
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9))
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9))
+
+
+def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: float = 0):
+    """
+    Creates an `.h5` field file with file name defined by `file_name`, 
+    type of a field defined by `field_type`. The 
+    """
     field_dir_path = sim_path / FIELD_DIR_PATH[field_type]
     field_dir_path.mkdir(parents=True, exist_ok=True)
 
