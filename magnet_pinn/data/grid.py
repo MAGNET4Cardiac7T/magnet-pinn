@@ -164,6 +164,7 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
         """
         phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype, phase_index=index)
         field_shifted = self._phase_shift_field(simulation.field, phase, mask)
+        coils_shifted = self._phase_shift_coils(phase, mask)
         
         return DataItem(
             input=simulation.input,
@@ -172,7 +173,7 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
             field=field_shifted,
             phase=phase,
             mask=mask,
-            coils=simulation.coils,
+            coils=coils_shifted,
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients
         )
@@ -215,3 +216,14 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
         coeffs = repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
         field_shift = einsum(fields, coeffs, 'hf reim fieldxyz x y z coils, hf reimout reim coils -> hf reimout fieldxyz x y z')
         return field_shift
+
+
+    def _phase_shift_coils(self,
+                           phase: npt.NDArray[np.float32],
+                           mask: npt.NDArray[np.bool_]
+                           ) -> npt.NDArray[np.float32]:
+        re_phase = np.cos(phase) * mask
+        im_phase = np.sin(phase) * mask
+        coeffs = np.stack((re_phase, im_phase), axis=0)
+        coils_shift = einsum(self.coils, coeffs, 'x y z coils, reim coils -> reim x y z')
+        return coils_shift
