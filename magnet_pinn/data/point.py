@@ -27,6 +27,7 @@ from magnet_pinn.preprocessing.preprocessing import (
     FEATURES_OUT_KEY,
     E_FIELD_OUT_KEY,
     H_FIELD_OUT_KEY,
+    COORDINATES_OUT_KEY,
     SUBJECT_OUT_KEY,
     PROCESSED_SIMULATIONS_DIR_PATH,
     PROCESSED_ANTENNA_DIR_PATH,
@@ -41,6 +42,7 @@ class DataItem:
     subject: npt.NDArray[np.bool_]
     simulation: str
     field: Optional[npt.NDArray[np.float32]] = None
+    positions: Optional[npt.NDArray[np.float32]] = None
     phase: Optional[npt.NDArray[np.float32]] = None
     mask: Optional[npt.NDArray[np.bool_]] = None
     coils: Optional[npt.NDArray[np.bool_]] = None
@@ -103,12 +105,14 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
             field = self._read_fields(f, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY)
             input_features = f[FEATURES_OUT_KEY][:]
             subject = f[SUBJECT_OUT_KEY][:]
+            positions = f[COORDINATES_OUT_KEY][:]
 
             return DataItem(
                 input=input_features,
                 subject=np.max(subject, axis=-1),
                 simulation=self._get_simulation_name(simulation_path),
                 field=field,
+                positions=positions,
                 phase=np.zeros(self.num_coils),
                 mask=np.ones(self.num_coils),
                 coils=self.coils,
@@ -178,6 +182,7 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
             subject=simulation.subject[point_indices],
             simulation=simulation.simulation,
             field=field_shifted,
+            positions=simulation.positions[point_indices],
             phase=phase,
             mask=mask,
             coils=coils_shifted,
