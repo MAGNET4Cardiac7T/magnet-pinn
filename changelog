@@ -17,3 +17,4 @@
 - Fix masks when loading data
 - Data loaded in same dtype as saved
 - fast grid dataloader
+- fast point dataloader
