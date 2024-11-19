@@ -1,0 +1,20 @@
+# changelog
+
+## [0.0.1] -> Mar 28, 2024
+- setup project
+
+## [0.0.2] -> Aug 09, 2024
+- preprocessing module
+- grid preprocessing
+- graph preprocessing
+
+## [0.0.3] -> Oct 01, 2024
+- dataloader module
+- preprocessing precision (float16, float32, float64, complex64, complex128)
+- preprocessing normalization (min-max, z-score, loading)
+
+## [0.0.4] -> 
+- Fix masks when loading data
+- Data loaded in same dtype as saved
+- fast grid dataloader
+- fast point dataloader
