@@ -49,7 +49,7 @@ iterator = MagnetGridIterator(
 )
 dataloader = DataLoader(iterator, batch_size=2, worker_init_fn=worker_init_fn)
 
-net = UNet3D(5, 12, is_segmentation=False, f_maps=8)
+net = UNet3D(5, 12, is_segmentation=False, f_maps=16)
 model = MAGNETPINN(net)
 
 trainer = pl.Trainer(max_epochs=10, devices=[0], accelerator="gpu")
