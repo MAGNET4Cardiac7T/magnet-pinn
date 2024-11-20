@@ -1,31 +1,29 @@
 import torch
-import numpy as np
 import tqdm
+import einops
 
 from abc import ABC, abstractmethod
+from typing import Iterable
+from itertools import zip_longest
 
+import json
+import os
+
+ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 class Normalizer(ABC, torch.nn.Module):
     def __init__(self,
-                 params: dict = {},
-                 key: str = "input",
-                 axis: int = 0,
-                 ndims: int = 4):
+                 params: dict = {}):
         super().__init__()
         
         self._params = params
         self.counter = 0
-        self._expand_params()
-            
-        self.key = key
-        self.axis = axis
-        self.ndims = ndims
     
-    def forward(self, x):
-        return self._normalize(x)
+    def forward(self, x, axis: int = 1):
+        return self._normalize(x, axis=axis)
     
-    def reverse(self,x):
-        return self._denormalize(x)
+    def reverse(self,x, axis: int = 1):
+        return self._denormalize(x, axis=axis)
     
     @abstractmethod
     def _normalize(self, x):
@@ -43,72 +41,104 @@ class Normalizer(ABC, torch.nn.Module):
     def _update_params(self, x):
         raise NotImplementedError
     
-    def fit_params(self, dataset, verbose: bool = True) -> None:
+    def fit_params(self, 
+                   dataset: Iterable,
+                   axis: int = 0,
+                   key: str = 'input',
+                   verbose: bool = True,
+                   ) -> None:
         self._reset_params()
         self.counter = 0
         iterator = tqdm.tqdm(dataset) if verbose else dataset
 
         for batch in iterator:
-            x = batch[self.key]
-            self._update_params(x)
+            x = batch[key]
+            self._update_params(x, axis=axis)
             self.counter += 1
-            
-        self._expand_params()
-
-    def load_from_numpy(self, path: str) -> None:
-        self._params = np.load(path, allow_pickle=True).item()
-        self._expand_params()
-            
     
-    @property
-    def axes(self):
-        return tuple(i for i in range(self.ndims) if i != self.axis)
+    def get_reduction_axes(self, ndims, axis):
+        return tuple(i for i in range(ndims) if i != axis)
     
     @property
     def params(self):
         return self._params
     
-    def _expand_params(self):
-        for key, value in self.params.items():
-            self._params[key] = np.expand_dims(value, axis=self.axes)
+    def _expand_params(self, params_dict: dict = None, axis: int = 0, ndims: int = 5):
+        if params_dict is None:
+            params_dict = self._params
 
-    def get_params(self):
-        params_dict = {}
-        for key, value in self.params.items():
-            params_dict[key] = np.squeeze(value, axis=self.axes)
-
-        return params_dict
+        expanded_params = {}
+        for key, value in params_dict.items():
+            pattern = 'c -> ' + ' '.join(['1'] * axis) + ' c ' + ' '.join(['1'] * (ndims - axis - 1))
+            expanded_params[key] = einops.rearrange(value, pattern)
+            
+        return expanded_params
     
+    def _cast_params(self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device('cpu')):
+        if params_dict is None:
+            params_dict = self._params
+
+        casted_params = {}
+        for key, value in params_dict.items():
+            casted_params[key] = torch.tensor(value, dtype=dtype, device=device)
+        
+        return casted_params
+    
+    def save_params(self, path: str):
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        with open(path, 'w') as f:
+            json.dump(self._params, f)
+
+    def load_params(self, path: str):
+        with open(path, 'r') as f:
+            self._params = json.load(f)
     
 class MinMaxNormalizer(Normalizer):
-    def _normalize(self, x):
-        return (x - self.params['x_min']) / (self.params['x_max'] - self.params['x_min'])
+    def _normalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        return (x - params['x_min']) / (params['x_max'] - params['x_min'])
     
-    def _denormalize(self, x):
-        return x * (self.params['x_max'] - self.params['x_min']) + self.params['x_min']
+    def _denormalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        return x * (params['x_max'] - params['x_min']) + params['x_min']
     
     def _reset_params(self):
-        self.params["x_min"] = np.inf
-        self.params["x_max"] = -np.inf
+        self._params["x_min"] = [float('inf')]
+        self._params["x_max"] = [float('-inf')]
 
-    def _update_params(self, x):
-        self.params['x_min'] = np.minimum(self.params['x_min'], x.min(axis=self.axes))
-        self.params['x_max'] = np.maximum(self.params['x_max'], x.max(axis=self.axes))
+    def _update_params(self, x, axis: int = 0):
+        pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
+        cur_min = einops.reduce(x, pattern, reduction='min')
+        cur_max = einops.reduce(x, pattern, reduction='max')
+        self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
+        self._params['x_max'] = [max(prev, cur) for prev, cur in zip_longest(self._params['x_max'], cur_max, fillvalue=float('-inf'))]
     
 
 class StandardNormalizer(Normalizer):
-    def _normalize(self, x):
-        return (x - self.params['x_mean']) / self.params['x_var']**0.5
+    def _normalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
+        return (x - params['x_mean']) / params['x_var']**0.5
     
-    def _denormalize(self, x):
-        return x * self.params['x_var']**0.5 + self.params['x_mean']
+    def _denormalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
+        return x * params['x_var']**0.5 + params['x_mean']
     
     def _reset_params(self):
-        self.params["x_mean"] = 0
-        self.params["x_mean_sq"] = 0
-        self.params["x_var"] = 1
-        
-    def _update_params(self, x):
-        self.params["x_mean"] = self.counter / (self.counter + 1) * self.params["x_mean"] + x.mean(axis=self.axes) / (self.counter + 1)
-        self.params["x_mean_sq"] = self.counter / (self.counter+ 1) * self.params["x_mean_sq"] + (x**2).mean(axis=self.axes) / (self.counter + 1)
-        self.params["x_var"] = self.params["x_mean_sq"] - self.params["x_mean"]**2
+        self._params["x_mean"] = [0]
+        self._params["x_mean_sq"] = [0]
+
+    def _update_params(self, x, axis: int = 0):
+        def mean_update(prev_avg, cur_avg, counter):
+            return counter / (counter + 1) * prev_avg + cur_avg / (counter + 1)
+        pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
+        cur_mean = einops.reduce(x, pattern, reduction='mean')
+        cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean')
+        self._params["x_mean"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean"], cur_mean, fillvalue=0)]
+        self._params["x_mean_sq"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)]
