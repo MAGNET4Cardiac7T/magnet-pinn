@@ -850,6 +850,9 @@ class PointPreprocessing(Preprocessing):
         Antenna feature dataframe including dipoles meshes files
     dipoles_meshes : list
         A list of dipoles meshes
+    coil_thick_coef : float | None
+        Controlls the thickness of coils by controlling the part of
+        vertex normals which are added to the vertices
     _dipoles_features : np.array
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
@@ -862,7 +865,53 @@ class PointPreprocessing(Preprocessing):
     process_simulations(simulation_names: Union[List[str], None] = None)
         Main processing method. It processes all simulations in the batch
     """
+    coil_thick_coef = None
     _coordinates = None
+
+    def __init__(self, 
+                 batch_dir_path: str, 
+                 output_dir_path: str, 
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Union[float, None] = None):
+        """
+        Initializes the point preprocessing object.
+
+        Parameters
+        ----------
+        batch_dir_path : str
+            Path to the batch directory
+        output_dir_path : str
+            Path to the output directory
+        field_dtype : np.dtype
+            type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering 
+            of the coils; only the values >0 can be used
+        """
+        self.coil_thick_coef = coil_thick_coef
+        super().__init__(batch_dir_path, output_dir_path, field_dtype)
+
+        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
+            raise Exception("Coil thick coef should be greater than 0")
+        elif self.coil_thick_coef is not None:
+            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
+
+    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Makes coils mesh thicker.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+
+        Returns
+        -------
+        Trimesh:
+            a thicker mesh
+        """
+        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
+        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
 
     @property
     def coordinates(self):
