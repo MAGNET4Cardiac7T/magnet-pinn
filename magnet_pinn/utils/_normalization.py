@@ -3,7 +3,8 @@ import tqdm
 import einops
 
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Iterable, cast
+from typing_extensions import Self
 from itertools import zip_longest
 
 import json
@@ -11,7 +12,7 @@ import os
 
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
-class Normalizer(ABC, torch.nn.Module):
+class Normalizer(torch.nn.Module):
     def __init__(self,
                  params: dict = {}):
         super().__init__()
@@ -84,15 +85,17 @@ class Normalizer(ABC, torch.nn.Module):
         
         return casted_params
     
-    def save_params(self, path: str):
+    def save_as_json(self, path: str):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         with open(path, 'w') as f:
             json.dump(self._params, f)
 
-    def load_params(self, path: str):
+    @classmethod
+    def load_from_json(cls, path: str) -> Self:
         with open(path, 'r') as f:
-            self._params = json.load(f)
+            params = json.load(f)    
+        return cast(Self, cls(params=params))
     
 class MinMaxNormalizer(Normalizer):
     def _normalize(self, x, axis: int = 0):

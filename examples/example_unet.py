@@ -68,10 +68,8 @@ dataloader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=w
 # Create the model
 net = UNet3D(5, 12, f_maps=64)
 
-target_normalizer = StandardNormalizer.load_from_json()
-input_normalizer = StandardNormalizer()
-target_normalizer.load_params(f"{BASE_DIR}/normalization/target_normalization.json")
-input_normalizer.load_params(f"{BASE_DIR}/normalization/input_normalization.json")
+target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
+input_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/input_normalization.json")
 
 model = MAGNETPINN(net, target_normalizer, input_normalizer)
 

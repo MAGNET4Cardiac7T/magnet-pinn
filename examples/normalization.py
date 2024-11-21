@@ -28,4 +28,4 @@ iterator = Iterator("data/processed/train/grid_voxel_size_4_data_type_float32")
 
 input_normalizer = StandardNormalizer()
 input_normalizer.fit_params(iterator, key='input', axis=0)
-input_normalizer.save_params("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/input_normalization.json")
+input_normalizer.save_as_json("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/input_normalization.json")
