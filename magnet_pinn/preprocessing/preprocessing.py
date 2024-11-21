@@ -13,7 +13,7 @@ CLASSES
 import os.path as osp
 from os import makedirs, listdir
 from abc import ABC, abstractmethod
-from typing import Tuple, List, Union
+from typing import Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -95,7 +95,7 @@ class Preprocessing(ABC):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
         Initializes the preprocessing object
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
 
@@ -191,7 +191,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: Union[List[str], None] = None):
+    def process_simulations(self, simulation_names: Optional[List[str]] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -608,7 +608,7 @@ class GridPreprocessing(Preprocessing):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, field_dtype: np.dtype = np.complex64)
         Initializes the grid preprocessing object.
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
     def __init__(
@@ -862,7 +862,7 @@ class PointPreprocessing(Preprocessing):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
         Initializes the point preprocessing object.
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
     coil_thick_coef = None
@@ -872,7 +872,7 @@ class PointPreprocessing(Preprocessing):
                  batch_dir_path: str, 
                  output_dir_path: str, 
                  field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Union[float, None] = None):
+                 coil_thick_coef: Optional[float] = None):
         """
         Initializes the point preprocessing object.
 
