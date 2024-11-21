@@ -22,3 +22,4 @@
 - normalization saving as json
 - add unet model
 - add unet example
+- add tests for the preprocessing module
