@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.3"
+version = "0.0.4"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
