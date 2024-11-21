@@ -23,3 +23,6 @@
 - add unet model
 - add unet example
 - add tests for the preprocessing module
+
+## [0.0.5] -> Nov 21, 2024
+- Hotfix for unet model
