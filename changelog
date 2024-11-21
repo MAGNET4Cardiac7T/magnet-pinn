@@ -13,7 +13,7 @@
 - preprocessing precision (float16, float32, float64, complex64, complex128)
 - preprocessing normalization (min-max, z-score, loading)
 
-## [0.0.4] -> 
+## [0.0.4] -> Nov 21, 2024
 - Fix masks when loading data
 - Data loaded in same dtype as saved
 - fast grid dataloader
