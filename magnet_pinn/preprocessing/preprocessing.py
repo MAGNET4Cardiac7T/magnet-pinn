@@ -1027,7 +1027,8 @@ class PointPreprocessing(Preprocessing):
 
         In point preprocessing we check each point if it is inside the mesh.
         That is why we calculate the fast winding number and set a threshold 
-        to check if is closer to 0 or 1.
+        to check if is closer to 0 or 1. It happens that point can have a value
+        close to 0.5 and it is bigger than 0.5, so we have to check both conditions.
 
         Parameters
         ----------
@@ -1039,11 +1040,16 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-        return fast_winding_number_for_meshes(
+        fast_winding_number = fast_winding_number_for_meshes(
             mesh.vertices.astype(np.float32),
             mesh.faces.astype(np.int32),
             self.coordinates.astype(np.float32)
-        ) > 0.5
+        )
+
+        return np.logical_and(
+            ~ np.isclose(fast_winding_number, 0.5),
+            fast_winding_number > 0.5
+        )
     
     @property
     def _masks_stack_pattern(self) -> str:
