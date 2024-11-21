@@ -7,20 +7,22 @@ import einops
 import pytorch_lightning as pl
 
 import torch
-from torch import nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
-import numpy as np
 
 
 class MAGNETPINN(pl.LightningModule):
-    def __init__(self, net: torch.nn.Module):
+    def __init__(self, net: torch.nn.Module,
+                 target_normalizer: StandardNormalizer,
+                 input_normalizer: StandardNormalizer,
+                 subject_lambda: float = 10.0,
+                 space_lambda: float = 0.01):
         super(MAGNETPINN, self).__init__()
         self.net = net
-        self.target_normalizer = StandardNormalizer()
-        self.input_normalizer = StandardNormalizer()
-        self.target_normalizer.load_params("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/target_normalization.json")
-        self.input_normalizer.load_params("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/input_normalization.json")
+        self.target_normalizer = target_normalizer
+        self.input_normalizer = input_normalizer
+
+        self.subject_lambda = subject_lambda
+        self.space_lambda = space_lambda
 
     def forward(self, x):
         return self.net(x)
@@ -35,23 +37,44 @@ class MAGNETPINN(pl.LightningModule):
         y = self.target_normalizer(y)
 
         y_hat = self(x)
-        loss = F.mse_loss(y_hat, y)
-        self.log('train_loss', loss, prog_bar=True)
-        return loss
+        
+        # calculate loss
+        mse = torch.mean((y_hat - y) ** 2, dim=1)
+        subject_loss = torch.mean(mse * subject_mask)
+        space_loss = torch.mean(mse * (~subject_mask))
+        loss = subject_loss*self.subject_lambda + space_loss*self.space_lambda
 
+        self.log('train_loss', loss, prog_bar=True)
+        self.log('subject_loss', subject_loss, prog_bar=True)
+        self.log('space_loss', space_loss, prog_bar=True)
+
+        return loss
+        
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
-    
+
+
+# Set the base directory where the preprocessed data is stored
+BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
+
+# Create the data loader
 iterator = MagnetGridIterator(
-    "data/processed/train/grid_voxel_size_4_data_type_float32",
+    BASE_DIR,
     phase_samples_per_simulation=100,
 )
-dataloader = DataLoader(iterator, batch_size=2, worker_init_fn=worker_init_fn)
+dataloader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)
 
-net = UNet3D(5, 12, is_segmentation=False, f_maps=16)
-model = MAGNETPINN(net)
+# Create the model
+net = UNet3D(5, 12, f_maps=64)
 
-trainer = pl.Trainer(max_epochs=10, devices=[0], accelerator="gpu")
+target_normalizer = StandardNormalizer.load_from_json()
+input_normalizer = StandardNormalizer()
+target_normalizer.load_params(f"{BASE_DIR}/normalization/target_normalization.json")
+input_normalizer.load_params(f"{BASE_DIR}/normalization/input_normalization.json")
 
+model = MAGNETPINN(net, target_normalizer, input_normalizer)
+
+# Train the model
+trainer = pl.Trainer(max_epochs=20, devices=[0], accelerator="gpu")
 trainer.fit(model, dataloader)
