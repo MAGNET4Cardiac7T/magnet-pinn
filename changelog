@@ -18,3 +18,7 @@
 - Data loaded in same dtype as saved
 - fast grid dataloader
 - fast point dataloader
+- fix normalization torch/numpy incompatibility
+- normalization saving as json
+- add unet model
+- add unet example
