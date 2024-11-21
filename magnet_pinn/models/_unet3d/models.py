@@ -19,16 +19,12 @@ class AbstractUNet(nn.Module):
             or BCEWithLogitsLoss (two-class) respectively)
         f_maps (int, tuple): number of feature maps at each level of the encoder; if it's an integer the number
             of feature maps is given by the geometric progression: f_maps ^ k, k=1,2,3,4
-        final_sigmoid (bool): if True apply element-wise nn.Sigmoid after the final 1x1 convolution,
-            otherwise apply nn.Softmax. In effect only if `self.training == False`, i.e. during validation/testing
         basic_module: basic model for the encoder/decoder (DoubleConv, ResNetBlock, ....)
         layer_order (string): determines the order of layers in `SingleConv` module.
             E.g. 'crg' stands for GroupNorm3d+Conv3d+ReLU. See `SingleConv` for more info
         num_groups (int): number of groups for the GroupNorm
         num_levels (int): number of levels in the encoder/decoder path (applied only if f_maps is an int)
             default: 4
-        is_segmentation (bool): if True and the model is in eval mode, Sigmoid/Softmax normalization is applied
-            after the final convolution; if False (regression problem) the normalization layer is skipped
         conv_kernel_size (int or tuple): size of the convolving kernel in the basic_module
         pool_kernel_size (int or tuple): the size of the window
         conv_padding (int or tuple): add zero-padding added to all three sides of the input
@@ -42,8 +38,8 @@ class AbstractUNet(nn.Module):
         is3d (bool): if True the model is 3D, otherwise 2D, default: True
     """
 
-    def __init__(self, in_channels, out_channels, final_sigmoid, basic_module, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=4, is_segmentation=True, conv_kernel_size=3, pool_kernel_size=2,
+    def __init__(self, in_channels, out_channels, basic_module, f_maps=64, layer_order='gcr',
+                 num_groups=8, num_levels=4, conv_kernel_size=3, pool_kernel_size=2,
                  conv_padding=1, conv_upscale=2, upsample='default', dropout_prob=0.1, is3d=True):
         super(AbstractUNet, self).__init__()
 
@@ -70,16 +66,7 @@ class AbstractUNet(nn.Module):
             self.final_conv = nn.Conv3d(f_maps[0], out_channels, 1)
         else:
             self.final_conv = nn.Conv2d(f_maps[0], out_channels, 1)
-
-        if is_segmentation:
-            # semantic segmentation problem
-            if final_sigmoid:
-                self.final_activation = nn.Sigmoid()
-            else:
-                self.final_activation = nn.Softmax(dim=1)
-        else:
-            # regression problem
-            self.final_activation = None
+            
 
     def forward(self, x):
         # encoder part
@@ -100,11 +87,6 @@ class AbstractUNet(nn.Module):
             x = decoder(encoder_features, x)
 
         x = self.final_conv(x)
-
-        # apply final_activation (i.e. Sigmoid or Softmax) only during prediction.
-        # During training the network outputs logits
-        if not self.training and self.final_activation is not None:
-            x = self.final_activation(x)
 
         return x
 
