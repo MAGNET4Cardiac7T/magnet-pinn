@@ -22,7 +22,7 @@ class Normalizer(ABC, torch.nn.Module):
     def forward(self, x, axis: int = 1):
         return self._normalize(x, axis=axis)
     
-    def reverse(self,x, axis: int = 1):
+    def inverse(self,x, axis: int = 1):
         return self._denormalize(x, axis=axis)
     
     @abstractmethod
