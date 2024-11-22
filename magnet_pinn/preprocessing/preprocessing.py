@@ -13,7 +13,7 @@ CLASSES
 import os.path as osp
 from os import makedirs, listdir
 from abc import ABC, abstractmethod
-from typing import Tuple, List, Union
+from typing import Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -95,7 +95,7 @@ class Preprocessing(ABC):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
         Initializes the preprocessing object
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
 
@@ -191,7 +191,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: Union[List[str], None] = None):
+    def process_simulations(self, simulation_names: Optional[List[str]] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -608,7 +608,7 @@ class GridPreprocessing(Preprocessing):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, voxel_size: int = STANDARD_VOXEL_SIZE, field_dtype: np.dtype = np.complex64)
         Initializes the grid preprocessing object.
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
     def __init__(
@@ -850,6 +850,10 @@ class PointPreprocessing(Preprocessing):
         Antenna feature dataframe including dipoles meshes files
     dipoles_meshes : list
         A list of dipoles meshes
+    coil_thick_coef : float | None
+        Controlls the thickness of coils by controlling the part of
+        vertex normals which are added to the vertices. By default the value is 1.0.
+        To switch it off and use a standard mesh set it None.
     _dipoles_features : np.array
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
@@ -859,10 +863,56 @@ class PointPreprocessing(Preprocessing):
     -------
     __init__(batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64)
         Initializes the point preprocessing object.
-    process_simulations(simulation_names: Union[List[str], None] = None)
+    process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
+    coil_thick_coef = None
     _coordinates = None
+
+    def __init__(self, 
+                 batch_dir_path: str, 
+                 output_dir_path: str, 
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Optional[float] = 1.0):
+        """
+        Initializes the point preprocessing object.
+
+        Parameters
+        ----------
+        batch_dir_path : str
+            Path to the batch directory
+        output_dir_path : str
+            Path to the output directory
+        field_dtype : np.dtype
+            type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering 
+            of the coils; only the values >0 can be used; to switch it off set it None
+        """
+        self.coil_thick_coef = coil_thick_coef
+        super().__init__(batch_dir_path, output_dir_path, field_dtype)
+
+        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
+            raise Exception("Coil thick coef should be greater than 0")
+        elif self.coil_thick_coef is not None:
+            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
+
+    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Makes coils mesh thicker.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+
+        Returns
+        -------
+        Trimesh:
+            a thicker mesh
+        """
+        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
+        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
 
     @property
     def coordinates(self):
@@ -978,7 +1028,8 @@ class PointPreprocessing(Preprocessing):
 
         In point preprocessing we check each point if it is inside the mesh.
         That is why we calculate the fast winding number and set a threshold 
-        to check if is closer to 0 or 1.
+        to check if is closer to 0 or 1. It happens that point can have a value
+        close to 0.5 and it is bigger than 0.5, so we have to check both conditions.
 
         Parameters
         ----------
@@ -990,11 +1041,16 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-        return fast_winding_number_for_meshes(
+        fast_winding_number = fast_winding_number_for_meshes(
             mesh.vertices.astype(np.float32),
             mesh.faces.astype(np.int32),
             self.coordinates.astype(np.float32)
-        ) > 0.5
+        )
+
+        return np.logical_and(
+            ~ np.isclose(fast_winding_number, 0.5),
+            fast_winding_number > 0.5
+        )
     
     @property
     def _masks_stack_pattern(self) -> str:
