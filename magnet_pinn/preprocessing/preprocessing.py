@@ -852,7 +852,8 @@ class PointPreprocessing(Preprocessing):
         A list of dipoles meshes
     coil_thick_coef : float | None
         Controlls the thickness of coils by controlling the part of
-        vertex normals which are added to the vertices
+        vertex normals which are added to the vertices. By default the value is 1.0.
+        To switch it off and use a standard mesh set it None.
     _dipoles_features : np.array
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
@@ -872,7 +873,7 @@ class PointPreprocessing(Preprocessing):
                  batch_dir_path: str, 
                  output_dir_path: str, 
                  field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Optional[float] = None):
+                 coil_thick_coef: Optional[float] = 1.0):
         """
         Initializes the point preprocessing object.
 
@@ -886,7 +887,7 @@ class PointPreprocessing(Preprocessing):
             type of saving field data
         coil_thick_coef : float | None
             colis are mostly flat, this parameters controlls thickering 
-            of the coils; only the values >0 can be used
+            of the coils; only the values >0 can be used; to switch it off set it None
         """
         self.coil_thick_coef = coil_thick_coef
         super().__init__(batch_dir_path, output_dir_path, field_dtype)
