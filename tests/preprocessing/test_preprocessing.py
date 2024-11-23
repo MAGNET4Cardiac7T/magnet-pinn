@@ -1,21 +1,22 @@
 from os import listdir
+from pathlib import Path
 
 import pytest
 import numpy as np
 from h5py import File
 
-from tests.conftest import (
+from tests.preprocessing.conftest import (
     CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
     SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
 )
-
-
 from magnet_pinn.preprocessing.preprocessing import (
-    GridPreprocessing, PROCESSED_ANTENNA_DIR_PATH,
-    PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
-    ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
-    FEATURES_OUT_KEY, SUBJECT_OUT_KEY
+    GridPreprocessing, PointPreprocessing, 
+    PROCESSED_ANTENNA_DIR_PATH, PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
+    ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, 
+    SUBJECT_OUT_KEY, COORDINATES_OUT_KEY, DTYPE_OUT_KEY, 
+    TRUNCATION_COEFFICIENTS_OUT_KEY
 )
+
 
 def test_antenna_processing(raw_batch_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
@@ -337,3 +338,211 @@ def check_shifted_features(f: File):
     assert np.equal(features[0, :, :, 3], expected_features).all()
     assert np.equal(features[0, :, :, 4], expected_features).all()
     assert np.equal(features[0, :, :, 5], expected_features).all()
+
+
+def test_pointcloud_float_out_dirs(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    out_case_dir = processed_batch_dir_path / "point_data_type_float32"
+    assert out_case_dir.exists()
+
+
+def test_pointcloud_complex_out_dirs(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    out_case_dir = processed_batch_dir_path / "point_data_type_complex64"
+    assert out_case_dir.exists()
+
+
+def test_pointcloud_antenna(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    This testcase checks creation antenna milestones and coils mask correction.
+    In details it sequentially checks the directory structure, the existence of 
+    the antenna file, after opening the h5 file it checks the databases keys,
+    shgapes, datatypes and the correctness of the masks.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    out_case_dir = processed_batch_dir_path / "point_data_type_float32"
+    out_antenna_dir = out_case_dir / PROCESSED_ANTENNA_DIR_PATH
+    supposed_antenna_dir = preprop.out_antenna_dir_path
+    assert supposed_antenna_dir == str(out_antenna_dir)
+    assert out_antenna_dir.exists()
+
+    antenna_file = out_antenna_dir / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+
+    with File(antenna_file) as f:
+        assert set(f.keys()) == set([ANTENNA_MASKS_OUT_KEY])
+        masks = f[ANTENNA_MASKS_OUT_KEY][:]
+        assert masks.shape == (729, 4)
+        assert masks.dtype == np.bool_
+
+        assert len(np.where(masks)[0]) == 108
+
+
+def test_pointcloud_general_structure_for_one_float_simulation(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    This testcase checks creating general structure of directories and files for float data type.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    out_case_dir = processed_batch_dir_path / "point_data_type_float32"
+    out_sim_dir = out_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    preprop.out_simmulations_dir_path == str(out_sim_dir)
+    assert out_sim_dir.exists()
+
+    exact_sim_file = out_sim_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert exact_sim_file.exists()
+
+
+def test_pointcloud_general_structure_for_one_complex_simulation(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    This testcase checks creating general structure of directories and files for complex data type.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    out_case_dir = processed_batch_dir_path / "point_data_type_complex64"
+    out_sim_dir = out_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    preprop.out_simmulations_dir_path == str(out_sim_dir)
+    assert out_sim_dir.exists()
+
+    exact_sim_file = out_sim_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert exact_sim_file.exists()
+
+
+def test_pointcloud_general_structure_for_multiple_simulations(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    This testcase checks creating general structure of directories and files for multiple simulations.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME,
+        CENTRAL_BOX_SIM_NAME
+    ])
+
+    out_sim_dir = preprop.out_simmulations_dir_path
+    first_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert first_sim_file.exists()
+
+    second_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    assert second_sim_file.exists()
+
+
+def test_pointcloud_resulting_keys(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim_file) as f:
+        assert set(f.keys()) == set(
+            [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY, COORDINATES_OUT_KEY]
+        )
+
+        assert set(f.attrs.keys()) == set([DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY])
+
+
+def test_pointcloud_resulting_dtype_values_for_float(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        assert efield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert hfield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert features.dtype == np.float32
+        dtype = f.attrs[DTYPE_OUT_KEY]
+        assert isinstance(dtype, str)
+        assert dtype == "float32"
+
+
+def test_pointcloud_resulting_dtype_values_for_complex(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        assert efield.dtype == np.complex64
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert hfield.dtype == np.complex64
+
+        dtype = f.attrs[DTYPE_OUT_KEY]
+        assert isinstance(dtype, str)
+        assert dtype == "complex64"
