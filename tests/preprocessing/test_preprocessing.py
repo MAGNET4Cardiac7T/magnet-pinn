@@ -14,7 +14,7 @@ from magnet_pinn.preprocessing.preprocessing import (
     PROCESSED_ANTENNA_DIR_PATH, PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
     ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, 
     SUBJECT_OUT_KEY, COORDINATES_OUT_KEY, DTYPE_OUT_KEY, 
-    TRUNCATION_COEFFICIENTS_OUT_KEY
+    TRUNCATION_COEFFICIENTS_OUT_KEY, COORDINATES_OUT_KEY
 )
 
 
@@ -419,8 +419,9 @@ def test_pointcloud_general_structure_for_one_float_simulation(raw_batch_dir_pat
 
     out_case_dir = processed_batch_dir_path / "point_data_type_float32"
     out_sim_dir = out_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
-    preprop.out_simmulations_dir_path == str(out_sim_dir)
+    assert preprop.out_simmulations_dir_path == str(out_sim_dir)
     assert out_sim_dir.exists()
+    assert len(list(listdir(out_sim_dir))) == 1
 
     exact_sim_file = out_sim_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert exact_sim_file.exists()
@@ -444,6 +445,7 @@ def test_pointcloud_general_structure_for_one_complex_simulation(raw_batch_dir_p
     out_sim_dir = out_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
     preprop.out_simmulations_dir_path == str(out_sim_dir)
     assert out_sim_dir.exists()
+    assert len(list(listdir(out_sim_dir))) == 1
 
     exact_sim_file = out_sim_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert exact_sim_file.exists()
@@ -465,6 +467,8 @@ def test_pointcloud_general_structure_for_multiple_simulations(raw_batch_dir_pat
     ])
 
     out_sim_dir = preprop.out_simmulations_dir_path
+    assert len(list(listdir(out_sim_dir))) == 2
+
     first_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert first_sim_file.exists()
 
@@ -517,6 +521,7 @@ def test_pointcloud_resulting_dtype_values_for_float(raw_batch_dir_path, process
 
         features = f[FEATURES_OUT_KEY][:]
         assert features.dtype == np.float32
+        
         dtype = f.attrs[DTYPE_OUT_KEY]
         assert isinstance(dtype, str)
         assert dtype == "float32"
@@ -543,6 +548,165 @@ def test_pointcloud_resulting_dtype_values_for_complex(raw_batch_dir_path, proce
         hfield = f[H_FIELD_OUT_KEY][:]
         assert hfield.dtype == np.complex64
 
+        features = f[FEATURES_OUT_KEY][:]
+        assert features.dtype == np.float32
+
         dtype = f.attrs[DTYPE_OUT_KEY]
         assert isinstance(dtype, str)
         assert dtype == "complex64"
+
+
+def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    This test case checks not the values of the resulting datasets, but shapes and dtypes.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        assert efield.shape == (729, 3, 1)
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert hfield.shape == (729, 3, 1)
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert features.shape == (729, 3)
+
+        coordinates = f[COORDINATES_OUT_KEY][:]
+        assert coordinates.shape == (729, 3)
+        assert coordinates.dtype == np.float32
+
+        subject = f[SUBJECT_OUT_KEY][:]
+        assert subject.shape == (729, 1)
+        assert subject.dtype == np.bool_
+
+
+def test_pointcloud_squared_coils_sphere_central_object(raw_batch_dir_path, processed_batch_dir_path):
+    """
+    Test case checks exactly the values of the resulting datasets for the 4 squared 
+    coils and a central sphere.
+    """
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        assert np.equal(efield, expected_field).all()
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert np.equal(hfield, expected_field).all()
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert len(np.where(features == 1)[0]) == 327
+
+        subject = f[SUBJECT_OUT_KEY][:]
+        len(np.where(subject)[0]) == 1
+
+
+def test_pointcloud_squared_coils_central_box_object(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        CENTRAL_BOX_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        assert np.equal(efield, expected_field).all()
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert np.equal(hfield, expected_field).all()
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert len(np.where(features == 1)[0]) == 327
+
+        subject = f[SUBJECT_OUT_KEY][:]
+        len(np.where(subject)[0]) == 1
+
+
+def test_pointcloud_squared_coils_shifted_sphere_object(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        SHIFTED_SPHERE_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        assert np.equal(efield, expected_field).all()
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert np.equal(hfield, expected_field).all()
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert len(np.where(features == 1)[0]) == 327
+
+        subject = f[SUBJECT_OUT_KEY][:]
+        len(np.where(subject)[0]) == 1
+
+
+def test_pointcloud_squared_coils_shifted_box_object(raw_batch_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_batch_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        coil_thick_coef=1.0
+    )
+    preprop.process_simulations([
+        SHIFTED_BOX_SIM_NAME
+    ])
+
+    sim_file = Path(
+        preprop.out_simmulations_dir_path
+    ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    with File(sim_file) as f:
+        efield = f[E_FIELD_OUT_KEY][:]
+        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        assert np.equal(efield, expected_field).all()
+
+        hfield = f[H_FIELD_OUT_KEY][:]
+        assert np.equal(hfield, expected_field).all()
+
+        features = f[FEATURES_OUT_KEY][:]
+        assert len(np.where(features == 1)[0]) == 327
+
+        subject = f[SUBJECT_OUT_KEY][:]
+        len(np.where(subject)[0]) == 1
