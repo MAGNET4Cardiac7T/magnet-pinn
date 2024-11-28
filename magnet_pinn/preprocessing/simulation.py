@@ -9,6 +9,7 @@ DESCRIPTION
 CLASSES
     Simulation
 """
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
@@ -24,7 +25,7 @@ class Simulation:
         ----------
         name : str
             The name of the simulation.
-        path : str
+        path : Path
             The path to the simulation data.
         e_field : np.array, optional
             The electric field data.
@@ -37,7 +38,7 @@ class Simulation:
     """
 
     name: str
-    path: str
+    path: Path
     e_field: Optional[np.array] = None
     h_field: Optional[np.array] = None
     object_masks: Optional[np.array] = None

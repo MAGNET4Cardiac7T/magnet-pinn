@@ -11,10 +11,7 @@ CLASSES
     GridReader
     PointReader
 """
-
-import os
-import fnmatch
-import os.path as osp
+from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union
 
@@ -70,7 +67,7 @@ class FieldReaderFactory:
     """
 
     def __init__(
-        self, simulation_dir_path: str, field_type: str = E_FIELD_DATABASE_KEY
+        self, simulation_dir_path: Path, field_type: str = E_FIELD_DATABASE_KEY
     ):
         """
         It collects the list of source files and check if they exist.
@@ -89,21 +86,14 @@ class FieldReaderFactory:
         """
 
         self.field_type = field_type
-
-        field_dir_path = osp.join(simulation_dir_path, FIELD_DIR_PATH[field_type])
-        dir_files = list(
-            map(
-                lambda x: osp.join(field_dir_path, x),
-                sorted(os.listdir(field_dir_path)),
-            )
-        )
-        self.files_list = fnmatch.filter(dir_files, H5_FILENAME_PATTERN)
+        field_dir_path = simulation_dir_path / FIELD_DIR_PATH[field_type]
+        self.files_list = list(field_dir_path.glob(H5_FILENAME_PATTERN))
 
         if len(self.files_list) == 0:
-            raise Exception(
+            raise FileNotFoundError(
                 f"""
                 No field values found for the simulation
-                {osp.basename(simulation_dir_path)}
+                {simulation_dir_path.parent.name}
                 for the {field_type} field
                 """
             )

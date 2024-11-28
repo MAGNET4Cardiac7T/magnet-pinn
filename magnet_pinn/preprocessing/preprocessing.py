@@ -10,8 +10,7 @@ CLASSES
     GridPreprocessing
     PointPreprocessing
 """
-import os.path as osp
-from os import makedirs, listdir
+from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional
 
@@ -35,7 +34,7 @@ from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.reading_properties import FEATURE_NAMES, AIR_FEATURES
 
 RAW_DATA_DIR_PATH = "raw"
-ANTENNA_MATERIALS_DIR_PATH = osp.join("antenna", "dipole", "raw")
+ANTENNA_MATERIALS_DIR_PATH = Path("antenna") / "dipole" / "raw"
 INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
 INPUT_SIMULATIONS_DIR_PATH = "simulations"
@@ -136,26 +135,31 @@ class Preprocessing(ABC):
             type of saving field data
         """
         self.field_dtype = np.dtype(field_dtype)
-        self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
+
+        batch_dir_path = Path(batch_dir_path)
+        if not batch_dir_path.exists():
+            raise FileNotFoundError("Batch directory does not exist")
+        elif batch_dir_path.is_file():
+            raise FileNotFoundError("Batch directory is a file, not a directory")
+        elif len(list(batch_dir_path.iterdir())) == 0:
+            raise FileNotFoundError("Batch directory is empty")
+        else:
+            self.simulations_dir_path = batch_dir_path / INPUT_SIMULATIONS_DIR_PATH
 
         # create output directories
         target_dir_name = self._output_target_dir
-        self.out_simmulations_dir_path = osp.join(
-            output_dir_path,
-            target_dir_name,
-            PROCESSED_SIMULATIONS_DIR_PATH
-        )
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
 
-        self.out_antenna_dir_path = osp.join(
-            output_dir_path,
-            target_dir_name,
-            PROCESSED_ANTENNA_DIR_PATH
-        )
-        makedirs(self.out_antenna_dir_path, exist_ok=True)
+        self.out_simmulations_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_SIMULATIONS_DIR_PATH
+        self.out_simmulations_dir_path.mkdir(parents=True, exist_ok=True)
 
+        self.out_antenna_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_ANTENNA_DIR_PATH
+        self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
+
+        antenna_dir_path = batch_dir_path / INPUT_ANTENNA_DIR_PATH
+        if not antenna_dir_path.exists():
+            raise FileNotFoundError("Antenna not found")
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
-            osp.join(batch_dir_path, INPUT_ANTENNA_DIR_PATH)
+            batch_dir_path / INPUT_ANTENNA_DIR_PATH
         )
 
     @property
@@ -207,13 +211,22 @@ class Preprocessing(ABC):
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
+        if not self.simulations_dir_path.exists():
+            raise FileNotFoundError("Simulations directory does not exist")
 
-        full_sim_list = listdir(self.simulations_dir_path)
+        full_sim_list = [
+            dir.name
+            for dir in self.simulations_dir_path.iterdir() if dir.is_dir()
+        ]
 
-        if simulation_names is not None and not set(simulation_names).issubset(set(full_sim_list)):
-            raise Exception("Simulations are not in the directory")
+        if len(full_sim_list) == 0:
+            raise Exception("No simulations exist")
         elif simulation_names is None:
             simulation_names = full_sim_list
+        elif not set(simulation_names).issubset(set(full_sim_list)):
+            not_existing_simulations = set(simulation_names) - set(full_sim_list)
+            list_of_them = ", ".join(not_existing_simulations)
+            raise Exception(f"Simulations [{list_of_them}] do not exist in the directory")
         elif not set(simulation_names).issubset(full_sim_list):
             raise Exception("Simulations are not valid")
 
@@ -240,7 +253,7 @@ class Preprocessing(ABC):
         """
         simulation = Simulation(
             name=simulation_name,
-            path=osp.join(self.simulations_dir_path, simulation_name),
+            path=self.simulations_dir_path / simulation_name,
         )
 
         self._extract_fields_data(simulation)
@@ -300,7 +313,7 @@ class Preprocessing(ABC):
             The instance to save the data
         """
         object_properties, object_meshes = self.__get_properties_and_meshes(
-            osp.join(out_simulation.path, INPUT_DIR_PATH)
+            out_simulation.path / INPUT_DIR_PATH
         )
 
         objects_features, object_masks = self._get_features_and_mask(
@@ -448,18 +461,13 @@ class Preprocessing(ABC):
         out_simulation : Simulation
             The instance with the processed data
         """
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
-
-        output_file_path = osp.join(
-            self.out_simmulations_dir_path,
-            TARGET_FILE_NAME.format(name=out_simulation.name)
-        )
-
         e_field, h_field = self._format_fields(out_simulation)
         self._feature_truncate_coefficients(out_simulation)
         object_masks = self._format_masks(out_simulation)
         features = self._format_features(out_simulation)
 
+        self.out_simmulations_dir_path.mkdir(parents=True, exist_ok=True)
+        output_file_path = self.out_simmulations_dir_path / TARGET_FILE_NAME.format(name=out_simulation.name)
         with File(output_file_path, "w") as f:
             f.create_dataset(FEATURES_OUT_KEY, data=features)
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
@@ -565,10 +573,10 @@ class Preprocessing(ABC):
         """
         Write dipoles masks to the output directory.
         """
-        makedirs(self.out_antenna_dir_path, exist_ok=True)
+        self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
-        with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
+        with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
 
             
