@@ -144,7 +144,7 @@ class Preprocessing(ABC):
         """
         self.field_dtype = np.dtype(field_dtype)
 
-        self.simulations_dir_path = Path(simulations_dir_path)
+        self.simulations_dir_path = VirtualDirectory(simulations_dir_path)
         if not self.simulations_dir_path.exists():
             raise FileNotFoundError("Batch directory does not exist")
         elif self.simulations_dir_path.is_file():
