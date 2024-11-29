@@ -8,7 +8,8 @@ from h5py import File
 
 from tests.preprocessing.conftest import (
     CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
-    SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
+    SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME,
+    ALL_SIM_NAMES
 )
 from magnet_pinn.preprocessing.preprocessing import (
     GridPreprocessing, PointPreprocessing, 
@@ -799,4 +800,12 @@ def test_multiple_batch_dirs_grid(raw_batch_dir_1, raw_batch_dir_2, raw_antenna_
 
     case_name = f"grid_voxel_size_1_data_type_complex64"
     out_dir = processed_batch_dir_path / case_name
+    
     assert out_dir.exists()
+
+    assert len(list(listdir(out_dir / PROCESSED_SIMULATIONS_DIR_PATH))) == 4
+
+    out_sim_names = listdir(out_dir / PROCESSED_SIMULATIONS_DIR_PATH)
+    out_sim_names = [name.split(".")[0] for name in out_sim_names]
+    assert set(out_sim_names) == set(ALL_SIM_NAMES)
+    

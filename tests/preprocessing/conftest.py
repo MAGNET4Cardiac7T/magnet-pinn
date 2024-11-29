@@ -30,6 +30,13 @@ CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
 SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
 SHIFTED_BOX_SIM_NAME = "children_0_tubes_0_id_3"
 
+ALL_SIM_NAMES = [
+    CENTRAL_SPHERE_SIM_NAME,
+    CENTRAL_BOX_SIM_NAME,
+    SHIFTED_SPHERE_SIM_NAME,
+    SHIFTED_BOX_SIM_NAME
+]
+
 
 @pytest.fixture(scope='session')
 def data_dir_path(tmp_path_factory):
@@ -49,7 +56,7 @@ def processed_batch_dir_path(data_dir_path):
 
 @pytest.fixture(scope='session')
 def raw_batch_dir_path_long_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path, BATCH_DIR_NAME)
+    batch_dir_path = __create_batch(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
@@ -57,7 +64,7 @@ def raw_batch_dir_path_long_term(data_dir_path):
 
 @pytest.fixture
 def raw_batch_dir_path_short_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path, BATCH_DIR_NAME)
+    batch_dir_path = __create_batch(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
@@ -71,26 +78,40 @@ def raw_antenna_dir_path(data_dir_path):
 
 @pytest.fixture
 def raw_batch_dir_1(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path, "batch_1")
+    batch_dir_path = __create_batch_1(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
 
 @pytest.fixture
 def raw_batch_dir_2(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path, "batch_2")
+    batch_dir_path = __create_batch_2(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
     
+def __create_batch_1(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / "batch_1"
 
-def __create_batch(data_dir_path, batch_dir_name):
-    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / batch_dir_name
+    __create_simulation_data(batch_dir_path, CENTRAL_SPHERE_SIM_NAME)
+    __create_simulation_data(batch_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
+
+    return batch_dir_path
+
+def __create_batch_2(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / "batch_2"
+
+    __create_simulation_data(batch_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
+    __create_simulation_data(batch_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
+
+    return batch_dir_path
+
+def __create_batch(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / BATCH_DIR_NAME
 
     __create_simulations(batch_dir_path)
 
     return batch_dir_path
-
 
 def __create_antenna_test_data(data_path: str):
     """
