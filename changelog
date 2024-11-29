@@ -26,3 +26,7 @@
 
 ## [0.0.5] -> Nov 21, 2024
 - Hotfix for unet model
+- Add tests for point preprocessing
+- Preprocessing now possible over multiple batch directories
+- Preprocessing expects path to anntenna
+- Added virtual directory class to iterate over multiple directories as one
