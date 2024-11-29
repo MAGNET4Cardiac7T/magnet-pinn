@@ -888,7 +888,8 @@ class PointPreprocessing(Preprocessing):
     _coordinates = None
 
     def __init__(self, 
-                 batch_dir_path: str, 
+                 simulations_dir_path: Union[str, List[str]],
+                 antenna_dir_path: str,
                  output_dir_path: str, 
                  field_dtype: np.dtype = np.complex64,
                  coil_thick_coef: Optional[float] = 1.0):
@@ -897,8 +898,10 @@ class PointPreprocessing(Preprocessing):
 
         Parameters
         ----------
-        batch_dir_path : str
+        simulations_dir_path : str
             Path to the batch directory
+        antenna_dir_path : str
+            Path to the antenna directory
         output_dir_path : str
             Path to the output directory
         field_dtype : np.dtype
@@ -908,7 +911,7 @@ class PointPreprocessing(Preprocessing):
             of the coils; only the values >0 can be used; to switch it off set it None
         """
         self.coil_thick_coef = coil_thick_coef
-        super().__init__(batch_dir_path, output_dir_path, field_dtype)
+        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
 
         if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
             raise Exception("Coil thick coef should be greater than 0")

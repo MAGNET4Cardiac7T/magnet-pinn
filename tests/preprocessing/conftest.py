@@ -61,18 +61,24 @@ def raw_batch_dir_path_short_term(data_dir_path):
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
+
+@pytest.fixture
+def raw_antenna_dir_path(data_dir_path):
+    antenna_path = __create_antenna_test_data(data_dir_path)
+    yield antenna_path
+    if antenna_path.exists():
+        rmtree(antenna_path)
     
 
 def __create_batch(data_dir_path):
     batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / BATCH_DIR_NAME
 
-    __create_antenna_test_data(batch_dir_path)
     __create_simulations(batch_dir_path)
 
     return batch_dir_path
 
 
-def __create_antenna_test_data(batch_dir_path: str):
+def __create_antenna_test_data(data_path: str):
     """
     The method creates coils as boxes with their center of mass on 
     the X and Y axes correspondently. The are also symmetric to each
@@ -80,7 +86,7 @@ def __create_antenna_test_data(batch_dir_path: str):
     directory. It also stores files names in the corresponding materials file 
     together with unit values of the features.
     """
-    antenna_path = batch_dir_path / INPUT_ANTENNA_DIR_PATH
+    antenna_path = data_path / RAW_DATA_DIR_PATH / INPUT_ANTENNA_DIR_PATH
 
     coils_meshes = (
         Box(bounds=np.array([
@@ -102,6 +108,8 @@ def __create_antenna_test_data(batch_dir_path: str):
     )
 
     __create_test_properties(antenna_path, coils_meshes)
+
+    return antenna_path
 
 
 def __create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
@@ -127,12 +135,11 @@ def __create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
 
 
 def __create_simulations(batch_dir_path: str):
-    sims_dir_path = batch_dir_path / INPUT_SIMULATIONS_DIR_PATH
 
-    __create_simulation_data(sims_dir_path, CENTRAL_SPHERE_SIM_NAME)
-    __create_simulation_data(sims_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
-    __create_simulation_data(sims_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
-    __create_simulation_data(sims_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
+    __create_simulation_data(batch_dir_path, CENTRAL_SPHERE_SIM_NAME)
+    __create_simulation_data(batch_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
+    __create_simulation_data(batch_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
+    __create_simulation_data(batch_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
 
 def __create_sphere_input_data(simulation_dir_path: str):
     input_dir_path = simulation_dir_path / INPUT_DIR_PATH
