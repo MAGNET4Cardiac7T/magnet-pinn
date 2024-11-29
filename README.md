@@ -1,4 +1,12 @@
-# magnet
+# MAGNET-PINN
+<img src="https://magnet4cardiac7t.github.io/_images/logo_magnet.svg" width="400em" align="right" />
+
+[![PyPI version](https://badge.fury.io/py/magnet_pinn.svg)](https://badge.fury.io/py/magnet_pinn)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![All Tests](https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yaml/badge.svg)](https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yaml)
+
+[comment]: [![Docs](https://github.com/badulion/dynabench/actions/workflows/build_docs.yml/badge.svg)](https://dynabench.github.io)
+
 This is the software package for simulating EM Fields using NNs
 
 ## preprocessing
