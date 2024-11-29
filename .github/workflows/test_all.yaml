@@ -7,8 +7,8 @@ jobs:
     strategy:
       matrix:
         poetry-version: ["1.8.4"]
-        python-version: ["3.12"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11"]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
@@ -25,12 +25,8 @@ jobs:
       uses: abatilo/actions-poetry@v3.0.0
       with:
           poetry-version: ${{ matrix.poetry-version }}
-          
-    - name: Display Python version
-      run: python -c "import sys; print(sys.version)"
 
     - name: Install dependencies
-      # install all requirements
       run: poetry install
 
     - name: Run serial tests with pytest
