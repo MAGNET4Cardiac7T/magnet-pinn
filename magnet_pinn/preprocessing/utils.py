@@ -1,12 +1,18 @@
 from pathlib import Path
-
+from typing import List, Union
 
 class VirtualDirectory:
     """
     A class to represent a virtual directory consisting of a collection of physical directories.
     Implements the Path interface for iterating over the files (iterdir), checking if empty, etc.
     """
-    def __init__(self, paths):
+    def __init__(self, paths: Union[str, List[str]]):
+        """
+            Parameters
+            ----------
+            paths : Union[str, List[str]]
+                A list of paths (or a single path) to the physical directories.
+        """
         if not isinstance(paths, list):
             paths = [paths]
         self.paths = [Path(path) for path in paths]
