@@ -779,3 +779,24 @@ def test_pointcloud_with_empty_antenna_dir(raw_batch_dir_path_short_term, raw_an
             field_dtype=np.complex64,
             coil_thick_coef=1.0
         )
+
+
+def test_multiple_batch_dirs_grid(raw_batch_dir_1, raw_batch_dir_2, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        [raw_batch_dir_1, raw_batch_dir_2],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations()
+
+    case_name = f"grid_voxel_size_1_data_type_complex64"
+    out_dir = processed_batch_dir_path / case_name
+    assert out_dir.exists()

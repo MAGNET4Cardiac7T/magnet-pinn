@@ -49,7 +49,7 @@ def processed_batch_dir_path(data_dir_path):
 
 @pytest.fixture(scope='session')
 def raw_batch_dir_path_long_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path)
+    batch_dir_path = __create_batch(data_dir_path, BATCH_DIR_NAME)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
@@ -57,7 +57,7 @@ def raw_batch_dir_path_long_term(data_dir_path):
 
 @pytest.fixture
 def raw_batch_dir_path_short_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path)
+    batch_dir_path = __create_batch(data_dir_path, BATCH_DIR_NAME)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
@@ -68,10 +68,24 @@ def raw_antenna_dir_path(data_dir_path):
     yield antenna_path
     if antenna_path.exists():
         rmtree(antenna_path)
+
+@pytest.fixture
+def raw_batch_dir_1(data_dir_path):
+    batch_dir_path = __create_batch(data_dir_path, "batch_1")
+    yield batch_dir_path
+    if batch_dir_path.exists():
+        rmtree(batch_dir_path)
+
+@pytest.fixture
+def raw_batch_dir_2(data_dir_path):
+    batch_dir_path = __create_batch(data_dir_path, "batch_2")
+    yield batch_dir_path
+    if batch_dir_path.exists():
+        rmtree(batch_dir_path)
     
 
-def __create_batch(data_dir_path):
-    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / BATCH_DIR_NAME
+def __create_batch(data_dir_path, batch_dir_name):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / batch_dir_name
 
     __create_simulations(batch_dir_path)
 
