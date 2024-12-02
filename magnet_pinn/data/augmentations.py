@@ -151,7 +151,7 @@ class PhaseAugmentation(BaseAugmentation):
     def _sample_phase(self, num_coils: int, dtype: str = None) -> npt.NDArray[np.float32]:
         return np.random.uniform(0, 2*np.pi, num_coils).astype(dtype)
     
-    def _sample_mask_uniform(self, num_coils: int) -> npt.NDArray[bool]:
+    def _sample_mask_uniform(self, num_coils: int) -> npt.NDArray[np.bool_]:
         num_coils_on = np.random.randint(1, num_coils)
         mask = np.zeros(num_coils, dtype=bool)
         coils_on_indices = np.random.choice(num_coils, num_coils_on, replace=False)
@@ -248,7 +248,6 @@ class PointSamplingAugmentation(BaseAugmentation):
         super().__init__()
         self.points_sampled = points_sampled
 
-    ## TODO test if this works
     def __call__(self, simulation: DataItem):
         total_num_points = simulation.positions.shape[0]
         point_indices = self._sample_point_indices(total_num_points=total_num_points)
@@ -266,4 +265,8 @@ class PointSamplingAugmentation(BaseAugmentation):
         )
 
     def _sample_point_indices(self, total_num_points: int) -> npt.NDArray[np.int64]:
-        return np.random.choice(total_num_points, 10, replace=False)
+        if isinstance(self.points_sampled, float):
+            num_points_sampled = int(self.points_sampled * total_num_points)
+        else:
+            num_points_sampled = self.points_sampled
+        return np.random.choice(total_num_points, num_points_sampled, replace=False)
