@@ -74,10 +74,10 @@ iterator = MagnetGridIterator(
     num_augmentations=100
 )
 
-dataloader = DataLoader(iterator, batch_size=2, num_workers=4, worker_init_fn=worker_init_fn)
+dataloader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)
 
 # Create the model
-net = UNet3D(5, 12, f_maps=8)
+net = UNet3D(5, 12, f_maps=32)
 
 target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
 input_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/input_normalization.json")
