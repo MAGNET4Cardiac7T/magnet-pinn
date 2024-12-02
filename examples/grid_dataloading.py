@@ -19,6 +19,6 @@ iterator = MagnetGridIterator(
 )
 
 
-for item in tqdm.tqdm(iterator):
+for item in tqdm.tqdm(iterator, smoothing=0):
     pass
 
