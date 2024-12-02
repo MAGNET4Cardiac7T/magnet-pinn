@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Literal
 import numpy.typing as npt
 import numpy as np
 import einops
@@ -84,9 +84,11 @@ class CropAugmentation(BaseAugmentation):
 
 class PhaseAugmentation(BaseAugmentation):
     def __init__(self, 
-                 num_coils: int):
+                 num_coils: int,
+                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
         super().__init__()
         self.num_coils = num_coils
+        self.sampling_method = sampling_method
 
     def __call__(self, simulation: DataItem):
         """
@@ -136,12 +138,31 @@ class PhaseAugmentation(BaseAugmentation):
         npt.NDArray[np.bool_]:
             mask for the phase coefficients
         """
-        phase = np.random.uniform(0, 2*np.pi, num_coils)
+        phase = self._sample_phase(num_coils, dtype)
+        if self.sampling_method == 'uniform':
+            mask = self._sample_mask_uniform(num_coils)
+        elif self.sampling_method == 'binomial':
+            mask = self._sample_mask_binomial(num_coils)
+        else:
+            raise ValueError(f"Unknown sampling method {self.sampling_method}")
+
+        return phase.astype(dtype), mask.astype(np.bool_)  
+    
+    def _sample_phase(self, num_coils: int, dtype: str = None) -> npt.NDArray[np.float32]:
+        return np.random.uniform(0, 2*np.pi, num_coils).astype(dtype)
+    
+    def _sample_mask_uniform(self, num_coils: int) -> npt.NDArray[np.bool_]:
+        num_coils_on = np.random.randint(1, num_coils)
+        mask = np.zeros(num_coils, dtype=np.bool)
+        coils_on_indices = np.random.choice(num_coils, num_coils_on, replace=False)
+        mask[coils_on_indices] = True
+        return mask
+    
+    def _sample_mask_binomial(self, num_coils: int) -> npt.NDArray[np.bool_]:
         mask = np.random.choice([0, 1], num_coils, replace=True)
         while np.sum(mask) == 0:
             mask = np.random.choice([0, 1], num_coils, replace=True)
-
-        return phase.astype(dtype), mask.astype(np.bool_)  
+        return mask
     
     @abstractmethod
     def _phase_shift_field(self, 
