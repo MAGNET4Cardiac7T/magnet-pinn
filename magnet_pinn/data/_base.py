@@ -22,10 +22,7 @@ from .dataitem import DataItem
 from .transforms import BaseTransform
 
 from magnet_pinn.preprocessing.preprocessing import (
-    VOXEL_SIZE_OUT_KEY,
     ANTENNA_MASKS_OUT_KEY,
-    MIN_EXTENT_OUT_KEY,
-    MAX_EXTENT_OUT_KEY,
     FEATURES_OUT_KEY,
     E_FIELD_OUT_KEY,
     H_FIELD_OUT_KEY,
@@ -35,8 +32,6 @@ from magnet_pinn.preprocessing.preprocessing import (
     TRUNCATION_COEFFICIENTS_OUT_KEY,
     DTYPE_OUT_KEY
 )
-
-
 
 
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
