@@ -182,8 +182,10 @@ class PhaseShift(BaseTransform):
 
 
 class GridPhaseShift(PhaseShift):
-    def __init__(self, num_coils: int):
-        super().__init__(num_coils=num_coils)
+    def __init__(self, 
+                 num_coils: int, 
+                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
 
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 
@@ -213,8 +215,10 @@ class GridPhaseShift(PhaseShift):
     
 
 class PointPhaseShift(PhaseShift):
-    def __init__(self, num_coils: int):
-        super().__init__(num_coils=num_coils)
+    def __init__(self, 
+                 num_coils: int,
+                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
 
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 
