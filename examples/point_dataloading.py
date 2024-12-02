@@ -1,11 +1,11 @@
 from magnet_pinn.data.point import MagnetPointIterator
-from magnet_pinn.data.augmentations import PointSamplingAugmentation, PointPhaseAugmentation, ComposeAugmentation
+from magnet_pinn.data.transforms import PointSampling, PointPhaseShift, Compose
 import tqdm
 
-augmentation = ComposeAugmentation(
+augmentation = Compose(
     [
-        PointSamplingAugmentation(points_sampled=1000),
-        PointPhaseAugmentation(num_coils=8)
+        PointSampling(points_sampled=1000),
+        PointPhaseShift(num_coils=8)
     ]
 )
 

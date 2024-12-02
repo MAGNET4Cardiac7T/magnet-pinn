@@ -8,7 +8,7 @@ from .dataitem import DataItem
 
 
 
-class BaseAugmentation:
+class BaseTransform(ABC):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -19,8 +19,8 @@ class BaseAugmentation:
     def __repr__(self):
         return self.__class__.__name__ + str(self.kwargs)
     
-class ComposeAugmentation(BaseAugmentation):
-    def __init__(self, augmentations: List[BaseAugmentation]):
+class Compose(BaseTransform):
+    def __init__(self, augmentations: List[BaseTransform]):
         self.augmentations = augmentations
 
     def __call__(self, simulation: DataItem):
@@ -33,7 +33,7 @@ class ComposeAugmentation(BaseAugmentation):
     
 
 
-class CropAugmentation(BaseAugmentation):
+class Crop(BaseTransform):
     def __init__(self, crop_size: Tuple[int, int, int]):
         super().__init__()
         self.crop_size = crop_size
@@ -82,7 +82,7 @@ class CropAugmentation(BaseAugmentation):
 
     
 
-class PhaseAugmentation(BaseAugmentation):
+class PhaseShift(BaseTransform):
     def __init__(self, 
                  num_coils: int,
                  sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
@@ -181,7 +181,7 @@ class PhaseAugmentation(BaseAugmentation):
         raise NotImplementedError
 
 
-class GridPhaseAugmentation(PhaseAugmentation):
+class GridPhaseShift(PhaseShift):
     def __init__(self, num_coils: int):
         super().__init__(num_coils=num_coils)
 
@@ -212,7 +212,7 @@ class GridPhaseAugmentation(PhaseAugmentation):
         return coils_shift
     
 
-class PointPhaseAugmentation(PhaseAugmentation):
+class PointPhaseShift(PhaseShift):
     def __init__(self, num_coils: int):
         super().__init__(num_coils=num_coils)
 
@@ -243,7 +243,7 @@ class PointPhaseAugmentation(PhaseAugmentation):
         return coils_shift
     
 
-class PointSamplingAugmentation(BaseAugmentation):
+class PointSampling(BaseTransform):
     def __init__(self, points_sampled: Union[float, int]):
         super().__init__()
         self.points_sampled = points_sampled

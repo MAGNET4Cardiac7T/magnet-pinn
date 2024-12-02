@@ -15,7 +15,7 @@ import numpy.typing as npt
 from einops import einsum, repeat, rearrange
 
 from .dataitem import DataItem
-from .augmentations import BaseAugmentation
+from .transforms import BaseTransform
 
 import random
 import torch
@@ -43,7 +43,7 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
     """
     def __init__(self, 
                  data_dir: str,
-                 augmentation: Optional[BaseAugmentation] = None,
+                 augmentation: Optional[BaseTransform] = None,
                  num_augmentations: int = 1):
         super().__init__()
         self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)

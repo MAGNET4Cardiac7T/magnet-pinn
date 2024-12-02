@@ -1,12 +1,12 @@
 from magnet_pinn.data.grid import MagnetGridIterator
-from magnet_pinn.data.augmentations import CropAugmentation, GridPhaseAugmentation, ComposeAugmentation
+from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
 import tqdm
 
 
-augmentation = ComposeAugmentation(
+augmentation = Compose(
     [
-        CropAugmentation(crop_size=(100, 100, 100)),
-        GridPhaseAugmentation(num_coils=8)
+        Crop(crop_size=(100, 100, 100)),
+        GridPhaseShift(num_coils=8)
     ]
 )
 
