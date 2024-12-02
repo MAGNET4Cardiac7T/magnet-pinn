@@ -43,8 +43,8 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
     """
     def __init__(self, 
                  data_dir: str,
-                 augmentation: Optional[BaseTransform] = None,
-                 num_augmentations: int = 1):
+                 transforms: Optional[BaseTransform] = None,
+                 num_samples: int = 1):
         super().__init__()
         self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
         self.coils_path = os.path.join(data_dir, PROCESSED_ANTENNA_DIR_PATH, "antenna.h5")
@@ -53,8 +53,8 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
         self.num_coils = self.coils.shape[-1]
 
         self.num_points = self.coils.shape[0]
-        self.augmentation = augmentation
-        self.num_augmentations = num_augmentations
+        self.transforms = transforms
+        self.num_samples = num_samples
 
     def _get_simulation_name(self, simulation) -> str:
         return os.path.basename(simulation)[:-3]
@@ -136,9 +136,9 @@ class MagnetPointIterator(torch.utils.data.IterableDataset):
         random.shuffle(self.simulation_list)
         for simulation in self.simulation_list:
             loaded_simulation = self._load_simulation(simulation)
-            for i in range(self.num_augmentations):
-                augmented_simulation = self.augmentation(loaded_simulation)
+            for i in range(self.num_samples):
+                augmented_simulation = self.transforms(loaded_simulation)
                 yield augmented_simulation.__dict__
     
     def __len__(self):
-        return len(self.simulation_list)*self.num_augmentations
+        return len(self.simulation_list)*self.num_samples

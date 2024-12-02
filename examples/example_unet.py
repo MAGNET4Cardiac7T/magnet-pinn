@@ -70,8 +70,8 @@ augmentation = Compose(
 
 iterator = MagnetGridIterator(
     BASE_DIR,
-    augmentation=augmentation,
-    num_augmentations=100
+    transforms=augmentation,
+    num_samples=100
 )
 
 dataloader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)

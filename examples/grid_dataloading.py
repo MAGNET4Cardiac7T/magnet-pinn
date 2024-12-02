@@ -14,8 +14,8 @@ augmentation = Compose(
 
 iterator = MagnetGridIterator(
     "data/processed/train/grid_voxel_size_4_data_type_float32",
-    augmentation=augmentation,
-    num_augmentations=100
+    transforms=augmentation,
+    num_samples=100
 )
 
 

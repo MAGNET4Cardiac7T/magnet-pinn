@@ -11,8 +11,8 @@ augmentation = Compose(
 
 iterator = MagnetPointIterator(
     "data/processed/train/point_data_type_float32",
-    augmentation=augmentation,
-    num_augmentations=100
+    transforms=augmentation,
+    num_samples=100
 )
 
 for item in tqdm.tqdm(iterator):

@@ -19,8 +19,8 @@ class Iterator:
 
         self.iterator = MagnetGridIterator(
             path,
-            augmentation=augmentation,
-            num_augmentations=1
+            transforms=augmentation,
+            num_samples=1
         )
 
     def __len__(self):
