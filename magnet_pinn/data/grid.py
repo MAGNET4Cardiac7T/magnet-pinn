@@ -6,18 +6,20 @@ DESCRIPTION
 """
 import os
 import h5py
-from dataclasses import dataclass, asdict
-from typing import Dict, Optional, Any, Tuple
 
 
 import glob
 import numpy as np
-import pandas as pd
 import numpy.typing as npt
-from einops import reduce, pack, einsum, repeat
+from einops import einsum, repeat
+
+from typing import Tuple, Optional
 
 import random
 import torch
+
+from .dataitem import DataItem
+from .augmentations import BaseAugmentation
 
 from magnet_pinn.preprocessing.preprocessing import (
     VOXEL_SIZE_OUT_KEY,
@@ -35,17 +37,6 @@ from magnet_pinn.preprocessing.preprocessing import (
 )
 
 
-@dataclass
-class DataItem:
-    input: npt.NDArray[np.float32]
-    subject: npt.NDArray[np.bool_]
-    simulation: str
-    field: Optional[npt.NDArray[np.float32]] = None
-    phase: Optional[npt.NDArray[np.float32]] = None
-    mask: Optional[npt.NDArray[np.bool_]] = None
-    coils: Optional[npt.NDArray[np.bool_]] = None
-    dtype: Optional[str] = None,
-    truncation_coefficients: Optional[npt.NDArray] = None
 
 
 class MagnetGridIterator(torch.utils.data.IterableDataset):
@@ -54,7 +45,8 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
     """
     def __init__(self, 
                  data_dir: str,
-                 phase_samples_per_simulation: int = 10):
+                 augmentation: Optional[BaseAugmentation] = None,
+                 num_augmentations: int = 1):
         super().__init__()
         self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
         self.coils_path = os.path.join(data_dir, PROCESSED_ANTENNA_DIR_PATH, "antenna.h5")
@@ -62,7 +54,8 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
         self.coils = self._read_coils()
         self.num_coils = self.coils.shape[-1]
 
-        self.phase_samples_per_simulation = phase_samples_per_simulation
+        self.augmentation = augmentation
+        self.num_augmentations = num_augmentations
 
     def _get_simulation_name(self, simulation) -> str:
         return os.path.basename(simulation)[:-3]
@@ -142,88 +135,9 @@ class MagnetGridIterator(torch.utils.data.IterableDataset):
         random.shuffle(self.simulation_list)
         for simulation in self.simulation_list:
             loaded_simulation = self._load_simulation(simulation)
-            for i in range(self.phase_samples_per_simulation):
-                augmented_simulation = self._augment_simulation(loaded_simulation, index=i)
+            for i in range(self.num_augmentations):
+                augmented_simulation = self.augmentation(loaded_simulation)
                 yield augmented_simulation.__dict__
     
     def __len__(self):
-        return len(self.simulation_list)*self.phase_samples_per_simulation
-    
-    def _augment_simulation(self, simulation: DataItem, index: int = None) -> DataItem:
-        """
-        Method for augmenting the simulation data.
-        Parameters
-        ----------
-        simulation : DataItem
-            DataItem object with the simulation data
-        
-        Returns
-        -------
-        DataItem
-            augmented DataItem object
-        """
-        phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype, phase_index=index)
-        field_shifted = self._phase_shift_field(simulation.field, phase, mask)
-        coils_shifted = self._phase_shift_coils(phase, mask)
-        
-        return DataItem(
-            input=simulation.input,
-            subject=simulation.subject,
-            simulation=simulation.simulation,
-            field=field_shifted,
-            phase=phase,
-            mask=mask,
-            coils=coils_shifted,
-            dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients
-        )
-    
-    def _sample_phase_and_mask(self, 
-                               phase_index: int = None,
-                               dtype: str = None
-                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
-        """
-        Method for sampling the phase and mask for the simulation.
-        Parameters
-        ----------
-        phase_index : int
-            Index of the phase sample
-        
-        Returns
-        -------
-        npt.NDArray[np.float32]:
-            phase coefficients
-        npt.NDArray[np.bool_]:
-            mask for the phase coefficients
-        """
-        phase = np.random.uniform(0, 2*np.pi, self.num_coils)
-        mask = np.random.choice([0, 1], self.num_coils, replace=True)
-        while np.sum(mask) == 0:
-            mask = np.random.choice([0, 1], self.num_coils, replace=True)
-
-        return phase.astype(dtype), mask.astype(np.bool_)    
-    
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32], 
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
-        coeffs_im = np.stack((re_phase, im_phase), axis=0)
-        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einsum(fields, coeffs, 'hf reim fieldxyz x y z coils, hf reimout reim coils -> hf reimout fieldxyz x y z')
-        return field_shift
-
-
-    def _phase_shift_coils(self,
-                           phase: npt.NDArray[np.float32],
-                           mask: npt.NDArray[np.bool_]
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs = np.stack((re_phase, im_phase), axis=0)
-        coils_shift = einsum(self.coils, coeffs, 'x y z coils, reim coils -> reim x y z')
-        return coils_shift
+        return len(self.simulation_list)*self.num_augmentations
