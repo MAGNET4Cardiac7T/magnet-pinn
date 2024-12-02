@@ -1,5 +1,6 @@
 from magnet_pinn.models import UNet3D
 from magnet_pinn.data.grid import MagnetGridIterator
+from magnet_pinn.data.augmentations import CropAugmentation, GridPhaseAugmentation, ComposeAugmentation
 from magnet_pinn.utils import StandardNormalizer
 from magnet_pinn.data.utils import worker_init_fn
 import einops
@@ -58,15 +59,25 @@ class MAGNETPINN(pl.LightningModule):
 # Set the base directory where the preprocessed data is stored
 BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
 
-# Create the data loader
+augmentation = ComposeAugmentation(
+    [
+        CropAugmentation(crop_size=(100, 100, 100)),
+        GridPhaseAugmentation(num_coils=8)
+    ]
+)
+
+
+
 iterator = MagnetGridIterator(
     BASE_DIR,
-    phase_samples_per_simulation=100,
+    augmentation=augmentation,
+    num_augmentations=100
 )
-dataloader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)
+
+dataloader = DataLoader(iterator, batch_size=2, num_workers=4, worker_init_fn=worker_init_fn)
 
 # Create the model
-net = UNet3D(5, 12, f_maps=64)
+net = UNet3D(5, 12, f_maps=8)
 
 target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
 input_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/input_normalization.json")
