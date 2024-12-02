@@ -32,7 +32,7 @@ class ComposeAugmentation(BaseAugmentation):
         return self.__class__.__name__ + str(self.augmentations)
     
 
-## TODO add checks for the size of the crop
+
 class CropAugmentation(BaseAugmentation):
     def __init__(self, crop_size: Tuple[int, int, int]):
         super().__init__()
