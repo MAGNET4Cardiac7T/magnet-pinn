@@ -2,9 +2,9 @@ from magnet_pinn.preprocessing.preprocessing import GridPreprocessing
 import numpy as np
 
 preprocessor = GridPreprocessing(
-    ["data/magnet/raw/batches/batch_1", "data/magnet/raw/batches/batch_2"],
-    "data/magnet/raw/antenna",
-    "data/magnet/processed/train",
+    ["data/raw/batches/batch_1", "data/raw/batches/batch_2"],
+    "data/raw/antenna",
+    "data/processed/train",
     field_dtype=np.float32,
     x_min=-240,
     x_max=240,

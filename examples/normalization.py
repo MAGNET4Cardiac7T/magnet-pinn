@@ -1,5 +1,6 @@
 from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
 from magnet_pinn.data.grid import MagnetGridIterator
+from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
 
 import numpy as np
 import einops
@@ -7,9 +8,19 @@ import einops
 class Iterator:
     def __init__(self, path):
         self.path = path
+        augmentation = Compose(
+            [
+                Crop(crop_size=(100, 100, 100)),
+                GridPhaseShift(num_coils=8)
+            ]
+        )
+
+
+
         self.iterator = MagnetGridIterator(
             path,
-            phase_samples_per_simulation=1,
+            transforms=augmentation,
+            num_samples=1
         )
 
     def __len__(self):
