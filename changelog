@@ -26,3 +26,14 @@
 
 ## [0.0.5] -> Nov 21, 2024
 - Hotfix for unet model
+
+## [0.0.6] -> Dez 2, 2024
+- Add tests for point preprocessing
+- Preprocessing now possible over multiple batch directories
+- Preprocessing expects path to antenna
+- Added virtual directory class to iterate over multiple directories as one
+- Include testing workflow in github
+- include badges in readme
+- add transforms (cropping, phase shift, point sampling)
+- refactor grid and point dataloaders
+- adjust examples with transforms

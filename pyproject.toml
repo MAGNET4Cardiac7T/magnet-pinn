@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.5"
+version = "0.0.6"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
@@ -46,6 +46,7 @@ sphinx-rtd-theme = "^2.0.0"
 sphinx-design = "^0.5.0"
 pandas = "^2.2.2"
 pytest = "^8.3.2"
+coverage = "^7.6.3"
 
 [tool.poetry.extras]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]

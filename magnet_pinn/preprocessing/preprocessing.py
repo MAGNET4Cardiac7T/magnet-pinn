@@ -10,10 +10,9 @@ CLASSES
     GridPreprocessing
     PointPreprocessing
 """
-import os.path as osp
-from os import makedirs, listdir
+from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -33,9 +32,10 @@ from magnet_pinn.preprocessing.simulation import Simulation
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.reading_properties import FEATURE_NAMES, AIR_FEATURES
+from magnet_pinn.preprocessing.utils import VirtualDirectory
 
 RAW_DATA_DIR_PATH = "raw"
-ANTENNA_MATERIALS_DIR_PATH = osp.join("antenna", "dipole", "raw")
+ANTENNA_MATERIALS_DIR_PATH = Path("antenna") / "dipole" / "raw"
 INPUT_DIR_PATH = "Input"
 PROCESSED_DIR_PATH = "processed"
 INPUT_SIMULATIONS_DIR_PATH = "simulations"
@@ -124,38 +124,48 @@ class Preprocessing(ABC):
             )
         return self.__dipoles_features
 
-    def __init__(self, batch_dir_path: str, output_dir_path: str, field_dtype: np.dtype = np.complex64) -> None:
+
+    def __init__(self, 
+                 simulations_dir_path: Union[str, List[str]], 
+                 antenna_dir_path: str,
+                 output_dir_path: str, 
+                 field_dtype: np.dtype = np.complex64) -> None:
         """
         Parameters
         ----------
-        batch_dir_path : str
-            Path to the batch directory
+        simulations_dir_path : str | List[str]
+            Path to the batch directory or a list of paths to different batch directories
+        antenna_dir_path : str
+            Path to the antenna directory
         output_dir_path : str
-            Path to the output directory
+            Path to the output directory. All processed data will be saved here.
         field_dtype : np.dtype
             type of saving field data
         """
         self.field_dtype = np.dtype(field_dtype)
-        self.simulations_dir_path = osp.join(batch_dir_path, INPUT_SIMULATIONS_DIR_PATH)
+
+        self.simulations_dir_path = VirtualDirectory(simulations_dir_path)
+        if not self.simulations_dir_path.exists():
+            raise FileNotFoundError("Batch directory does not exist")
+        elif self.simulations_dir_path.is_file():
+            raise FileNotFoundError("Batch directory is a file, not a directory")
+        elif len(list(self.simulations_dir_path.iterdir())) == 0:
+            raise FileNotFoundError("Batch directory is empty")
 
         # create output directories
         target_dir_name = self._output_target_dir
-        self.out_simmulations_dir_path = osp.join(
-            output_dir_path,
-            target_dir_name,
-            PROCESSED_SIMULATIONS_DIR_PATH
-        )
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
 
-        self.out_antenna_dir_path = osp.join(
-            output_dir_path,
-            target_dir_name,
-            PROCESSED_ANTENNA_DIR_PATH
-        )
-        makedirs(self.out_antenna_dir_path, exist_ok=True)
+        self.out_simulations_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_SIMULATIONS_DIR_PATH
+        self.out_simulations_dir_path.mkdir(parents=True, exist_ok=True)
 
+        self.out_antenna_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_ANTENNA_DIR_PATH
+        self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
+
+        antenna_dir_path = Path(antenna_dir_path)
+        if not antenna_dir_path.exists():
+            raise FileNotFoundError("Antenna not found")
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
-            osp.join(batch_dir_path, INPUT_ANTENNA_DIR_PATH)
+            antenna_dir_path
         )
 
     @property
@@ -207,13 +217,22 @@ class Preprocessing(ABC):
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
+        if not self.simulations_dir_path.exists():
+            raise FileNotFoundError("Simulations directory does not exist")
 
-        full_sim_list = listdir(self.simulations_dir_path)
+        full_sim_list = [
+            dir.name
+            for dir in self.simulations_dir_path.iterdir() if dir.is_dir()
+        ]
 
-        if simulation_names is not None and not set(simulation_names).issubset(set(full_sim_list)):
-            raise Exception("Simulations are not in the directory")
+        if len(full_sim_list) == 0:
+            raise Exception("No simulations exist")
         elif simulation_names is None:
             simulation_names = full_sim_list
+        elif not set(simulation_names).issubset(set(full_sim_list)):
+            not_existing_simulations = set(simulation_names) - set(full_sim_list)
+            list_of_them = ", ".join(not_existing_simulations)
+            raise Exception(f"Simulations [{list_of_them}] do not exist in the directory")
         elif not set(simulation_names).issubset(full_sim_list):
             raise Exception("Simulations are not valid")
 
@@ -240,7 +259,7 @@ class Preprocessing(ABC):
         """
         simulation = Simulation(
             name=simulation_name,
-            path=osp.join(self.simulations_dir_path, simulation_name),
+            path=self.simulations_dir_path / simulation_name,
         )
 
         self._extract_fields_data(simulation)
@@ -300,7 +319,7 @@ class Preprocessing(ABC):
             The instance to save the data
         """
         object_properties, object_meshes = self.__get_properties_and_meshes(
-            osp.join(out_simulation.path, INPUT_DIR_PATH)
+            out_simulation.path / INPUT_DIR_PATH
         )
 
         objects_features, object_masks = self._get_features_and_mask(
@@ -448,18 +467,13 @@ class Preprocessing(ABC):
         out_simulation : Simulation
             The instance with the processed data
         """
-        makedirs(self.out_simmulations_dir_path, exist_ok=True)
-
-        output_file_path = osp.join(
-            self.out_simmulations_dir_path,
-            TARGET_FILE_NAME.format(name=out_simulation.name)
-        )
-
         e_field, h_field = self._format_fields(out_simulation)
         self._feature_truncate_coefficients(out_simulation)
         object_masks = self._format_masks(out_simulation)
         features = self._format_features(out_simulation)
 
+        self.out_simulations_dir_path.mkdir(parents=True, exist_ok=True)
+        output_file_path = self.out_simulations_dir_path / TARGET_FILE_NAME.format(name=out_simulation.name)
         with File(output_file_path, "w") as f:
             f.create_dataset(FEATURES_OUT_KEY, data=features)
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
@@ -565,10 +579,10 @@ class Preprocessing(ABC):
         """
         Write dipoles masks to the output directory.
         """
-        makedirs(self.out_antenna_dir_path, exist_ok=True)
+        self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
-        with File(osp.join(self.out_antenna_dir_path, target_file_name), "w") as f:
+        with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
 
             
@@ -591,7 +605,7 @@ class GridPreprocessing(Preprocessing):
         type of saving field data
     simulations_dir_path : str
         Simulations location in the batch directory
-    out_simmulations_dir_path : str
+    out_simulations_dir_path : str
         Processed simulations location in the output directory
     out_antenna_dir_path : str
         Processed antenna location in the output directory
@@ -612,7 +626,9 @@ class GridPreprocessing(Preprocessing):
         Main processing method. It processes all simulations in the batch
     """
     def __init__(
-        self, batch_dir_path: str, 
+        self, 
+        simulations_dir_path: Union[str, List[str]],
+        antenna_dir_path: str,
         output_dir_path: str, 
         voxel_size: int = STANDARD_VOXEL_SIZE, 
         field_dtype: np.dtype = np.complex64, 
@@ -623,8 +639,10 @@ class GridPreprocessing(Preprocessing):
 
         Parameters
         ----------
-        batch_dir_path : str
-            Path to the batch directory
+        simulations_dir_path : str | List[str]
+            Path to the batch directory or a list of paths to different batch directories
+        antenna_dir_path : str
+            Path to the antenna directory.
         output_dir_path : str
             Path to the output directory
         voxel_size : int
@@ -633,7 +651,7 @@ class GridPreprocessing(Preprocessing):
             type of saving field data
         """
         self.voxel_size = voxel_size
-        super().__init__(batch_dir_path, output_dir_path, field_dtype)
+        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
 
         # check extent for validity
         min_values = np.array(
@@ -842,7 +860,7 @@ class PointPreprocessing(Preprocessing):
         type of saving field data
     simulations_dir_path : str
         Simulations location in the batch directory
-    out_simmulations_dir_path : str
+    out_simulations_dir_path : str
         Processed simulations location in the output directory
     out_antenna_dir_path : str
         Processed antenna location in the output directory
@@ -870,7 +888,8 @@ class PointPreprocessing(Preprocessing):
     _coordinates = None
 
     def __init__(self, 
-                 batch_dir_path: str, 
+                 simulations_dir_path: Union[str, List[str]],
+                 antenna_dir_path: str,
                  output_dir_path: str, 
                  field_dtype: np.dtype = np.complex64,
                  coil_thick_coef: Optional[float] = 1.0):
@@ -879,8 +898,10 @@ class PointPreprocessing(Preprocessing):
 
         Parameters
         ----------
-        batch_dir_path : str
+        simulations_dir_path : str
             Path to the batch directory
+        antenna_dir_path : str
+            Path to the antenna directory
         output_dir_path : str
             Path to the output directory
         field_dtype : np.dtype
@@ -890,7 +911,7 @@ class PointPreprocessing(Preprocessing):
             of the coils; only the values >0 can be used; to switch it off set it None
         """
         self.coil_thick_coef = coil_thick_coef
-        super().__init__(batch_dir_path, output_dir_path, field_dtype)
+        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
 
         if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
             raise Exception("Coil thick coef should be greater than 0")

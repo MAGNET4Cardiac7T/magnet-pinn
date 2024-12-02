@@ -160,3 +160,6 @@ poetry.lock
 /data
 notebooks
 local/
+.copilotignore
+deployment
+test_files
