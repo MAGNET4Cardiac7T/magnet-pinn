@@ -1,6 +1,6 @@
 from magnet_pinn.models import UNet3D
 from magnet_pinn.data.grid import MagnetGridIterator
-from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
+from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
 from magnet_pinn.utils import StandardNormalizer
 from magnet_pinn.data.utils import worker_init_fn
 import einops
@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 
 import torch
 from torch.utils.data import DataLoader
+from magnet_pinn.losses import MSELoss
 
 
 class MAGNETPINN(pl.LightningModule):
@@ -25,6 +26,8 @@ class MAGNETPINN(pl.LightningModule):
         self.subject_lambda = subject_lambda
         self.space_lambda = space_lambda
 
+        self.loss_fn = MSELoss()
+
     def forward(self, x):
         return self.net(x)
 
@@ -40,9 +43,8 @@ class MAGNETPINN(pl.LightningModule):
         y_hat = self(x)
         
         # calculate loss
-        mse = torch.mean((y_hat - y) ** 2, dim=1)
-        subject_loss = torch.mean(mse * subject_mask)
-        space_loss = torch.mean(mse * (~subject_mask))
+        subject_loss = self.loss_fn(y_hat, y, subject_mask)
+        space_loss = self.loss_fn(y_hat, y, ~subject_mask)
         loss = subject_loss*self.subject_lambda + space_loss*self.space_lambda
 
         self.log('train_loss', loss, prog_bar=True)
@@ -65,8 +67,6 @@ augmentation = Compose(
         GridPhaseShift(num_coils=8)
     ]
 )
-
-
 
 iterator = MagnetGridIterator(
     BASE_DIR,
