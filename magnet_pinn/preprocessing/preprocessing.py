@@ -128,9 +128,9 @@ class Preprocessing(ABC):
 
 
     def __init__(self, 
-                 batches_dir_paths: Union[str, List[str]], 
-                 antenna_dir_path: str,
-                 output_dir_path: str, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
+                 antenna_dir_path: Union[str, Path],
+                 output_dir_path: Union[str, Path],
                  field_dtype: np.dtype = np.complex64) -> None:
         """
         Parameters
@@ -144,7 +144,7 @@ class Preprocessing(ABC):
         """
         self.field_dtype = np.dtype(field_dtype)
 
-        if isinstance(batches_dir_paths, str):
+        if isinstance(batches_dir_paths, str) or isinstance(batches_dir_paths, Path):
             batches = [batches_dir_paths]
         elif isinstance(batches_dir_paths, list):
             batches = batches_dir_paths
@@ -193,14 +193,7 @@ class Preprocessing(ABC):
             elif len(list(batch_path.iterdir())) == 0:
                 raise FileNotFoundError(f"Batch directory {batch_path} is empty")
 
-            simulations_path = batch_path / INPUT_SIMULATIONS_DIR_PATH
-
-            if not simulations_path.exists():
-                raise FileNotFoundError(f"Simulations directory {simulations_path} does not exist")
-            elif not simulations_path.is_dir():
-                raise FileNotFoundError(f"Simulations directory {simulations_path} is not a directory")
-
-            all_simulations_paths.extend([i for i in simulations_path.iterdir() if i.is_dir()])
+            all_simulations_paths.extend([i for i in batch_path.iterdir() if i.is_dir()])
 
         if len(all_simulations_paths) == 0:
             raise FileNotFoundError("No simulations found")
@@ -257,22 +250,22 @@ class Preprocessing(ABC):
             If None, all simulations will be processed.
         """
         all_sims_set = set(map(lambda x: x.name, self.all_sim_paths))
-        given_sim_set = set(self.all_sim_paths) if simulation_names is None else simulation_names
+        given_sim_set = all_sims_set if simulation_names is None else set(simulation_names)
         if not given_sim_set.issubset(all_sims_set):
             not_existing_simulations = given_sim_set - all_sims_set
-            list_of_them = ", ".join(not_existing_simulations)
+            list_of_them = ", ".join(str(not_existing_simulations))
             raise Exception(f"Simulations [{list_of_them}] do not exist")
-        elif not given_sim_set.issubset(all_sims_set):
-            raise Exception("Simulations are not valid")
+        
+        sim_we_use = list(filter(lambda x: x.name in given_sim_set, self.all_sim_paths))
 
-        pbar = tqdm(simulation_names, total=len(simulation_names))
-        for simulation_name in pbar:
-            self.__process_simulation(simulation_name)
-            pbar.set_postfix({"done": simulation_name}, refresh=True)
+        pbar = tqdm(sim_we_use, total=len(sim_we_use))
+        for sim_path in pbar:
+            self.__process_simulation(sim_path)
+            pbar.set_postfix({"done": sim_path.name}, refresh=True)
         
         self._write_dipoles()
 
-    def __process_simulation(self, simulation_name: str):
+    def __process_simulation(self, sim_path: str):
         """
         The main internal method to make simulation processing.
 
@@ -287,8 +280,8 @@ class Preprocessing(ABC):
             Name of the simulation which is also the simulation directory name
         """
         simulation = Simulation(
-            name=simulation_name,
-            path=self.simulations_dir_path / simulation_name,
+            name=sim_path.name,
+            path=sim_path,
         )
 
         self._extract_fields_data(simulation)
