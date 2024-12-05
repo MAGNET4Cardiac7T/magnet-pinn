@@ -6,9 +6,9 @@ DESCRIPTION
 """
 import os
 import h5py
+from pathlib import Path
+from typing import Union
 
-
-import glob
 import numpy as np
 import numpy.typing as npt
 
@@ -39,13 +39,14 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     Iterator for loading the magnetostatic simulation data.
     """
     def __init__(self, 
-                 data_dir: str,
+                 data_dir: Union[str, Path],
                  transforms: Optional[BaseTransform] = None,
                  num_samples: int = 1):
         super().__init__()
-        self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
-        self.coils_path = os.path.join(data_dir, PROCESSED_ANTENNA_DIR_PATH, "antenna.h5")
-        self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
+        data_dir = Path(data_dir)
+        self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
+        self.coils_path = data_dir / PROCESSED_ANTENNA_DIR_PATH / "antenna.h5"
+        self.simulation_list = sorted(self.simulation_dir.glob("*.h5"))
         self.coils = self._read_coils()
         self.num_coils = self.coils.shape[-1]
 
@@ -69,7 +70,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         return coils
     
     @abstractmethod
-    def _load_simulation(self, simulation_path: str) -> DataItem:
+    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         raise NotImplementedError("This method should be implemented in the derived class")
         
 
@@ -102,7 +103,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         
         return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
     
-    def _read_input(self, simulation_path: str) -> npt.NDArray[np.float32]:
+    def _read_input(self, simulation_path: Union[Path, str]) -> npt.NDArray[np.float32]:
         """
         Method reads input features from the h5 file.
 
@@ -129,7 +130,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         subject = np.max(subject, axis=-1)
         return subject
     
-    def _get_dtype(self, simulation_path: str) -> str:
+    def _get_dtype(self, simulation_path: Union[Path, str]) -> str:
         """
         Method reads the dtype from the h5 file.
 
@@ -142,7 +143,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             dtype = f.attrs[DTYPE_OUT_KEY]
         return dtype
     
-    def _get_truncation_coefficients(self, simulation_path: str) -> npt.NDArray:
+    def _get_truncation_coefficients(self, simulation_path: Union[Path, str]) -> npt.NDArray:
         """
         Method reads the truncation coefficients from the h5 file.
 

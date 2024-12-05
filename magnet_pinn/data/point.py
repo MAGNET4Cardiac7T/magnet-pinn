@@ -4,8 +4,10 @@ NAME
 DESCRIPTION
     This module contains classes for loading the magnetostatic simulation data.
 """
-import h5py
+from typing import Union
+from pathlib import Path
 
+import h5py
 import numpy as np
 
 from .dataitem import DataItem
@@ -17,7 +19,7 @@ from magnet_pinn.preprocessing.preprocessing import COORDINATES_OUT_KEY
 
 class MagnetPointIterator(MagnetBaseIterator):
 
-    def _load_simulation(self, simulation_path: str) -> DataItem:
+    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
         Loads simulation data from the h5 file.
         Parameters
