@@ -1,6 +1,6 @@
 from magnet_pinn.models import UNet3D
 from magnet_pinn.data.grid import MagnetGridIterator
-from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
+from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
 from magnet_pinn.utils import StandardNormalizer
 from magnet_pinn.data.utils import worker_init_fn
 import einops
@@ -67,8 +67,6 @@ augmentation = Compose(
         GridPhaseShift(num_coils=8)
     ]
 )
-
-
 
 iterator = MagnetGridIterator(
     BASE_DIR,

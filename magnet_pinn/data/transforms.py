@@ -34,9 +34,12 @@ class Compose(BaseTransform):
 
 
 class Crop(BaseTransform):
-    def __init__(self, crop_size: Tuple[int, int, int]):
+    def __init__(self, 
+                 crop_size: Tuple[int, int, int],
+                 crop_position: Literal['random', 'center'] = 'center'):
         super().__init__()
         self.crop_size = crop_size
+        self.crop_position = crop_position
 
     def __call__(self, simulation: DataItem):
         """
@@ -77,7 +80,16 @@ class Crop(BaseTransform):
 
     
     def _sample_crop_start(self, full_size: Tuple[int, int, int], crop_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
-        crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
+        for i in range(3):
+            if crop_size[i] > full_size[i]:
+                raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
+            
+        if self.crop_position == 'center':
+            crop_start = [(full_size[i] - crop_size[i]) // 2 for i in range(3)]
+        elif self.crop_position == 'random':
+            crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
+        else:
+            raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
 
     
@@ -182,8 +194,10 @@ class PhaseShift(BaseTransform):
 
 
 class GridPhaseShift(PhaseShift):
-    def __init__(self, num_coils: int):
-        super().__init__(num_coils=num_coils)
+    def __init__(self, 
+                 num_coils: int, 
+                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
 
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 
@@ -213,8 +227,10 @@ class GridPhaseShift(PhaseShift):
     
 
 class PointPhaseShift(PhaseShift):
-    def __init__(self, num_coils: int):
-        super().__init__(num_coils=num_coils)
+    def __init__(self, 
+                 num_coils: int,
+                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
 
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 

@@ -87,7 +87,7 @@ class FieldReaderFactory:
 
         self.field_type = field_type
         field_dir_path = simulation_dir_path / FIELD_DIR_PATH[field_type]
-        self.files_list = list(field_dir_path.glob(H5_FILENAME_PATTERN))
+        self.files_list = sorted(list(field_dir_path.glob(H5_FILENAME_PATTERN)))
 
         if len(self.files_list) == 0:
             raise FileNotFoundError(

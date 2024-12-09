@@ -114,8 +114,8 @@ class MinMaxNormalizer(Normalizer):
 
     def _update_params(self, x, axis: int = 0):
         pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
-        cur_min = einops.reduce(x, pattern, reduction='min')
-        cur_max = einops.reduce(x, pattern, reduction='max')
+        cur_min = einops.reduce(x, pattern, reduction='min').tolist()
+        cur_max = einops.reduce(x, pattern, reduction='max').tolist()
         self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
         self._params['x_max'] = [max(prev, cur) for prev, cur in zip_longest(self._params['x_max'], cur_max, fillvalue=float('-inf'))]
     
@@ -141,7 +141,7 @@ class StandardNormalizer(Normalizer):
         def mean_update(prev_avg, cur_avg, counter):
             return counter / (counter + 1) * prev_avg + cur_avg / (counter + 1)
         pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
-        cur_mean = einops.reduce(x, pattern, reduction='mean')
-        cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean')
+        cur_mean = einops.reduce(x, pattern, reduction='mean').tolist()
+        cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean').tolist()
         self._params["x_mean"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean"], cur_mean, fillvalue=0)]
         self._params["x_mean_sq"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)]

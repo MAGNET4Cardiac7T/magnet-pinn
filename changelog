@@ -37,3 +37,7 @@
 - add transforms (cropping, phase shift, point sampling)
 - refactor grid and point dataloaders
 - adjust examples with transforms
+
+## [0.0.7] 
+- Hotfix: pass down sampling_method to child classes
+- Hotfix: np.float_ deprecated in numpy 2.0
