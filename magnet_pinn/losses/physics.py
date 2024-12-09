@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import torch
 from typing import Optional, Union, Tuple
 
-from .utils import MaskedLossReducer, partial_derivative_findiff
+from .utils import MaskedLossReducer, DiffFilterFactory, ObjectMaskPadding
 
 # TODO Add dx dy dz as parameters in a clever way
 class BasePhysicsLoss(torch.nn.Module, ABC):
@@ -12,6 +12,8 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
         self.feature_dims = feature_dims
         self.physics_filters = self._build_physics_filters()
         self.masked_reduction = MaskedLossReducer()
+        self.diff_filter_factory = DiffFilterFactory()
+        self.object_mask_padding = ObjectMaskPadding()
 
     @abstractmethod
     def _base_physics_fn(self, pred, target):
@@ -24,17 +26,13 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
     def forward(self, pred, target, mask: Optional[torch.Tensor] = None):
         loss = self._base_physics_fn(pred, target)
         loss = torch.mean(loss, dim=self.feature_dims)
-        return loss#self.masked_reduction(loss, mask)
+        return self.masked_reduction(loss, mask)
 
 
 class DivergenceLoss(BasePhysicsLoss):
     def _base_physics_fn(self, pred, target):
-        return torch.nn.functional.conv3d(pred, self.physics_filters, padding=1)
+        return torch.nn.functional.conv3d(pred, self.physics_filters, padding=1)**2
     
     def _build_physics_filters(self):
-        partial_derivative_findiff_coeffs = torch.tensor(partial_derivative_findiff(), dtype=torch.float32)
-        divergence_filter = torch.zeros([1,3,3,3,3], dtype=torch.float32)
-        divergence_filter[0,0,:,0,0] = partial_derivative_findiff_coeffs
-        divergence_filter[0,1,0,:,0] = partial_derivative_findiff_coeffs
-        divergence_filter[0,2,0,0,:] = partial_derivative_findiff_coeffs
+        divergence_filter = self.diff_filter_factory.divergence()
         return divergence_filter

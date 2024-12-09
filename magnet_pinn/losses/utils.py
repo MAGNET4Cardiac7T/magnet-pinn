@@ -95,11 +95,6 @@ class DiffFilterFactory:
         """
         per_dimension_coeffs = [self.derivative_from_expression(dim) for dim in self.dim_names]
         per_dimension_coeffs = [self._pad_to_square(coeff) for coeff in per_dimension_coeffs]
-        return torch.stack(per_dimension_coeffs, dim=0)
-    
-
-if __name__ == '__main__':
-    
-    diff_filter_factory = DiffFilterFactory()
-    derivative = diff_filter_factory.derivative_from_expression('x')
-    print(diff_filter_factory.divergence())
+        divergence_filter = torch.stack(per_dimension_coeffs, dim=0)
+        divergence_filter = einops.rearrange(divergence_filter, '... -> () ...')
+        return divergence_filter
