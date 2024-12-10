@@ -22,8 +22,15 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
     @abstractmethod
     def _build_physics_filters(self):
         raise NotImplementedError
+    
+    def _cast_physics_filter(self, 
+                             dtype: torch.dtype = torch.float32, 
+                             device: torch.device = torch.device('cpu')) -> None:
+        if self.physics_filters.dtype != dtype or self.physics_filters.device != device:
+            self.physics_filters = self.physics_filters.to(dtype=dtype, device=device)
         
     def forward(self, pred, target, mask: Optional[torch.Tensor] = None):
+        self._cast_physics_filter(pred.dtype, pred.device)
         loss = self._base_physics_fn(pred, target)
         loss = torch.mean(loss, dim=self.feature_dims)
         return self.masked_reduction(loss, mask)
