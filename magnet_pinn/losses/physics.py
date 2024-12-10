@@ -36,11 +36,11 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
         loss = torch.mean(loss, dim=self.feature_dims)
         return self.masked_reduction(loss, mask)
 
-# TODO Add different Lp norms to calculate the residuals
+
 class DivergenceLoss(BasePhysicsLoss):
     def _base_physics_fn(self, pred, target):
         return torch.nn.functional.conv3d(pred, self.physics_filters, padding=1)**2
     
     def _build_physics_filters(self):
         divergence_filter = self.diff_filter_factory.divergence()
-        return divergence_filter**2
+        return divergence_filter
