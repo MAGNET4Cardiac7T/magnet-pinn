@@ -10,10 +10,11 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
                  feature_dims: Union[int, Tuple[int, ...]] = 1):
         super(BasePhysicsLoss, self).__init__()
         self.feature_dims = feature_dims
-        self.physics_filters = self._build_physics_filters()
         self.masked_reduction = MaskedLossReducer()
         self.diff_filter_factory = DiffFilterFactory()
         self.object_mask_padding = ObjectMaskPadding()
+        
+        self.physics_filters = self._build_physics_filters()
 
     @abstractmethod
     def _base_physics_fn(self, pred, target):
