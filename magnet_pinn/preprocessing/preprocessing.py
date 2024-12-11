@@ -253,8 +253,8 @@ class Preprocessing(ABC):
         given_sim_set = all_sims_set if simulation_names is None else set(simulation_names)
         if not given_sim_set.issubset(all_sims_set):
             not_existing_simulations = given_sim_set - all_sims_set
-            list_of_them = ", ".join(str(not_existing_simulations))
-            raise Exception(f"Simulations [{list_of_them}] do not exist")
+            not_existing_dirs_enumeration = ", ".join(not_existing_simulations)
+            raise Exception(f"Simulations [{not_existing_dirs_enumeration}] do not exist in the directory")
         
         sim_we_use = list(filter(lambda x: x.name in given_sim_set, self.all_sim_paths))
 
@@ -265,7 +265,7 @@ class Preprocessing(ABC):
         
         self._write_dipoles()
 
-    def __process_simulation(self, sim_path: str):
+    def __process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
