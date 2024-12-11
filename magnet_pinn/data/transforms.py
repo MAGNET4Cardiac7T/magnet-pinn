@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union, Literal
+from collections.abc import Iterable
+
 import numpy.typing as npt
 import numpy as np
 import einops
@@ -21,6 +23,18 @@ class BaseTransform(ABC):
     
 class Compose(BaseTransform):
     def __init__(self, augmentations: List[BaseTransform]):
+
+        if not isinstance(augmentations, Iterable):
+            raise ValueError("Augmentations should be an iterable")
+        elif len(list(augmentations)) == 0:
+            raise ValueError("No augmentations were given")
+        else:
+            for i in augmentations:
+                if i is None:
+                    raise ValueError("Augmentation can not be None")
+                elif not isinstance(i, BaseTransform):
+                    raise ValueError(f"Augmentation should be an instance of BaseTransform, got {type(i)}")
+        
         self.augmentations = augmentations
 
     def __call__(self, simulation: DataItem):
