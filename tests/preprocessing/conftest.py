@@ -38,14 +38,6 @@ ALL_SIM_NAMES = [
 ]
 
 
-@pytest.fixture(scope='session')
-def data_dir_path(tmp_path_factory):
-    data_path = tmp_path_factory.mktemp('data')
-    yield data_path
-    if data_path.exists():
-        rmtree(data_path)
-
-
 @pytest.fixture
 def processed_batch_dir_path(data_dir_path):
     batch_path = data_dir_path / PROCESSED_DIR_PATH / BATCH_DIR_NAME
