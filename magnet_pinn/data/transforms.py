@@ -129,7 +129,8 @@ class PhaseShift(BaseTransform):
             mask=mask,
             coils=coils_shifted,
             dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
         )
     
     def _sample_phase_and_mask(self, 
