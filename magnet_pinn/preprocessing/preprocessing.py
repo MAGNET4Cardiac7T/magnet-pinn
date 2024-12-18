@@ -32,15 +32,10 @@ from magnet_pinn.preprocessing.simulation import Simulation
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.reading_properties import FEATURE_NAMES, AIR_FEATURES
-from magnet_pinn.preprocessing.utils import VirtualDirectory
 
-RAW_DATA_DIR_PATH = "raw"
-ANTENNA_MATERIALS_DIR_PATH = Path("antenna") / "dipole" / "raw"
+
 INPUT_DIR_PATH = "Input"
-PROCESSED_DIR_PATH = "processed"
-INPUT_SIMULATIONS_DIR_PATH = "simulations"
 PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
-INPUT_ANTENNA_DIR_PATH = "antenna"
 PROCESSED_ANTENNA_DIR_PATH = "antenna"
 TARGET_FILE_NAME = "{name}.h5"
 
@@ -135,6 +130,8 @@ class Preprocessing(ABC):
         """
         Parameters
         ----------
+        batches_dir_paths : str | Path | List[str] | List[Path]
+            Path to the batch directory or a list of paths to different batch directories
         antenna_dir_path : str
             Path to the antenna directory
         output_dir_path : str
