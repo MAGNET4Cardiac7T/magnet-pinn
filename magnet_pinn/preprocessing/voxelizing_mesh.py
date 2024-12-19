@@ -68,7 +68,7 @@ class MeshVoxelizer:
             x_unique, y_unique, z_unique
         )
 
-    def __validate_input(self, grid: npt.NDArray[np.float32], axis: str):
+    def __validate_input(self, grid: npt.NDArray[np.float64], axis: str):
         if grid[0] >= grid[-1]:
             raise ValueError("Grid must be sorted in ascending order.")
         

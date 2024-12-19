@@ -244,7 +244,7 @@ def grid_simulation_path(tmp_path_factory):
     rmtree(simulation_path)
 
 
-def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float32]) -> None:
+def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float64]) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
 
