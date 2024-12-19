@@ -15,15 +15,15 @@ from magnet_pinn.preprocessing.preprocessing import (
     GridPreprocessing, PointPreprocessing, 
     PROCESSED_ANTENNA_DIR_PATH, PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
     ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, 
-    SUBJECT_OUT_KEY, COORDINATES_OUT_KEY, DTYPE_OUT_KEY, INPUT_ANTENNA_DIR_PATH,
-    TRUNCATION_COEFFICIENTS_OUT_KEY, COORDINATES_OUT_KEY, INPUT_SIMULATIONS_DIR_PATH,
-
+    SUBJECT_OUT_KEY, COORDINATES_OUT_KEY, DTYPE_OUT_KEY,
+    TRUNCATION_COEFFICIENTS_OUT_KEY, COORDINATES_OUT_KEY,
+    MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, VOXEL_SIZE_OUT_KEY
 )
 
 
-def test_antenna_processing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
-    grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    p = GridPreprocessing(
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -35,20 +35,92 @@ def test_antenna_processing(raw_batch_dir_path_long_term, raw_antenna_dir_path, 
         z_max=4, 
         voxel_size=1
     )
-    grid_preprocessor.process_simulations(
-        [CENTRAL_SPHERE_SIM_NAME]
+    p.process_simulations()
+
+    case_name = "grid_voxel_size_1_data_type_complex64"
+    expected_batch_case_dir = processed_batch_dir_path / case_name
+
+    assert expected_batch_case_dir == p.out_antenna_dir_path.parent
+    assert expected_batch_case_dir == p.out_simulations_dir_path.parent
+    assert expected_batch_case_dir.exists()
+
+    expected_antenna_dir = expected_batch_case_dir / PROCESSED_ANTENNA_DIR_PATH
+    assert p.out_antenna_dir_path == expected_antenna_dir
+    assert expected_antenna_dir.exists()
+
+    expected_simulations_dir = expected_batch_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    assert p.out_simulations_dir_path == expected_simulations_dir
+    assert expected_simulations_dir.exists()
+
+    for simulation_dir in expected_simulations_dir.iterdir():
+        assert simulation_dir.is_file()
+
+
+def test_grid_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    p = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
     )
+    p.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
 
-    case_name = f"grid_voxel_size_1_data_type_complex64"
-    out_dir = processed_batch_dir_path / case_name
-    assert out_dir.exists()
+    out_antenna_file = Path(p.out_antenna_dir_path) / TARGET_FILE_NAME.format(name="antenna")
+    assert out_antenna_file.exists()
 
-    check_antenna(out_dir)
+    with File(out_antenna_file) as f:
+        assert list(f.keys()) == [ANTENNA_MASKS_OUT_KEY]
+        assert list(f.attrs.keys()) == []
+        masks = f[ANTENNA_MASKS_OUT_KEY][:]
+        assert masks.shape == (9, 9, 9, 4)
+        assert masks.dtype == np.bool_
+
+        received_mask = np.sum(masks[:, :, 3, :], axis=-1)
+        expected_mask = np.zeros((9, 9))
+        expected_mask[3:6, 0:3] = 1
+        expected_mask[3:6, 6:9] = 1
+        expected_mask[0:3, 3:6] = 1
+        expected_mask[6:9, 3:6] = 1
+        assert np.equal(received_mask, expected_mask).all()
 
 
-def test_grid_central_complex_one_simulation_valid_preprocessing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    p = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    p.process_simulations([
+        CENTRAL_SPHERE_SIM_NAME
+    ])
+
+    sim_file = p.out_simulations_dir_path /TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+
+    with File(sim_file) as f:
+        assert set(f.keys()) == {E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY}
+        assert set(f.attrs.keys()) == {DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, VOXEL_SIZE_OUT_KEY}
+
+
+def test_grid_central_complex_one_simulation_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -82,9 +154,9 @@ def test_grid_central_complex_one_simulation_valid_preprocessing(raw_batch_dir_p
         check_central_subject_mask(f)
 
 
-def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -149,9 +221,9 @@ def check_antenna(out_dir: str):
         assert np.equal(received_mask, expected_mask).all()
 
 
-def test_grid_central_float_one_simulation_valid_preprocessing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_central_float_one_simulation_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -186,9 +258,9 @@ def test_grid_central_float_one_simulation_valid_preprocessing(raw_batch_dir_pat
         check_central_subject_mask(f)
 
 
-def test_grid_central_float_multiple_simulations_valid_preprocessing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_central_float_multiple_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -232,9 +304,9 @@ def test_grid_central_float_multiple_simulations_valid_preprocessing(raw_batch_d
         check_central_subject_mask(f)
 
 
-def test_grid_shifted_one_simulation_valid_preprocessing(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -349,9 +421,9 @@ def check_shifted_features(f: File):
     assert np.equal(features[0, :, :, 5], expected_features).all()
 
 
-def test_pointcloud_float_out_dirs(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32
@@ -364,9 +436,9 @@ def test_pointcloud_float_out_dirs(raw_batch_dir_path_long_term, raw_antenna_dir
     assert out_case_dir.exists()
 
 
-def test_pointcloud_complex_out_dirs(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_complex_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64
@@ -379,7 +451,7 @@ def test_pointcloud_complex_out_dirs(raw_batch_dir_path_long_term, raw_antenna_d
     assert out_case_dir.exists()
 
 
-def test_pointcloud_antenna(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     This testcase checks creation antenna milestones and coils mask correction.
     In details it sequentially checks the directory structure, the existence of 
@@ -387,7 +459,7 @@ def test_pointcloud_antenna(raw_batch_dir_path_long_term, raw_antenna_dir_path, 
     shgapes, datatypes and the correctness of the masks.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -415,12 +487,12 @@ def test_pointcloud_antenna(raw_batch_dir_path_long_term, raw_antenna_dir_path, 
         assert len(np.where(masks)[0]) == 108
 
 
-def test_pointcloud_general_structure_for_one_float_simulation(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_general_structure_for_one_float_simulation(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     This testcase checks creating general structure of directories and files for float data type.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -440,12 +512,12 @@ def test_pointcloud_general_structure_for_one_float_simulation(raw_batch_dir_pat
     assert exact_sim_file.exists()
 
 
-def test_pointcloud_general_structure_for_one_complex_simulation(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_general_structure_for_one_complex_simulation(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     This testcase checks creating general structure of directories and files for complex data type.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -465,12 +537,12 @@ def test_pointcloud_general_structure_for_one_complex_simulation(raw_batch_dir_p
     assert exact_sim_file.exists()
 
 
-def test_pointcloud_general_structure_for_multiple_simulations(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_general_structure_for_multiple_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     This testcase checks creating general structure of directories and files for multiple simulations.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -491,9 +563,9 @@ def test_pointcloud_general_structure_for_multiple_simulations(raw_batch_dir_pat
     assert second_sim_file.exists()
 
 
-def test_pointcloud_resulting_keys(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_resulting_keys(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -514,9 +586,9 @@ def test_pointcloud_resulting_keys(raw_batch_dir_path_long_term, raw_antenna_dir
         assert set(f.attrs.keys()) == set([DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY])
 
 
-def test_pointcloud_resulting_dtype_values_for_float(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_resulting_dtype_values_for_float(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.float32,
@@ -544,9 +616,9 @@ def test_pointcloud_resulting_dtype_values_for_float(raw_batch_dir_path_long_ter
         assert dtype == "float32"
 
 
-def test_pointcloud_resulting_dtype_values_for_complex(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_resulting_dtype_values_for_complex(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -574,12 +646,12 @@ def test_pointcloud_resulting_dtype_values_for_complex(raw_batch_dir_path_long_t
         assert dtype == "complex64"
 
 
-def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     This test case checks not the values of the resulting datasets, but shapes and dtypes.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -611,13 +683,13 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_batch_dir_path_
         assert subject.dtype == np.bool_
 
 
-def test_pointcloud_squared_coils_sphere_central_object(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_squared_coils_sphere_central_object(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     Test case checks exactly the values of the resulting datasets for the 4 squared 
     coils and a central sphere.
     """
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -645,9 +717,9 @@ def test_pointcloud_squared_coils_sphere_central_object(raw_batch_dir_path_long_
         len(np.where(subject)[0]) == 1
 
 
-def test_pointcloud_squared_coils_central_box_object(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_squared_coils_central_box_object(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -675,9 +747,9 @@ def test_pointcloud_squared_coils_central_box_object(raw_batch_dir_path_long_ter
         len(np.where(subject)[0]) == 1
 
 
-def test_pointcloud_squared_coils_shifted_sphere_object(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_squared_coils_shifted_sphere_object(raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -689,7 +761,7 @@ def test_pointcloud_squared_coils_shifted_sphere_object(raw_batch_dir_path_long_
 
     sim_file = Path(
         preprop.out_simulations_dir_path
-    ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    ) / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
         expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
@@ -705,9 +777,9 @@ def test_pointcloud_squared_coils_shifted_sphere_object(raw_batch_dir_path_long_
         len(np.where(subject)[0]) == 1
 
 
-def test_pointcloud_squared_coils_shifted_box_object(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_squared_coils_shifted_box_object(raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
-        raw_batch_dir_path_long_term,
+        raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,
@@ -719,7 +791,7 @@ def test_pointcloud_squared_coils_shifted_box_object(raw_batch_dir_path_long_ter
 
     sim_file = Path(
         preprop.out_simulations_dir_path
-    ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    ) / TARGET_FILE_NAME.format(name=SHIFTED_BOX_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
         expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
@@ -735,7 +807,7 @@ def test_pointcloud_squared_coils_shifted_box_object(raw_batch_dir_path_long_ter
         len(np.where(subject)[0]) == 1
 
 
-def test_pointcloud_invalid_batch_path(raw_batch_dir_path_long_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_invalid_batch_path(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     with pytest.raises(FileNotFoundError):
         preprop = PointPreprocessing(
             "invalid_batch_path",
@@ -746,11 +818,11 @@ def test_pointcloud_invalid_batch_path(raw_batch_dir_path_long_term, raw_antenna
         )
 
 
-def test_pointcloud_with_empty_batch(raw_batch_dir_path_short_term, raw_antenna_dir_path, processed_batch_dir_path):
-    list(map(rmtree, raw_batch_dir_path_short_term.iterdir()))
+def test_pointcloud_with_empty_batch(raw_central_batch_short_term, raw_antenna_dir_path, processed_batch_dir_path):
+    list(map(rmtree, raw_central_batch_short_term.iterdir()))
     with pytest.raises(FileNotFoundError):
         p = PointPreprocessing(
-            raw_batch_dir_path_short_term,
+            raw_central_batch_short_term,
             raw_antenna_dir_path,
             processed_batch_dir_path,
             field_dtype=np.complex64,
@@ -758,33 +830,33 @@ def test_pointcloud_with_empty_batch(raw_batch_dir_path_short_term, raw_antenna_
         )
 
 
-def test_pointcloud_with_no_antenna_dir(raw_batch_dir_path_short_term, raw_antenna_dir_path, processed_batch_dir_path):
-    rmtree(raw_antenna_dir_path)
+def test_pointcloud_with_no_antenna_dir(raw_central_batch_short_term, raw_antenna_dir_path_short_term, processed_batch_dir_path):
+    rmtree(raw_antenna_dir_path_short_term)
     with pytest.raises(FileNotFoundError):
         p = PointPreprocessing(
-            raw_batch_dir_path_short_term,
-            raw_antenna_dir_path,
+            raw_central_batch_short_term,
+            raw_antenna_dir_path_short_term,
             processed_batch_dir_path,
             field_dtype=np.complex64,
             coil_thick_coef=1.0
         )
 
 
-def test_pointcloud_with_empty_antenna_dir(raw_batch_dir_path_short_term, raw_antenna_dir_path, processed_batch_dir_path):
-    list(map(lambda x: x.unlink(), raw_antenna_dir_path.iterdir()))
+def test_pointcloud_with_empty_antenna_dir(raw_central_batch_dir_path, raw_antenna_dir_path_short_term, processed_batch_dir_path):
+    list(map(lambda x: x.unlink(), raw_antenna_dir_path_short_term.iterdir()))
     with pytest.raises(FileNotFoundError):
         p = PointPreprocessing(
-            raw_batch_dir_path_short_term,
-            raw_antenna_dir_path,
+            raw_central_batch_dir_path,
+            raw_antenna_dir_path_short_term,
             processed_batch_dir_path,
             field_dtype=np.complex64,
             coil_thick_coef=1.0
         )
 
 
-def test_multiple_batch_dirs_grid(raw_batch_dir_1, raw_batch_dir_2, raw_antenna_dir_path, processed_batch_dir_path):
+def test_multiple_batch_dirs_grid(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
-        [raw_batch_dir_1, raw_batch_dir_2],
+        [raw_central_batch_dir_path, raw_shifted_batch_dir_path],
         raw_antenna_dir_path,
         processed_batch_dir_path,
         field_dtype=np.complex64,

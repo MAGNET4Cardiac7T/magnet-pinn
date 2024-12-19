@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from magnet_pinn.preprocessing.utils import VirtualDirectory
+from magnet_pinn.preprocessing.virtual_directory import VirtualDirectory
+
 
 @pytest.fixture
 def tmp_dirs(tmp_path_factory):
@@ -37,3 +38,4 @@ def test_virtual_directory_truediv(tmp_dirs):
     vdir = VirtualDirectory(tmp_dirs)
     assert (vdir / "file1.txt") == tmp_dirs[0] / "file1.txt"
     assert (vdir / "file2.txt") == tmp_dirs[1] / "file2.txt"
+    

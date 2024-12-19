@@ -32,15 +32,10 @@ from magnet_pinn.preprocessing.simulation import Simulation
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
 from magnet_pinn.preprocessing.reading_properties import PropertyReader
 from magnet_pinn.preprocessing.reading_properties import FEATURE_NAMES, AIR_FEATURES
-from magnet_pinn.preprocessing.utils import VirtualDirectory
 
-RAW_DATA_DIR_PATH = "raw"
-ANTENNA_MATERIALS_DIR_PATH = Path("antenna") / "dipole" / "raw"
+
 INPUT_DIR_PATH = "Input"
-PROCESSED_DIR_PATH = "processed"
-INPUT_SIMULATIONS_DIR_PATH = "simulations"
 PROCESSED_SIMULATIONS_DIR_PATH = "simulations"
-INPUT_ANTENNA_DIR_PATH = "antenna"
 PROCESSED_ANTENNA_DIR_PATH = "antenna"
 TARGET_FILE_NAME = "{name}.h5"
 
@@ -74,6 +69,8 @@ class Preprocessing(ABC):
 
     Attributes
     ----------
+    all_sim_paths : List[Path]
+        A list of all simulation directories 
     field_dtype : np.dtype
         type of saving field data
     simulations_dir_path : str
@@ -126,14 +123,14 @@ class Preprocessing(ABC):
 
 
     def __init__(self, 
-                 simulations_dir_path: Union[str, List[str]], 
-                 antenna_dir_path: str,
-                 output_dir_path: str, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
+                 antenna_dir_path: Union[str, Path],
+                 output_dir_path: Union[str, Path],
                  field_dtype: np.dtype = np.complex64) -> None:
         """
         Parameters
         ----------
-        simulations_dir_path : str | List[str]
+        batches_dir_paths : str | Path | List[str] | List[Path]
             Path to the batch directory or a list of paths to different batch directories
         antenna_dir_path : str
             Path to the antenna directory
@@ -144,13 +141,14 @@ class Preprocessing(ABC):
         """
         self.field_dtype = np.dtype(field_dtype)
 
-        self.simulations_dir_path = VirtualDirectory(simulations_dir_path)
-        if not self.simulations_dir_path.exists():
-            raise FileNotFoundError("Batch directory does not exist")
-        elif self.simulations_dir_path.is_file():
-            raise FileNotFoundError("Batch directory is a file, not a directory")
-        elif len(list(self.simulations_dir_path.iterdir())) == 0:
-            raise FileNotFoundError("Batch directory is empty")
+        if isinstance(batches_dir_paths, str) or isinstance(batches_dir_paths, Path):
+            batches = [batches_dir_paths]
+        elif isinstance(batches_dir_paths, list):
+            batches = batches_dir_paths
+        else:
+            raise TypeError("Source/s should be a string/list of strings")
+        
+        self.all_sim_paths = self.__extract_simulations(batches)
 
         # create output directories
         target_dir_name = self._output_target_dir
@@ -167,6 +165,37 @@ class Preprocessing(ABC):
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
             antenna_dir_path
         )
+
+    def __extract_simulations(self, batches_paths: List[str]) -> List[Path]:
+        """
+        Extract the list of simulation files from the batch directories.
+
+        Parameters
+        ----------
+        batches_paths: List[str]
+            a list of batch directories
+
+        Returns
+        -------
+        List[Path]
+            a list of simulation files
+        """
+        all_simulations_paths = []
+        for batch_path in tqdm(batches_paths, desc="Load batches"):
+            batch_path = Path(batch_path)
+            if not batch_path.exists():
+                raise FileNotFoundError(f"Batch directory {batch_path} does not exist")
+            elif not batch_path.is_dir():
+                raise FileNotFoundError(f"Batch directory {batch_path} is not a directory")
+            elif len(list(batch_path.iterdir())) == 0:
+                raise FileNotFoundError(f"Batch directory {batch_path} is empty")
+
+            all_simulations_paths.extend([i for i in batch_path.iterdir() if i.is_dir()])
+
+        if len(all_simulations_paths) == 0:
+            raise FileNotFoundError("No simulations found")
+
+        return all_simulations_paths
 
     @property
     @abstractmethod
@@ -217,33 +246,23 @@ class Preprocessing(ABC):
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
-        if not self.simulations_dir_path.exists():
-            raise FileNotFoundError("Simulations directory does not exist")
+        all_sims_set = set(map(lambda x: x.name, self.all_sim_paths))
+        given_sim_set = all_sims_set if simulation_names is None else set(simulation_names)
+        if not given_sim_set.issubset(all_sims_set):
+            not_existing_simulations = given_sim_set - all_sims_set
+            not_existing_dirs_enumeration = ", ".join(not_existing_simulations)
+            raise Exception(f"Simulations [{not_existing_dirs_enumeration}] do not exist in the directory")
+        
+        sim_we_use = list(filter(lambda x: x.name in given_sim_set, self.all_sim_paths))
 
-        full_sim_list = [
-            dir.name
-            for dir in self.simulations_dir_path.iterdir() if dir.is_dir()
-        ]
-
-        if len(full_sim_list) == 0:
-            raise Exception("No simulations exist")
-        elif simulation_names is None:
-            simulation_names = full_sim_list
-        elif not set(simulation_names).issubset(set(full_sim_list)):
-            not_existing_simulations = set(simulation_names) - set(full_sim_list)
-            list_of_them = ", ".join(not_existing_simulations)
-            raise Exception(f"Simulations [{list_of_them}] do not exist in the directory")
-        elif not set(simulation_names).issubset(full_sim_list):
-            raise Exception("Simulations are not valid")
-
-        pbar = tqdm(simulation_names, total=len(simulation_names))
-        for simulation_name in pbar:
-            self.__process_simulation(simulation_name)
-            pbar.set_postfix({"done": simulation_name}, refresh=True)
+        pbar = tqdm(sim_we_use, total=len(sim_we_use))
+        for sim_path in pbar:
+            self.__process_simulation(sim_path)
+            pbar.set_postfix({"done": sim_path.name}, refresh=True)
         
         self._write_dipoles()
 
-    def __process_simulation(self, simulation_name: str):
+    def __process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
@@ -258,8 +277,8 @@ class Preprocessing(ABC):
             Name of the simulation which is also the simulation directory name
         """
         simulation = Simulation(
-            name=simulation_name,
-            path=self.simulations_dir_path / simulation_name,
+            name=sim_path.name,
+            path=sim_path,
         )
 
         self._extract_fields_data(simulation)
@@ -603,8 +622,6 @@ class GridPreprocessing(Preprocessing):
         the maximum values of the extent
     field_dtype : np.dtype
         type of saving field data
-    simulations_dir_path : str
-        Simulations location in the batch directory
     out_simulations_dir_path : str
         Processed simulations location in the output directory
     out_antenna_dir_path : str
@@ -858,8 +875,6 @@ class PointPreprocessing(Preprocessing):
     ----------
     field_dtype : np.dtype
         type of saving field data
-    simulations_dir_path : str
-        Simulations location in the batch directory
     out_simulations_dir_path : str
         Processed simulations location in the output directory
     out_antenna_dir_path : str

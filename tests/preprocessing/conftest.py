@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from shutil import rmtree
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Union
 
 import numpy as np
 import pandas as pd
@@ -18,13 +18,16 @@ from magnet_pinn.preprocessing.reading_field import (
 from magnet_pinn.preprocessing.reading_properties import (
     MATERIALS_FILE_NAME, FILE_COLUMN_NAME, FEATURE_NAMES
 )
-from magnet_pinn.preprocessing.preprocessing import (
-    INPUT_DIR_PATH, RAW_DATA_DIR_PATH, PROCESSED_DIR_PATH,
-    INPUT_SIMULATIONS_DIR_PATH, INPUT_ANTENNA_DIR_PATH
-)
+from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
 
 
-BATCH_DIR_NAME = "batch"
+INPUT_ANTENNA_DIR_PATH = "antenna"
+PROCESSED_DIR_PATH = "processed"
+RAW_DATA_DIR_PATH = "raw"
+ANTENNA_SHORT_TERM_DIR_NAME = "antenna_short_term"
+CENTRAL_BATCH_DIR_NAME = "central_batch"
+CENTRAL_BATCH_SHORT_TERM_DIR_NAME = "central_batch_short_term"
+SHIFTED_BATCH_DIR_NAME = "shifted_batch"
 CENTRAL_SPHERE_SIM_NAME = "children_0_tubes_0_id_0"
 CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
 SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
@@ -48,72 +51,72 @@ def data_dir_path(tmp_path_factory):
 
 @pytest.fixture
 def processed_batch_dir_path(data_dir_path):
-    batch_path = data_dir_path / PROCESSED_DIR_PATH / BATCH_DIR_NAME
+    batch_path = data_dir_path / PROCESSED_DIR_PATH / CENTRAL_BATCH_DIR_NAME
     batch_path.mkdir(parents=True, exist_ok=True)
+    yield batch_path
     if batch_path.exists():
         rmtree(batch_path)
 
 
 @pytest.fixture(scope='session')
-def raw_batch_dir_path_long_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path)
+def raw_central_batch_dir_path(data_dir_path):
+    batch_dir_path = create_central_batch(data_dir_path)
+    yield batch_dir_path
+    if batch_dir_path.exists():
+        rmtree(batch_dir_path)
+
+
+@pytest.fixture(scope='session')
+def raw_shifted_batch_dir_path(data_dir_path):
+    batch_dir_path = create_shifted_batch(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
 
 
 @pytest.fixture
-def raw_batch_dir_path_short_term(data_dir_path):
-    batch_dir_path = __create_batch(data_dir_path)
+def raw_central_batch_short_term(data_dir_path):
+    batch_dir_path = create_central_batch(data_dir_path, CENTRAL_BATCH_SHORT_TERM_DIR_NAME)
     yield batch_dir_path
     if batch_dir_path.exists():
         rmtree(batch_dir_path)
 
+
 @pytest.fixture
+def raw_antenna_dir_path_short_term(data_dir_path):
+    antenna_path = __create_antenna_test_data(data_dir_path, ANTENNA_SHORT_TERM_DIR_NAME)
+    yield antenna_path
+    if antenna_path.exists():
+        rmtree(antenna_path)
+
+
+@pytest.fixture(scope='session')
 def raw_antenna_dir_path(data_dir_path):
     antenna_path = __create_antenna_test_data(data_dir_path)
     yield antenna_path
     if antenna_path.exists():
         rmtree(antenna_path)
 
-@pytest.fixture
-def raw_batch_dir_1(data_dir_path):
-    batch_dir_path = __create_batch_1(data_dir_path)
-    yield batch_dir_path
-    if batch_dir_path.exists():
-        rmtree(batch_dir_path)
 
-@pytest.fixture
-def raw_batch_dir_2(data_dir_path):
-    batch_dir_path = __create_batch_2(data_dir_path)
-    yield batch_dir_path
-    if batch_dir_path.exists():
-        rmtree(batch_dir_path)
-    
-def __create_batch_1(data_dir_path):
-    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / "batch_1"
+def create_central_batch(data_dir_path, batch_dir_name: Union[str, Path] = CENTRAL_BATCH_DIR_NAME):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / batch_dir_name
 
     __create_simulation_data(batch_dir_path, CENTRAL_SPHERE_SIM_NAME)
     __create_simulation_data(batch_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
 
     return batch_dir_path
 
-def __create_batch_2(data_dir_path):
-    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / "batch_2"
+
+def create_shifted_batch(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / SHIFTED_BATCH_DIR_NAME
 
     __create_simulation_data(batch_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
     __create_simulation_data(batch_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
 
     return batch_dir_path
 
-def __create_batch(data_dir_path):
-    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / BATCH_DIR_NAME
 
-    __create_simulations(batch_dir_path)
-
-    return batch_dir_path
-
-def __create_antenna_test_data(data_path: str):
+def __create_antenna_test_data(data_path: Union[str, Path], antenna_dir_name: str = INPUT_ANTENNA_DIR_PATH) -> Path:
     """
     The method creates coils as boxes with their center of mass on 
     the X and Y axes correspondently. The are also symmetric to each
@@ -121,7 +124,7 @@ def __create_antenna_test_data(data_path: str):
     directory. It also stores files names in the corresponding materials file 
     together with unit values of the features.
     """
-    antenna_path = data_path / RAW_DATA_DIR_PATH / INPUT_ANTENNA_DIR_PATH
+    antenna_path = data_path / RAW_DATA_DIR_PATH / antenna_dir_name
 
     coils_meshes = (
         Box(bounds=np.array([
@@ -168,13 +171,6 @@ def __create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
     )
     df.to_csv(prop_dir_path / MATERIALS_FILE_NAME, index=False)
 
-
-def __create_simulations(batch_dir_path: str):
-
-    __create_simulation_data(batch_dir_path, CENTRAL_SPHERE_SIM_NAME)
-    __create_simulation_data(batch_dir_path, CENTRAL_BOX_SIM_NAME, __create_box_input_data)
-    __create_simulation_data(batch_dir_path, SHIFTED_SPHERE_SIM_NAME, __create_shifted_sphere_input_data)
-    __create_simulation_data(batch_dir_path, SHIFTED_BOX_SIM_NAME, __create_shifted_box_input_data)
 
 def __create_sphere_input_data(simulation_dir_path: str):
     input_dir_path = simulation_dir_path / INPUT_DIR_PATH
@@ -242,20 +238,13 @@ def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: flo
 
 
 @pytest.fixture(scope='session')
-def processed_batch_dir_path(data_dir_path):
-    batch_path = data_dir_path / PROCESSED_DIR_PATH / BATCH_DIR_NAME
-    batch_path.mkdir(parents=True, exist_ok=True)
-    return batch_path
-
-
-@pytest.fixture(scope='session')
 def grid_simulation_path(tmp_path_factory):
     simulation_path = tmp_path_factory.mktemp('simulation_name')
     yield simulation_path
     rmtree(simulation_path)
 
 
-def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float_]) -> None:
+def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float64]) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
 
