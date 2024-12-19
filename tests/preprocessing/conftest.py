@@ -32,6 +32,8 @@ CENTRAL_SPHERE_SIM_NAME = "children_0_tubes_0_id_0"
 CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
 SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
 SHIFTED_BOX_SIM_NAME = "children_0_tubes_0_id_3"
+FIELD_FILE_NAME_PATTERN = "{field}-field (f=297.2) [AC{fill_value}].h5"
+
 
 ALL_SIM_NAMES = [
     CENTRAL_SPHERE_SIM_NAME,
@@ -46,7 +48,7 @@ def data_dir_path(tmp_path_factory):
     data_path = tmp_path_factory.mktemp('data')
     yield data_path
     if data_path.exists():
-        rmtree(data_path)
+        """rmtree(data_path)"""
 
 
 @pytest.fixture
@@ -55,7 +57,7 @@ def processed_batch_dir_path(data_dir_path):
     batch_path.mkdir(parents=True, exist_ok=True)
     yield batch_path
     if batch_path.exists():
-        rmtree(batch_path)
+        """rmtree(batch_path)"""
 
 
 @pytest.fixture(scope='session')
@@ -63,7 +65,7 @@ def raw_central_batch_dir_path(data_dir_path):
     batch_dir_path = create_central_batch(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
-        rmtree(batch_dir_path)
+        """rmtree(batch_dir_path)"""
 
 
 @pytest.fixture(scope='session')
@@ -71,7 +73,7 @@ def raw_shifted_batch_dir_path(data_dir_path):
     batch_dir_path = create_shifted_batch(data_dir_path)
     yield batch_dir_path
     if batch_dir_path.exists():
-        rmtree(batch_dir_path)
+        """rmtree(batch_dir_path)"""
 
 
 @pytest.fixture
@@ -79,7 +81,7 @@ def raw_central_batch_short_term(data_dir_path):
     batch_dir_path = create_central_batch(data_dir_path, CENTRAL_BATCH_SHORT_TERM_DIR_NAME)
     yield batch_dir_path
     if batch_dir_path.exists():
-        rmtree(batch_dir_path)
+        """rmtree(batch_dir_path)"""
 
 
 @pytest.fixture
@@ -87,7 +89,7 @@ def raw_antenna_dir_path_short_term(data_dir_path):
     antenna_path = __create_antenna_test_data(data_dir_path, ANTENNA_SHORT_TERM_DIR_NAME)
     yield antenna_path
     if antenna_path.exists():
-        rmtree(antenna_path)
+        """rmtree(antenna_path)"""
 
 
 @pytest.fixture(scope='session')
@@ -95,7 +97,7 @@ def raw_antenna_dir_path(data_dir_path):
     antenna_path = __create_antenna_test_data(data_dir_path)
     yield antenna_path
     if antenna_path.exists():
-        rmtree(antenna_path)
+        """rmtree(antenna_path)"""
 
 
 def create_central_batch(data_dir_path, batch_dir_name: Union[str, Path] = CENTRAL_BATCH_DIR_NAME):
@@ -219,11 +221,13 @@ def __create_simulation_data(simulations_dir_path: str, sim_name: str, subject_f
     simulation_dir_path = simulations_dir_path / sim_name
 
     subject_func(simulation_dir_path)
-    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9))
-    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9))
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 0)
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 1)
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 0)
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 1)
 
 
-def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: float = 0):
+def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: int = 0):
     """
     Creates an `.h5` field file with file name defined by `file_name`, 
     type of a field defined by `field_type`. The 
@@ -231,10 +235,10 @@ def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: flo
     field_dir_path = sim_path / FIELD_DIR_PATH[field_type]
     field_dir_path.mkdir(parents=True, exist_ok=True)
 
-    file_path = field_dir_path / "e-field (f=297.2) [AC1].h5"
+    file_path = field_dir_path / FIELD_FILE_NAME_PATTERN.format(field=field_type[0].lower(), fill_value=fill_value)
     bounds = np.array([[-4, -4, -4], [4, 4, 4]])
 
-    create_grid_field(file_path, field_type, shape, bounds)
+    create_grid_field(file_path, field_type, shape, bounds, fill_value)
 
 
 @pytest.fixture(scope='session')
@@ -244,7 +248,7 @@ def grid_simulation_path(tmp_path_factory):
     rmtree(simulation_path)
 
 
-def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float64]) -> None:
+def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float64], fill_value: int) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
 
@@ -261,7 +265,7 @@ def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArr
         f.create_dataset(
             type,
             data=np.array(
-                np.zeros(shape=shape),
+                np.full(fill_value=fill_value, shape=shape, order='C'),
                 dtype=[('x', [('re', '<f4'), ('im', '<f4')]), ('y', [('re', '<f4'), ('im', '<f4')]), ('z', [('re', '<f4'), ('im', '<f4')])]
             )
         )
@@ -286,14 +290,16 @@ def e_field_grid_data(grid_simulation_path):
         field_path / "e-field (f=297.2) [AC1].h5",
         E_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     create_grid_field(
         field_path / "e-field (f=297.2) [AC2].h5",
         E_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     return grid_simulation_path
@@ -310,14 +316,16 @@ def h_field_grid_data(grid_simulation_path):
         field_path / "h-field (f=297.2) [AC1].h5",
         H_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     create_grid_field(
         field_path / "h-field (f=297.2) [AC2].h5",
         H_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     return grid_simulation_path

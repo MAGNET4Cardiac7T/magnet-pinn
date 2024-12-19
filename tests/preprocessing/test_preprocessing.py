@@ -338,24 +338,30 @@ def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_p
 
 
 def check_complex_fields(f: File):
-    expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.complex64)
+    expected_field = np.concatenate(
+        [np.zeros((3, 9, 9, 9, 1), dtype=np.complex64), np.ones((3, 9, 9, 9, 1), dtype=np.complex64)],
+        axis=-1
+    )
 
     e_field = f[E_FIELD_OUT_KEY][:]
-    assert e_field.shape == (3, 9, 9, 9, 1)
+    assert e_field.shape == (3, 9, 9, 9, 2)
     assert e_field.dtype == np.complex64
     assert np.equal(e_field, expected_field).all()
 
     h_field = f[H_FIELD_OUT_KEY][:]
-    assert h_field.shape == (3, 9, 9, 9, 1)
+    assert h_field.shape == (3, 9, 9, 9, 2)
     assert h_field.dtype == np.complex64
     assert np.equal(h_field, expected_field).all()
 
 
 def check_float_fields(f: File):
-    expected_field = np.zeros((3, 9, 9, 9, 1), dtype=np.float32)
+    expected_field = np.concatenate(
+        [np.zeros((3, 9, 9, 9, 1), dtype=np.float32), np.ones((3, 9, 9, 9, 1), dtype=np.float32)],
+        axis=-1
+    )
 
     e_field = f[E_FIELD_OUT_KEY][:]
-    assert e_field.shape == (3, 9, 9, 9, 1)
+    assert e_field.shape == (3, 9, 9, 9, 2)
     assert e_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
     re_e_field = e_field["re"]
     assert np.equal(re_e_field, expected_field).all()
@@ -363,7 +369,7 @@ def check_float_fields(f: File):
     assert np.equal(im_e_field, expected_field).all()
 
     h_field = f[H_FIELD_OUT_KEY][:]
-    assert h_field.shape == (3, 9, 9, 9, 1)
+    assert h_field.shape == (3, 9, 9, 9, 2)
     assert h_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
     re_h_field = h_field["re"]
     assert np.equal(re_h_field, expected_field).all()
@@ -666,10 +672,10 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_d
     ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        assert efield.shape == (729, 3, 1)
+        assert efield.shape == (729, 3, 2)
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert hfield.shape == (729, 3, 1)
+        assert hfield.shape == (729, 3, 2)
 
         features = f[FEATURES_OUT_KEY][:]
         assert features.shape == (729, 3)
