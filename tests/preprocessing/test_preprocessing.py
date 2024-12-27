@@ -339,42 +339,52 @@ def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_p
 
 def check_complex_fields(f: File):
     expected_field = np.concatenate(
-        [np.zeros((3, 9, 9, 9, 1), dtype=np.complex64), np.ones((3, 9, 9, 9, 1), dtype=np.complex64)],
+        [
+            np.zeros((3, 9, 9, 9, 1), dtype=np.complex64), 
+            np.ones((3, 9, 9, 9, 1), dtype=np.complex64),
+            np.full(fill_value=2, shape=(3, 9, 9, 9, 1), dtype=np.complex64)
+        ],
         axis=-1
     )
 
     e_field = f[E_FIELD_OUT_KEY][:]
-    assert e_field.shape == (3, 9, 9, 9, 2)
+    assert e_field.shape == (3, 9, 9, 9, 3)
     assert e_field.dtype == np.complex64
     assert np.equal(e_field, expected_field).all()
 
     h_field = f[H_FIELD_OUT_KEY][:]
-    assert h_field.shape == (3, 9, 9, 9, 2)
+    assert h_field.shape == (3, 9, 9, 9, 3)
     assert h_field.dtype == np.complex64
     assert np.equal(h_field, expected_field).all()
 
 
 def check_float_fields(f: File):
-    expected_field = np.concatenate(
-        [np.zeros((3, 9, 9, 9, 1), dtype=np.float32), np.ones((3, 9, 9, 9, 1), dtype=np.float32)],
+    expected_re_field = np.concatenate(
+        [
+            np.zeros((3, 9, 9, 9, 1), dtype=np.float32), 
+            np.ones((3, 9, 9, 9, 1), dtype=np.float32),
+            np.full(fill_value=2, shape=(3, 9, 9, 9, 1), dtype=np.float32)
+        ],
         axis=-1
     )
 
+    expected_im_field = np.zeros((3, 9, 9, 9, 3), dtype=np.float32)
+
     e_field = f[E_FIELD_OUT_KEY][:]
-    assert e_field.shape == (3, 9, 9, 9, 2)
+    assert e_field.shape == (3, 9, 9, 9, 3)
     assert e_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
     re_e_field = e_field["re"]
-    assert np.equal(re_e_field, expected_field).all()
+    assert np.equal(re_e_field, expected_re_field).all()
     im_e_field = e_field["im"]
-    assert np.equal(im_e_field, expected_field).all()
+    assert np.equal(im_e_field, expected_im_field).all()
 
     h_field = f[H_FIELD_OUT_KEY][:]
-    assert h_field.shape == (3, 9, 9, 9, 2)
+    assert h_field.shape == (3, 9, 9, 9, 3)
     assert h_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
     re_h_field = h_field["re"]
-    assert np.equal(re_h_field, expected_field).all()
+    assert np.equal(re_h_field, expected_re_field).all()
     im_h_field = h_field["im"]
-    assert np.equal(im_h_field, expected_field).all()
+    assert np.equal(im_h_field, expected_im_field).all()
 
 
 def check_central_subject_mask(f: File):
@@ -672,10 +682,10 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_d
     ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        assert efield.shape == (729, 3, 2)
+        assert efield.shape == (729, 3, 3)
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert hfield.shape == (729, 3, 2)
+        assert hfield.shape == (729, 3, 3)
 
         features = f[FEATURES_OUT_KEY][:]
         assert features.shape == (729, 3)
@@ -710,7 +720,15 @@ def test_pointcloud_squared_coils_sphere_central_object(raw_central_batch_dir_pa
     ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        
+        expected_field = np.concatenate(
+            [
+                np.zeros((729, 3, 1), dtype=np.complex64), 
+                np.ones((729, 3, 1), dtype=np.complex64),
+                np.full(fill_value=2, shape=(729, 3, 1), dtype=np.complex64)
+            ],
+            axis=-1
+        )
         assert np.equal(efield, expected_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
@@ -740,7 +758,14 @@ def test_pointcloud_squared_coils_central_box_object(raw_central_batch_dir_path,
     ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        expected_field = np.concatenate(
+            [
+                np.zeros((729, 3, 1), dtype=np.complex64), 
+                np.ones((729, 3, 1), dtype=np.complex64),
+                np.full(fill_value=2, shape=(729, 3, 1), dtype=np.complex64)
+            ],
+            axis=-1
+        )
         assert np.equal(efield, expected_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
@@ -770,7 +795,14 @@ def test_pointcloud_squared_coils_shifted_sphere_object(raw_shifted_batch_dir_pa
     ) / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        expected_field = np.concatenate(
+            [
+                np.zeros((729, 3, 1), dtype=np.complex64), 
+                np.ones((729, 3, 1), dtype=np.complex64),
+                np.full(fill_value=2, shape=(729, 3, 1), dtype=np.complex64)
+            ],
+            axis=-1
+        )
         assert np.equal(efield, expected_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
@@ -800,7 +832,14 @@ def test_pointcloud_squared_coils_shifted_box_object(raw_shifted_batch_dir_path,
     ) / TARGET_FILE_NAME.format(name=SHIFTED_BOX_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.zeros((729, 3, 1), dtype=np.complex64)
+        expected_field = np.concatenate(
+            [
+                np.zeros((729, 3, 1), dtype=np.complex64), 
+                np.ones((729, 3, 1), dtype=np.complex64),
+                np.full(fill_value=2, shape=(729, 3, 1), dtype=np.complex64)
+            ],
+            axis=-1
+        )
         assert np.equal(efield, expected_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
@@ -886,4 +925,3 @@ def test_multiple_batch_dirs_grid(raw_central_batch_dir_path, raw_shifted_batch_
     out_sim_names = listdir(out_dir / PROCESSED_SIMULATIONS_DIR_PATH)
     out_sim_names = [name.split(".")[0] for name in out_sim_names]
     assert set(out_sim_names) == set(ALL_SIM_NAMES)
-    
