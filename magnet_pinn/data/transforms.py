@@ -244,8 +244,7 @@ class PointPhaseShift(PhaseShift):
         coeffs_im = np.stack((re_phase, im_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
         coeffs = einops.repeat(coeffs, 'reimout reim coils -> he reimout reim coils', he=2)
-        field_shift = einops.einsum(fields, coeffs, 'he reim fieldxyz points coils, he reimout reim coils -> he reimout fieldxyz points')
-        field_shift = einops.rearrange(field_shift, 'he reimout fieldxyz points -> points fieldxyz reimout he')
+        field_shift = einops.einsum(fields, coeffs, 'he reim points fieldxyz coils, he reimout reim coils -> points fieldxyz reimout he')
         return field_shift
 
     def _phase_shift_coils(self,
