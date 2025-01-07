@@ -42,3 +42,4 @@
 - Hotfix: pass down sampling_method to child classes
 - Hotfix: np.float_ deprecated in numpy 2.0
 - Fix: positions not being returned in point phase shift
+- Fix: change wrong order of point phase shift
