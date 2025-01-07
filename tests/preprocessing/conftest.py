@@ -32,6 +32,8 @@ CENTRAL_SPHERE_SIM_NAME = "children_0_tubes_0_id_0"
 CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
 SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
 SHIFTED_BOX_SIM_NAME = "children_0_tubes_0_id_3"
+FIELD_FILE_NAME_PATTERN = "{field}-field (f=297.2) [AC{fill_value}].h5"
+
 
 ALL_SIM_NAMES = [
     CENTRAL_SPHERE_SIM_NAME,
@@ -219,11 +221,15 @@ def __create_simulation_data(simulations_dir_path: str, sim_name: str, subject_f
     simulation_dir_path = simulations_dir_path / sim_name
 
     subject_func(simulation_dir_path)
-    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9))
-    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9))
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 0)
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 1)
+    __create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 2)
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 0)
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 1)
+    __create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 2)
 
 
-def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: float = 0):
+def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: int = 0):
     """
     Creates an `.h5` field file with file name defined by `file_name`, 
     type of a field defined by `field_type`. The 
@@ -231,10 +237,10 @@ def __create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: flo
     field_dir_path = sim_path / FIELD_DIR_PATH[field_type]
     field_dir_path.mkdir(parents=True, exist_ok=True)
 
-    file_path = field_dir_path / "e-field (f=297.2) [AC1].h5"
+    file_path = field_dir_path / FIELD_FILE_NAME_PATTERN.format(field=field_type[0].lower(), fill_value=fill_value)
     bounds = np.array([[-4, -4, -4], [4, 4, 4]])
 
-    create_grid_field(file_path, field_type, shape, bounds)
+    __create_grid_field(file_path, field_type, shape, bounds, fill_value)
 
 
 @pytest.fixture(scope='session')
@@ -244,9 +250,10 @@ def grid_simulation_path(tmp_path_factory):
     rmtree(simulation_path)
 
 
-def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArray[np.float64]) -> None:
+def __create_grid_field(file_path: str, field_type: str, shape: Tuple, bounds: npt.NDArray[np.float64], fill_value: int) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
+    The field data creates a file with the field data which is a complex array with 0 imaginary part an `fill_value` as a real part.
 
     Parameters
     ----------
@@ -257,13 +264,19 @@ def create_grid_field(file_path: str, type: str, shape: Tuple, bounds: npt.NDArr
     shape : tuple
         Shape of the field
     """
+    data = np.full(
+        fill_value=fill_value,
+        shape=shape,
+        order='C',
+        dtype=[('x', [('re', '<f4'), ('im', '<f4')]), ('y', [('re', '<f4'), ('im', '<f4')]), ('z', [('re', '<f4'), ('im', '<f4')])]
+    )
+    data["x"]["im"] = 0
+    data["y"]["im"] = 0
+    data["z"]["im"] = 0
     with File(file_path, "w") as f:
         f.create_dataset(
-            type,
-            data=np.array(
-                np.zeros(shape=shape),
-                dtype=[('x', [('re', '<f4'), ('im', '<f4')]), ('y', [('re', '<f4'), ('im', '<f4')]), ('z', [('re', '<f4'), ('im', '<f4')])]
-            )
+            field_type,
+            data=data
         )
         min_bounds = bounds[0]
         min_x, min_y, min_z = min_bounds
@@ -282,18 +295,20 @@ def e_field_grid_data(grid_simulation_path):
 
     bounds = np.array([[-240, -220, -250], [240, 220, 250]])
 
-    create_grid_field(
+    __create_grid_field(
         field_path / "e-field (f=297.2) [AC1].h5",
         E_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
-    create_grid_field(
+    __create_grid_field(
         field_path / "e-field (f=297.2) [AC2].h5",
         E_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     return grid_simulation_path
@@ -306,24 +321,26 @@ def h_field_grid_data(grid_simulation_path):
 
     bounds = np.array([[-240, -220, -250], [240, 220, 250]])
 
-    create_grid_field(
+    __create_grid_field(
         field_path / "h-field (f=297.2) [AC1].h5",
         H_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
-    create_grid_field(
+    __create_grid_field(
         field_path / "h-field (f=297.2) [AC2].h5",
         H_FIELD_DATABASE_KEY,
         (121, 111, 126),
-        bounds
+        bounds,
+        0
     )
 
     return grid_simulation_path
 
 
-def create_grid_field_with_mixed_axis_order(path: str, type: str, shape: Tuple, mixed_shape: Tuple) -> None:
+def create_grid_field_with_mixed_axis_order(path: str, field_type: str, shape: Tuple, mixed_shape: Tuple) -> None:
     """
     Shortcut to create a test .h5 file with a grid field.
 
@@ -338,7 +355,7 @@ def create_grid_field_with_mixed_axis_order(path: str, type: str, shape: Tuple, 
     """
     with File(path, "w") as f:
         f.create_dataset(
-            type,
+            field_type,
             data=np.array(
                 np.zeros(shape=mixed_shape),
                 dtype=[('x', [('re', '<f4'), ('im', '<f4')]), ('y', [('re', '<f4'), ('im', '<f4')]), ('z', [('re', '<f4'), ('im', '<f4')])]
