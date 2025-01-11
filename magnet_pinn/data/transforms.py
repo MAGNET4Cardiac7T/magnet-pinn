@@ -48,9 +48,12 @@ class Compose(BaseTransform):
 
 
 class Crop(BaseTransform):
-    def __init__(self, crop_size: Tuple[int, int, int]):
+    def __init__(self, 
+                 crop_size: Tuple[int, int, int],
+                 crop_position: Literal['random', 'center'] = 'center'):
         super().__init__()
         self.crop_size = crop_size
+        self.crop_position = crop_position
 
     def __call__(self, simulation: DataItem):
         """
@@ -91,7 +94,16 @@ class Crop(BaseTransform):
 
     
     def _sample_crop_start(self, full_size: Tuple[int, int, int], crop_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
-        crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
+        for i in range(3):
+            if crop_size[i] > full_size[i]:
+                raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
+            
+        if self.crop_position == 'center':
+            crop_start = [(full_size[i] - crop_size[i]) // 2 for i in range(3)]
+        elif self.crop_position == 'random':
+            crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
+        else:
+            raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
 
     
@@ -131,7 +143,8 @@ class PhaseShift(BaseTransform):
             mask=mask,
             coils=coils_shifted,
             dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
         )
     
     def _sample_phase_and_mask(self, 
@@ -245,8 +258,7 @@ class PointPhaseShift(PhaseShift):
         coeffs_im = np.stack((re_phase, im_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
         coeffs = einops.repeat(coeffs, 'reimout reim coils -> he reimout reim coils', he=2)
-        field_shift = einops.einsum(fields, coeffs, 'he reim fieldxyz points coils, he reimout reim coils -> he reimout fieldxyz points')
-        field_shift = einops.rearrange(field_shift, 'he reimout fieldxyz points -> points fieldxyz reimout he')
+        field_shift = einops.einsum(fields, coeffs, 'he reim points fieldxyz coils, he reimout reim coils -> points fieldxyz reimout he')
         return field_shift
 
     def _phase_shift_coils(self,

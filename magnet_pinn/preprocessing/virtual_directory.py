@@ -1,5 +1,8 @@
+import warnings
+
 from pathlib import Path
 from typing import List, Union
+
 
 class VirtualDirectory:
     """
@@ -13,6 +16,11 @@ class VirtualDirectory:
             paths : Union[str, List[str]]
                 A list of paths (or a single path) to the physical directories.
         """
+        warnings.warn(
+            "Deprecated from the version 0.0.7 while it was replaced with the list of Paths",
+            FutureWarning,
+            stacklevel=2
+        )
         if not isinstance(paths, list):
             paths = [paths]
         self.paths = [Path(path) for path in paths]
