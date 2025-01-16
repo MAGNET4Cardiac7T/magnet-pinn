@@ -22,6 +22,14 @@ class BaseTransform(ABC):
         return self.__class__.__name__ + str(self.kwargs)
     
 class Compose(BaseTransform):
+    """
+    Compose function for combining multiple augmentations.
+
+    Parameters
+    ----------
+    augmentations : List[BaseTransform]
+        List of augmentations to be applied to the simulation data
+    """
     def __init__(self, augmentations: List[BaseTransform]):
 
         if not isinstance(augmentations, Iterable):
@@ -48,10 +56,34 @@ class Compose(BaseTransform):
 
 
 class Crop(BaseTransform):
+    """
+    Class for cropping the simulation data.
+
+    Parameters
+    ----------
+    crop_size : Tuple[int, int, int]
+        Size of the resulting data
+
+    crop_position : Literal['random', 'center']
+        Position of the crop
+    """
+
     def __init__(self, 
                  crop_size: Tuple[int, int, int],
                  crop_position: Literal['random', 'center'] = 'center'):
         super().__init__()
+
+        if not isinstance(crop_size, Iterable):
+            raise ValueError("Crop size should be a tuple")
+        elif len(crop_size) != 3:
+            raise ValueError("Crop size should have 3 dimensional")
+        elif not all((isinstance(i, int) for i in crop_size)):
+            raise ValueError("Crop size should contain only integers")
+        
+        if crop_position not in ['random', 'center']:
+            raise ValueError("Crop position should be either 'random' or 'center'")
+        
+
         self.crop_size = crop_size
         self.crop_position = crop_position
 
