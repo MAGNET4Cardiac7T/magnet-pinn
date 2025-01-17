@@ -19,7 +19,7 @@ import random
 import torch
 
 from .dataitem import DataItem
-from .transforms import BaseTransform
+from .transforms import BaseTransform, DefaultTransform, check_transforms
 
 from magnet_pinn.preprocessing.preprocessing import (
     ANTENNA_MASKS_OUT_KEY,
@@ -33,14 +33,13 @@ from magnet_pinn.preprocessing.preprocessing import (
     DTYPE_OUT_KEY
 )
 
-
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
     Iterator for loading the magnetostatic simulation data.
     """
     def __init__(self, 
                  data_dir: str,
-                 transforms: Optional[BaseTransform] = None,
+                 transforms: BaseTransform = DefaultTransform(),
                  num_samples: int = 1):
         super().__init__()
         self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
@@ -48,6 +47,9 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
         self.coils = self._read_coils()
         self.num_coils = self.coils.shape[-1]
+
+        ## TODO: check if transform valid:
+        check_transforms(transforms)
 
         self.transforms = transforms
         self.num_samples = num_samples
