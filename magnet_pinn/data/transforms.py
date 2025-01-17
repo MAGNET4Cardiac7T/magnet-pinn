@@ -8,7 +8,18 @@ import einops
 
 from .dataitem import DataItem
 
-
+def check_transforms(transforms):
+    if not isinstance(transforms, BaseTransform):
+        raise ValueError("Transforms should be an instance of BaseTransform")
+    elif isinstance(transforms, DefaultTransform):
+        pass
+    elif isinstance(transforms, Compose):
+        if not sum(isinstance(t, PhaseShift) for t in transforms.transforms) == 1:
+            raise ValueError("Exactly one of the composed transforms should be a PhaseShift transform")
+    elif isinstance(transforms, PhaseShift):
+        pass
+    else:
+        raise ValueError("Transforms not valid. Probably missing a phase shift transform")
 
 class BaseTransform(ABC):
     def __init__(self, **kwargs):
@@ -30,29 +41,47 @@ class Compose(BaseTransform):
     augmentations : List[BaseTransform]
         List of augmentations to be applied to the simulation data
     """
-    def __init__(self, augmentations: List[BaseTransform]):
+    def __init__(self, transforms: List[BaseTransform]):
 
-        if not isinstance(augmentations, Iterable):
+        if not isinstance(transforms, Iterable):
             raise ValueError("Augmentations should be an iterable")
-        elif len(list(augmentations)) == 0:
+        elif len(list(transforms)) == 0:
             raise ValueError("No augmentations were given")
         else:
-            for i in augmentations:
+            for i in transforms:
                 if i is None:
                     raise ValueError("Augmentation can not be None")
                 elif not isinstance(i, BaseTransform):
                     raise ValueError(f"Augmentation should be an instance of BaseTransform, got {type(i)}")
         
-        self.augmentations = augmentations
+        self.transforms = transforms
 
     def __call__(self, simulation: DataItem):
-        for aug in self.augmentations:
+        for aug in self.transforms:
             simulation = aug(simulation)
         return simulation
 
     def __repr__(self):
-        return self.__class__.__name__ + str(self.augmentations)
+        return self.__class__.__name__ + str(self.transforms)
     
+class DefaultTransform(BaseTransform):
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, simulation: DataItem):
+        num_coils = simulation.coils.shape[-1]
+        simulation.field = np.sum(simulation.field, axis=-1)
+
+        simulation.phase = np.zeros(num_coils, dtype=simulation.dtype)
+        simulation.mask= np.ones(num_coils, dtype=np.bool_)
+
+        coils_re = np.sum(simulation.coils, axis=-1)
+        coils_im = np.zeros_like(coils_re)
+        simulation.coils = np.stack((coils_re, coils_im), axis=0)
+        return simulation
+    
+    def check_if_valid(self):
+        return True
 
 
 class Crop(BaseTransform):
@@ -137,7 +166,6 @@ class Crop(BaseTransform):
         else:
             raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
-
     
 
 class PhaseShift(BaseTransform):
@@ -223,29 +251,6 @@ class PhaseShift(BaseTransform):
             mask = np.random.choice([0, 1], num_coils, replace=True)
         return mask
     
-    @abstractmethod
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32], 
-                           ) -> npt.NDArray[np.float32]:
-        raise NotImplementedError
-    
-    @abstractmethod
-    def _phase_shift_coils(self,
-                           coils: npt.NDArray[np.float32],
-                           phase: npt.NDArray[np.float32],
-                           mask: npt.NDArray[np.bool_]
-                           ) -> npt.NDArray[np.float32]:
-        raise NotImplementedError
-
-
-class GridPhaseShift(PhaseShift):
-    def __init__(self, 
-                 num_coils: int, 
-                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
-        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
-
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 
                            phase: npt.NDArray[np.float32], 
@@ -257,7 +262,7 @@ class GridPhaseShift(PhaseShift):
         coeffs_im = np.stack((re_phase, im_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
         coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einops.einsum(fields, coeffs, 'hf reim fieldxyz x y z coils, hf reimout reim coils -> hf reimout fieldxyz x y z')
+        field_shift = einops.einsum(fields, coeffs, 'hf reim fieldxyz ... coils, hf reimout reim coils -> hf reimout fieldxyz ...')
         return field_shift
 
 
@@ -269,41 +274,50 @@ class GridPhaseShift(PhaseShift):
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs = np.stack((re_phase, im_phase), axis=0)
-        coils_shift = einops.einsum(coils, coeffs, 'x y z coils, reim coils -> reim x y z')
+        coils_shift = einops.einsum(coils, coeffs, '... coils, reim coils -> reim ...')
         return coils_shift
-    
+
+class GridPhaseShift(PhaseShift):
+    pass
 
 class PointPhaseShift(PhaseShift):
+    pass
+
+class PointFeatureRearrange(BaseTransform):
     def __init__(self, 
-                 num_coils: int,
-                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
-        super().__init__(num_coils=num_coils, sampling_method=sampling_method)
+                 num_coils: int):
+        super().__init__()
+        self.num_coils = num_coils
 
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32]
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
-        coeffs_im = np.stack((re_phase, im_phase), axis=0)
-        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = einops.repeat(coeffs, 'reimout reim coils -> he reimout reim coils', he=2)
-        field_shift = einops.einsum(fields, coeffs, 'he reim points fieldxyz coils, he reimout reim coils -> points fieldxyz reimout he')
-        return field_shift
+    def __call__(self, simulation: DataItem):
+        """
+        Method for augmenting the simulation data.
+        Parameters
+        ----------
+        data : DataItem
+            DataItem object with the simulation data
+        
+        Returns
+        -------
+        DataItem
+            augmented DataItem object
+        """
+        simulation.field = self._rearrange_field(simulation.field, self.num_coils)
+        simulation.coils = self._rearrange_coils(simulation.coils, self.num_coils)
+        return simulation
 
-    def _phase_shift_coils(self,
-                           coils: npt.NDArray[np.float32],
-                           phase: npt.NDArray[np.float32],
-                           mask: npt.NDArray[np.bool_]
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs = np.stack((re_phase, im_phase), axis=0)
-        coils_shift = einops.einsum(coils, coeffs, 'points coils, reim coils -> points reim')
-        return coils_shift
-    
+    def _rearrange_field(self, 
+                         field: npt.NDArray[np.float32], 
+                         num_coils: int) -> npt.NDArray[np.float32]:
+        field = einops.rearrange(field, 'he reimout fieldxyz points -> points fieldxyz reimout he')
+        field_shift = einops.rearrange(field_shift, )
+        return field
+
+    def _rearrange_coils(self, 
+                         coils: npt.NDArray[np.float32], 
+                         num_coils: int) -> npt.NDArray[np.float32]:
+        coils = einops.rearrange(coils, 'reim points -> points reim')
+        return coils
 
 class PointSampling(BaseTransform):
     def __init__(self, points_sampled: Union[float, int]):

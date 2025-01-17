@@ -1,5 +1,5 @@
 from magnet_pinn.data.grid import MagnetGridIterator
-from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
+from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose, DefaultTransform
 import tqdm
 
 
@@ -10,15 +10,18 @@ augmentation = Compose(
     ]
 )
 
+#augmentation = Crop(crop_size=(100, 100, 100))
+
 
 
 iterator = MagnetGridIterator(
-    "data/processed/train/grid_voxel_size_4_data_type_float32",
+    "/home/andi/coding/data/magnet/processed/train/grid_voxel_size_4_data_type_float32",
     transforms=augmentation,
-    num_samples=100
+    num_samples=1
 )
 
 
 for item in tqdm.tqdm(iterator, smoothing=0):
-    pass
+    print(item['field'].shape)
+    print(item['coils'].shape)
 
