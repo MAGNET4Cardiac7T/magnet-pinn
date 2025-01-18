@@ -1,3 +1,9 @@
+"""
+NAME
+    transforms.py
+DESCRIPTION
+    This module contains classes for augmenting the simulation data.
+"""
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union, Literal
 from collections.abc import Iterable
@@ -7,6 +13,7 @@ import numpy as np
 import einops
 
 from .dataitem import DataItem
+
 
 def check_transforms(transforms):
     if not isinstance(transforms, BaseTransform):
@@ -21,6 +28,7 @@ def check_transforms(transforms):
     else:
         raise ValueError("Transforms not valid. Probably missing a phase shift transform")
 
+
 class BaseTransform(ABC):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -32,6 +40,11 @@ class BaseTransform(ABC):
     def __repr__(self):
         return self.__class__.__name__ + str(self.kwargs)
     
+    def _check_data(self, simulation: DataItem):
+        if not isinstance(simulation, DataItem):
+            raise ValueError(f"Simulation should be an instance of DataItem, got {type(simulation)}")
+
+
 class Compose(BaseTransform):
     """
     Compose function for combining multiple augmentations.
@@ -57,18 +70,21 @@ class Compose(BaseTransform):
         self.transforms = transforms
 
     def __call__(self, simulation: DataItem):
+        self._check_data(simulation)
         for aug in self.transforms:
             simulation = aug(simulation)
         return simulation
 
     def __repr__(self):
         return self.__class__.__name__ + str(self.transforms)
-    
+
+
 class DefaultTransform(BaseTransform):
     def __init__(self):
         super().__init__()
 
     def __call__(self, simulation: DataItem):
+        self._check_data(simulation)
         num_coils = simulation.coils.shape[-1]
         simulation.field = np.sum(simulation.field, axis=-1)
 
@@ -108,6 +124,8 @@ class Crop(BaseTransform):
             raise ValueError("Crop size should have 3 dimensional")
         elif not all((isinstance(i, int) for i in crop_size)):
             raise ValueError("Crop size should contain only integers")
+        elif not (np.array(crop_size) > 0).all():
+            raise ValueError("Crop size should be larger than 0")
         
         if crop_position not in ['random', 'center']:
             raise ValueError("Crop position should be either 'random' or 'center'")
@@ -158,8 +176,9 @@ class Crop(BaseTransform):
         for i in range(3):
             if crop_size[i] > full_size[i]:
                 raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
-            
-        if self.crop_position == 'center':
+        if full_size == crop_size:
+            return (0, 0, 0)    
+        elif self.crop_position == 'center':
             crop_start = [(full_size[i] - crop_size[i]) // 2 for i in range(3)]
         elif self.crop_position == 'random':
             crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]

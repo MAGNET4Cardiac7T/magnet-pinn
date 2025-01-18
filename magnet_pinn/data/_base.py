@@ -33,6 +33,7 @@ from magnet_pinn.preprocessing.preprocessing import (
     DTYPE_OUT_KEY
 )
 
+
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
     Iterator for loading the magnetostatic simulation data.
