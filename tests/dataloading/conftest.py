@@ -14,7 +14,7 @@ def zero_item():
         subject=np.zeros((20, 20, 20), dtype=np.bool_),
         phase=np.zeros(8, dtype=np.float32),
         mask=np.zeros(8, dtype=np.bool_),
-        coils=np.zeros((20, 20, 20, 8), dtype=np.bool_),
+        coils=np.zeros((20, 20, 20, 8), dtype=np.float32),
         dtype="float32",
         truncation_coefficients=np.zeros(3, dtype=np.float32)
     )
@@ -29,7 +29,7 @@ def random_item():
         subject=np.random.choice([0, 1], size=(20, 20, 20)).astype(np.bool_),
         phase=np.random.rand(8).astype(np.float32),
         mask=np.random.choice([0, 1], size=8).astype(np.bool_),
-        coils=np.random.choice([0, 1], size=(20, 20, 20, 8)).astype(np.bool_),
+        coils=np.random.choice([0, 1], size=(20, 20, 20, 8)).astype(np.float32),
         dtype="float32",
         truncation_coefficients=np.ones(3, dtype=np.float32)
     )

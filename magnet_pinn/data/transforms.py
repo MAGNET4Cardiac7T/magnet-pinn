@@ -88,15 +88,16 @@ class DefaultTransform(BaseTransform):
 
         num_coils = simulation.coils.shape[-1]
         coils_re = np.sum(simulation.coils, axis=-1)
-        coils_im = np.zeros_like(coils_re)
+        coils_im = np.zeros_like(coils_re, dtype=simulation.coils.dtype)
         
         return DataItem(
             simulation=simulation.simulation,
             input=simulation.input,
             field=np.sum(simulation.field, axis=-1),
             subject=simulation.subject,
+            positions=simulation.positions,
             phase=np.zeros(num_coils, dtype=simulation.dtype),
-            mask=np.ones(num_coils, dtype=np.bool_),
+            mask=np.ones(num_coils, dtype=simulation.mask.dtype),
             coils=np.stack((coils_re, coils_im), axis=0),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients

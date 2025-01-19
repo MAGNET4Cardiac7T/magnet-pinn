@@ -209,6 +209,7 @@ def test_crop_transform_valid_random_crop_position(zero_item):
 
 def check_elements_not_changed_by_crop(result, input_item):
     assert result.simulation == input_item.simulation
+    assert result.positions == input_item.positions
     assert np.equal(result.phase, input_item.phase).all()
     assert np.equal(result.mask, input_item.mask).all()
     assert result.dtype == input_item.dtype
@@ -232,3 +233,44 @@ def test_default_transform_actions_not_inplace(zero_item):
     result = trans(zero_item)
 
     assert result is not zero_item
+
+
+def test_default_transform_check_datatypes(zero_item):
+    result = DefaultTransform()(zero_item)
+    check_items_datatypes(result, zero_item)
+
+
+def test_default_transform_check_shapes(zero_item):
+    result = DefaultTransform()(zero_item)
+
+    assert result.input.shape == zero_item.input.shape
+    assert result.subject.shape == zero_item.subject.shape
+    assert len(result.positions) == len(zero_item.positions)
+    assert result.phase.shape == zero_item.phase.shape
+    assert result.mask.shape == zero_item.mask.shape
+
+    assert result.field.shape == zero_item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(zero_item.coils.shape[:-1]))
+
+
+def test_default_transform_check_values(random_item):
+    result = DefaultTransform()(random_item)
+
+    assert result.simulation == random_item.simulation
+    assert np.equal(result.input, random_item.input).all()
+    assert np.equal(result.subject, random_item.subject).all()
+    assert result.positions == random_item.positions
+    assert result.dtype == random_item.dtype
+    assert np.equal(result.truncation_coefficients, random_item.truncation_coefficients).all()
+
+    assert np.equal(result.field, np.sum(random_item.field, axis=-1)).all()
+
+    coils_num = random_item.coils.shape[-1]
+    assert np.equal(result.phase, np.zeros(coils_num, dtype=random_item.phase.dtype)).all()
+    assert np.equal(result.mask, np.ones(coils_num, dtype=random_item.mask.dtype)).all()
+
+    expected_coils = np.stack([
+        np.sum(random_item.coils, axis=-1),
+        np.zeros(random_item.coils.shape[:-1], dtype=random_item.coils.dtype)
+    ], axis=0)
+    assert np.equal(result.coils, expected_coils).all()

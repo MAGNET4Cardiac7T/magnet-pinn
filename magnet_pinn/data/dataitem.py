@@ -15,6 +15,6 @@ class DataItem:
     positions: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
     phase: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
     mask: Optional[npt.NDArray[np.bool_]] = field(default_factory=list)
-    coils: Optional[npt.NDArray[np.bool_]] = field(default_factory=list)
+    coils: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
     dtype: Optional[str] = field(default_factory=str)
     truncation_coefficients: Optional[npt.NDArray] = field(default_factory=list)
