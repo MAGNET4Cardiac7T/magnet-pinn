@@ -85,16 +85,22 @@ class DefaultTransform(BaseTransform):
 
     def __call__(self, simulation: DataItem):
         self._check_data(simulation)
+
         num_coils = simulation.coils.shape[-1]
-        simulation.field = np.sum(simulation.field, axis=-1)
-
-        simulation.phase = np.zeros(num_coils, dtype=simulation.dtype)
-        simulation.mask= np.ones(num_coils, dtype=np.bool_)
-
         coils_re = np.sum(simulation.coils, axis=-1)
         coils_im = np.zeros_like(coils_re)
-        simulation.coils = np.stack((coils_re, coils_im), axis=0)
-        return simulation
+        
+        return DataItem(
+            simulation=simulation.simulation,
+            input=simulation.input,
+            field=np.sum(simulation.field, axis=-1),
+            subject=simulation.subject,
+            phase=np.zeros(num_coils, dtype=simulation.dtype),
+            mask=np.ones(num_coils, dtype=np.bool_),
+            coils=np.stack((coils_re, coils_im), axis=0),
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients
+        )
     
     def check_if_valid(self):
         return True
