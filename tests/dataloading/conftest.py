@@ -9,10 +9,14 @@ from magnet_pinn.data.dataitem import DataItem
 def zero_item():
     return DataItem(
         simulation="",
-        field=np.zeros((2, 2, 3, 20, 20, 20, 8), dtype=np.float32),
         input=np.zeros((3, 20, 20, 20), dtype=np.float32),
-        subject=np.zeros((20, 20, 20), dtype=np.int8),
-        coils=np.zeros((20, 20, 20, 8), dtype=np.int8)
+        field=np.zeros((2, 2, 3, 20, 20, 20, 8), dtype=np.float32),
+        subject=np.zeros((20, 20, 20), dtype=np.bool_),
+        phase=np.zeros(8, dtype=np.float32),
+        mask=np.zeros(8, dtype=np.bool_),
+        coils=np.zeros((20, 20, 20, 8), dtype=np.bool_),
+        dtype="float32",
+        truncation_coefficients=np.zeros(3, dtype=np.float32)
     )
 
 
@@ -20,8 +24,12 @@ def zero_item():
 def random_item():
     return DataItem(
         simulation="",
-        field=np.random.rand(2, 2, 3, 20, 20, 20, 8),
-        input=np.random.rand(3, 20, 20, 20),
-        subject=np.random.choice([0, 1], size=(20, 20, 20)),
-        coils=np.random.choice([0, 1], size=(20, 20, 20, 8))
+        input=np.random.rand(3, 20, 20, 20).astype(np.float32),
+        field=np.random.rand(2, 2, 3, 20, 20, 20, 8).astype(np.float32),
+        subject=np.random.choice([0, 1], size=(20, 20, 20)).astype(np.bool_),
+        phase=np.random.rand(8).astype(np.float32),
+        mask=np.random.choice([0, 1], size=8).astype(np.bool_),
+        coils=np.random.choice([0, 1], size=(20, 20, 20, 8)).astype(np.bool_),
+        dtype="float32",
+        truncation_coefficients=np.ones(3, dtype=np.float32)
     )

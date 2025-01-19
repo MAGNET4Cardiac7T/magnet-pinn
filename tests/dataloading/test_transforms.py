@@ -3,7 +3,8 @@ import pytest
 import numpy as np
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
-    Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, PhaseShift, BaseTransform
+    Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
+    PhaseShift, BaseTransform, DefaultTransform
 )
 
 
@@ -81,66 +82,74 @@ def test_crop_transform_crop_position_invalid_type():
 
 def test_crop_transform_crop_check_datatypes_central_crop(random_item):
     crop_central = Crop(crop_size=(10, 10, 10), crop_position="center")
-
     result = crop_central(random_item)
-
-    assert result.field.dtype == random_item.field.dtype
-    assert result.input.dtype == random_item.input.dtype
-    assert result.subject.dtype == random_item.subject.dtype
-    assert result.coils.dtype == random_item.coils.dtype
+    check_items_datatypes(result, random_item)
 
 
 def test_crop_transform_crop_check_datatypes_random_crop(random_item):
     crop_random = Crop(crop_size=(10, 10, 10), crop_position="random")
-
     result = crop_random(random_item)
+    check_items_datatypes(result, random_item)
 
-    assert result.field.dtype == random_item.field.dtype
+
+def check_items_datatypes(result, random_item):
+    assert type(result.simulation) == type(random_item.simulation)
     assert result.input.dtype == random_item.input.dtype
+    assert result.field.dtype == random_item.field.dtype
     assert result.subject.dtype == random_item.subject.dtype
+    assert type(result.positions) == type(random_item.positions)
+    assert result.phase.dtype == random_item.phase.dtype
+    assert result.mask.dtype == random_item.mask.dtype
     assert result.coils.dtype == random_item.coils.dtype
+    assert result.dtype == random_item.dtype
+    assert type(result.dtype) == type(random_item.dtype)
+    assert result.truncation_coefficients.dtype == random_item.truncation_coefficients.dtype
 
 
 def test_crop_transform_valid_central_crop_position_shape(zero_item):
     augment = Crop(crop_size=(10, 10, 10), crop_position="center")
     result = augment(zero_item)
-
-    assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
-    assert result.input.shape == (3, 10, 10, 10)
-    assert result.subject.shape == (10, 10, 10)
-    assert result.coils.shape == (10, 10, 10, 8)
+    check_cropped_shapes(result)
 
 
 def test_crop_transform_valid_random_crop_position_shape(zero_item):
     augment = Crop(crop_size=(10, 10, 10), crop_position="random")
     result = augment(zero_item)
+    check_cropped_shapes(result)
 
-    assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
+
+def check_cropped_shapes(result):
     assert result.input.shape == (3, 10, 10, 10)
+    assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
     assert result.subject.shape == (10, 10, 10)
+    assert len(result.positions) == 0
+    assert result.phase.shape == (8,)
+    assert result.mask.shape == (8,)
     assert result.coils.shape == (10, 10, 10, 8)
+    assert result.truncation_coefficients.shape == (3,)
 
 
 def test_crop_transform_crop_size_matches_original_central_crop_position(zero_item):
     crop = Crop(crop_size=(20, 20, 20), crop_position="center")
-
     result = crop(zero_item)
-
-    assert result.field.shape == zero_item.field.shape
-    assert result.input.shape == zero_item.input.shape
-    assert result.subject.shape == zero_item.subject.shape
-    assert result.coils.shape == zero_item.coils.shape
+    check_items_shapes_suppsed_to_be_equal(result, zero_item)
 
 
 def test_crop_transform_crop_size_matches_original_random_crop_position(zero_item):
     crop = Crop(crop_size=(20, 20, 20), crop_position="random")
-
     result = crop(zero_item)
+    check_items_shapes_suppsed_to_be_equal(result, zero_item)
 
-    assert result.field.shape == zero_item.field.shape
-    assert result.input.shape == zero_item.input.shape
-    assert result.subject.shape == zero_item.subject.shape
-    assert result.coils.shape == zero_item.coils.shape
+
+def check_items_shapes_suppsed_to_be_equal(result, input_item):
+    assert result.input.shape == input_item.input.shape
+    assert result.field.shape == input_item.field.shape
+    assert result.subject.shape == input_item.subject.shape
+    assert len(result.positions) == len(input_item.positions)
+    assert result.phase.shape == input_item.phase.shape
+    assert result.mask.shape == input_item.mask.shape
+    assert result.coils.shape == input_item.coils.shape
+    assert result.truncation_coefficients.shape == input_item.truncation_coefficients.shape
 
 
 def test_crop_transform_crop_size_axis_less_equal_zero():
@@ -160,31 +169,26 @@ def test_crop_transform_crop_size_axis_less_equal_zero():
 
 
 def test_crop_transform_crop_size_axis_bigger_than_original_central_crop_position(zero_item):
-    crop_x = Crop(crop_size=(21, 10, 10), crop_position="center")
-    crop_y = Crop(crop_size=(10, 21, 10), crop_position="center")
-    crop_z = Crop(crop_size=(10, 10, 21), crop_position="center")
     with pytest.raises(ValueError):
-        _ = crop_x(zero_item)
-        _ = crop_y(zero_item)
-        _ = crop_z(zero_item)
+        _ = Crop(crop_size=(21, 10, 10), crop_position="center")(zero_item)
+        _ = Crop(crop_size=(10, 21, 10), crop_position="center")(zero_item)
+        _ = Crop(crop_size=(10, 10, 21), crop_position="center")(zero_item)
 
 
 def test_crop_transform_crop_size_axis_bigger_than_original_random_crop_position(zero_item):
-    crop_x = Crop(crop_size=(21, 10, 10), crop_position="random")
-    crop_y = Crop(crop_size=(10, 21, 10), crop_position="random")
-    crop_z = Crop(crop_size=(10, 10, 21), crop_position="random")
     with pytest.raises(ValueError):
-        _ = crop_x(zero_item)
-        _ = crop_y(zero_item)
-        _ = crop_z(zero_item)
+        _ = Crop(crop_size=(21, 10, 10), crop_position="random")(zero_item)
+        _ = Crop(crop_size=(10, 21, 10), crop_position="random")(zero_item)
+        _ = Crop(crop_size=(10, 10, 21), crop_position="random")(zero_item)
 
 
 def test_crop_transform_valid_central_crop_position_check_values(random_item):
     augment = Crop(crop_size=(10, 10, 10), crop_position="center")
     result = augment(random_item)
 
-    assert np.equal(result.field, random_item.field[:, :, :, 5:15, 5:15, 5:15, :]).all()
+    check_elements_not_changed_by_crop(result, random_item)
     assert np.equal(result.input, random_item.input[:, 5:15, 5:15, 5:15]).all()
+    assert np.equal(result.field, random_item.field[:, :, :, 5:15, 5:15, 5:15, :]).all()
     assert np.equal(result.subject, random_item.subject[5:15, 5:15, 5:15]).all()
     assert np.equal(result.coils, random_item.coils[5:15, 5:15, 5:15, :]).all()
 
@@ -196,7 +200,35 @@ def test_crop_transform_valid_random_crop_position(zero_item):
     crop = Crop(crop_size=(10, 10, 10), crop_position="random")
     result = crop(zero_item)
 
+    check_elements_not_changed_by_crop(result, zero_item)
     assert np.equal(result.field, zero_item.field[:, :, :, 0:10, 0:10, 0:10, :]).all()
     assert np.equal(result.input, zero_item.input[:, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.subject, zero_item.subject[0:10, 0:10, 0:10]).all()
     assert np.equal(result.coils, zero_item.coils[0:10, 0:10, 0:10, :]).all()
+
+
+def check_elements_not_changed_by_crop(result, input_item):
+    assert result.simulation == input_item.simulation
+    assert np.equal(result.phase, input_item.phase).all()
+    assert np.equal(result.mask, input_item.mask).all()
+    assert result.dtype == input_item.dtype
+    assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
+
+
+def test_crop_transform_actions_not_inplace(zero_item):
+    crop = Crop(crop_size=(10, 10, 10))
+    result = crop(zero_item)
+
+    assert result is not zero_item
+
+
+def test_default_transform_invalid_dataitem():
+    with pytest.raises(ValueError):
+        _ = DefaultTransform()(None)
+
+
+def test_default_transform_actions_not_inplace(zero_item):
+    trans = DefaultTransform()
+    result = trans(zero_item)
+
+    assert result is not zero_item
