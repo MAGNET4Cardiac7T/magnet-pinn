@@ -274,3 +274,92 @@ def test_default_transform_check_values(random_item):
         np.zeros(random_item.coils.shape[:-1], dtype=random_item.coils.dtype)
     ], axis=0)
     assert np.equal(result.coils, expected_coils).all()
+
+
+def test_phase_shift_transform_check_properties_uniform():
+    aug = PhaseShift(num_coils=8, sampling_method="uniform")
+
+    assert aug.num_coils == 8
+    assert aug.sampling_method == "uniform"
+
+
+def test_phase_shift_transform_check_properties_binomial():
+    aug = PhaseShift(num_coils=8, sampling_method="binomial")
+
+    assert aug.num_coils == 8
+    assert aug.sampling_method == "binomial"
+
+
+def test_phase_shift_transform_check_properties_invalid_sampling_method():
+    with pytest.raises(ValueError):
+        _ = PhaseShift(num_coils=8, sampling_method="invalid")
+
+
+def test_phase_shift_transform_check_invalid_simulation():
+    with pytest.raises(ValueError):
+        _ = PhaseShift(num_coils=8, sampling_method="uniform")(None)
+
+
+def test_phase_shift_transform_check_valid_processing_dtypes_uniform(random_item):
+    aug = PhaseShift(num_coils=8, sampling_method="uniform")
+    result = aug(random_item)
+
+    check_items_datatypes(result, random_item)
+
+
+def test_phase_shift_transform_check_valid_processing_dtypes_binomial(random_item):
+    """
+    Indeed the data item does not have a phase property in the normal case before entering the
+    phase shifter, but we have anyway created it in the item fixture for easy check later
+    """
+    aug = PhaseShift(num_coils=8, sampling_method="binomial")
+    result = aug(random_item)
+
+    check_items_datatypes(result, random_item)
+
+
+def test_phase_shift_transform_check_valid_processing_shapes_uniform(random_item):
+    aug = PhaseShift(num_coils=8, sampling_method="uniform")
+    result = aug(random_item)
+
+    check_constant_shapes_not_changed_by_phase_shift(result, random_item)
+    assert result.field.shape == random_item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(random_item.coils.shape[:-1]))
+
+
+def check_constant_shapes_not_changed_by_phase_shift(result, item): 
+    assert len(result.simulation) == len(item.simulation)
+    assert result.input.shape == item.input.shape
+    assert result.subject.shape == item.subject.shape
+    assert len(result.positions) == len(item.positions)
+    assert result.phase.shape == item.phase.shape
+    assert result.mask.shape == item.mask.shape
+    assert len(result.dtype) == len(item.dtype)
+    assert result.truncation_coefficients.shape == item.truncation_coefficients.shape
+
+
+def test_phase_shift_transform_check_valid_processing_shapes_binomial(random_item):
+    aug = PhaseShift(num_coils=8, sampling_method="binomial")
+    result = aug(random_item)
+
+    check_constant_shapes_not_changed_by_phase_shift(result, random_item)
+    assert result.field.shape == random_item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(random_item.coils.shape[:-1]))
+
+
+def test_phase_shift_transform_check_values_uniform(random_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_item)
+
+    check_constant_values_not_changed_by_phase_shift(result, random_item)
+    assert not np.equal(result.phase, random_item.phase).all()
+    assert not np.equal(result.mask, random_item.mask).all()
+    pass
+
+
+def check_constant_values_not_changed_by_phase_shift(result, item):
+    assert result.simulation == item.simulation
+    assert np.equal(result.input, item.input).all()
+    assert np.equal(result.subject, item.subject).all()
+    assert result.positions == item.positions
+    assert result.dtype == item.dtype
+    assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()

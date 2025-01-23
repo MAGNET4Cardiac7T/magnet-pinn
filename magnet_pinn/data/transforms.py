@@ -70,6 +70,19 @@ class Compose(BaseTransform):
         self.transforms = transforms
 
     def __call__(self, simulation: DataItem):
+        """
+        The method iterates over transformations and apply them to the simulation data.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            simulation data
+
+        Returns
+        -------
+        DataItem
+            augmented simulation data
+        """
         self._check_data(simulation)
         for aug in self.transforms:
             simulation = aug(simulation)
@@ -80,10 +93,29 @@ class Compose(BaseTransform):
 
 
 class DefaultTransform(BaseTransform):
+    """
+    A default transform for the simulation data.
+    It supposed to be used if the PhaseShift transform is not used.
+    It changes field, coils, fully set phase to 0 and mask to 1.
+    """
     def __init__(self):
         super().__init__()
 
     def __call__(self, simulation: DataItem):
+        """
+        Sums the fields by coils, does same with coils data and define it as real part of the coils.
+        Imaginary considered to be 0. Phase is set to 0 and mask to 1, both have size of the number of coils.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            simulation data
+
+        Returns
+        -------
+        DataItem
+            augmented simulation data
+        """
         self._check_data(simulation)
 
         num_coils = simulation.coils.shape[-1]
@@ -143,7 +175,8 @@ class Crop(BaseTransform):
 
     def __call__(self, simulation: DataItem):
         """
-        Method for augmenting the simulation data.
+        Crops data based on the given arguments. In the case of the `center` crop position make almost equal margins on both sides.
+        In the case of the `random` crop position, the crop margin is randomly selected as well as crop start. 
         Parameters
         ----------
         data : DataItem
@@ -199,6 +232,10 @@ class PhaseShift(BaseTransform):
                  num_coils: int,
                  sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
         super().__init__()
+
+        if sampling_method not in ['uniform', 'binomial']:
+            raise ValueError(f"Unknown masks sampling method {sampling_method}")
+
         self.num_coils = num_coils
         self.sampling_method = sampling_method
 
@@ -216,7 +253,10 @@ class PhaseShift(BaseTransform):
             augmented DataItem object
         """
 
-        phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype, num_coils=self.num_coils)
+        if not isinstance(simulation, DataItem):
+            raise ValueError(f"Simulation should be an instance of DataItem, got {type(simulation)}")
+
+        phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype)
         field_shifted = self._phase_shift_field(simulation.field, phase, mask)
         coils_shifted = self._phase_shift_coils(simulation.coils, phase, mask)
         
@@ -233,8 +273,7 @@ class PhaseShift(BaseTransform):
             positions=simulation.positions
         )
     
-    def _sample_phase_and_mask(self, 
-                               num_coils: int,
+    def _sample_phase_and_mask(self,
                                dtype: str = None
                                ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
@@ -251,30 +290,30 @@ class PhaseShift(BaseTransform):
         npt.NDArray[np.bool_]:
             mask for the phase coefficients
         """
-        phase = self._sample_phase(num_coils, dtype)
+        phase = self._sample_phase(dtype)
         if self.sampling_method == 'uniform':
-            mask = self._sample_mask_uniform(num_coils)
+            mask = self._sample_mask_uniform()
         elif self.sampling_method == 'binomial':
-            mask = self._sample_mask_binomial(num_coils)
+            mask = self._sample_mask_binomial()
         else:
             raise ValueError(f"Unknown sampling method {self.sampling_method}")
 
         return phase.astype(dtype), mask.astype(np.bool_)  
     
-    def _sample_phase(self, num_coils: int, dtype: str = None) -> npt.NDArray[np.float32]:
-        return np.random.uniform(0, 2*np.pi, num_coils).astype(dtype)
+    def _sample_phase(self, dtype: str = None) -> npt.NDArray[np.float32]:
+        return np.random.uniform(0, 2*np.pi, self.num_coils).astype(dtype)
     
-    def _sample_mask_uniform(self, num_coils: int) -> npt.NDArray[np.bool_]:
-        num_coils_on = np.random.randint(1, num_coils)
-        mask = np.zeros(num_coils, dtype=bool)
-        coils_on_indices = np.random.choice(num_coils, num_coils_on, replace=False)
+    def _sample_mask_uniform(self) -> npt.NDArray[np.bool_]:
+        num_coils_on = np.random.randint(1, self.num_coils)
+        mask = np.zeros(self.num_coils, dtype=bool)
+        coils_on_indices = np.random.choice(self.num_coils, num_coils_on, replace=False)
         mask[coils_on_indices] = True
         return mask
     
-    def _sample_mask_binomial(self, num_coils: int) -> npt.NDArray[np.bool_]:
-        mask = np.random.choice([0, 1], num_coils, replace=True)
+    def _sample_mask_binomial(self) -> npt.NDArray[np.bool_]:
+        mask = np.random.choice([0, 1], self.num_coils, replace=True)
         while np.sum(mask) == 0:
-            mask = np.random.choice([0, 1], num_coils, replace=True)
+            mask = np.random.choice([0, 1], self.num_coils, replace=True)
         return mask
     
     def _phase_shift_field(self, 
@@ -282,6 +321,15 @@ class PhaseShift(BaseTransform):
                            phase: npt.NDArray[np.float32], 
                            mask: npt.NDArray[np.float32], 
                            ) -> npt.NDArray[np.float32]:
+        """
+        Method of creating shift of field values. It uses a split formula for complex numbers multiplications.
+        The calculations are done under the complex numbers in a split way.
+        The shift formula is considered as 
+        ```
+        field_complex * (e ^ (phase * 1j)) = field_complex * (cos(phase) + sin(phase) * 1j) = (field_re * cos(phase) - field_im * sin(phase)) + (field_re * sin(phase) + field_im * cos(phase)) * 1j
+        ```
+        These coefficielnts are calculated for each coil and then it is summed up by the coils axis.
+        """
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs_real = np.stack((re_phase, -im_phase), axis=0)
@@ -297,6 +345,13 @@ class PhaseShift(BaseTransform):
                            phase: npt.NDArray[np.float32],
                            mask: npt.NDArray[np.bool_]
                            ) -> npt.NDArray[np.float32]:
+        """
+        Method of creation of shift values for the coils. It uses a split formula for complex numbers multiplications.
+        ```
+        coils * (e ^ (phase * 1j)) * mask = coils * (cos(phase) + sin(phase) * 1j) * mask = (coils_re * cos(phase) - coils_im * sin(phase)) + (coils_re * sin(phase) + coils_im * cos(phase)) * 1j
+        ```
+        It is also done for each coil and then summed up by the coils axis.
+        """
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs = np.stack((re_phase, im_phase), axis=0)
