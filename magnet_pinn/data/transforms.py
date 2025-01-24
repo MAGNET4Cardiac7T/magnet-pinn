@@ -213,7 +213,7 @@ class PhaseShift(BaseTransform):
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs_real = np.stack((re_phase, -im_phase), axis=0)
-        coeffs_im = np.stack((re_phase, im_phase), axis=0)
+        coeffs_im = np.stack((im_phase, re_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
         coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
         field_shift = einops.einsum(fields, coeffs, 'hf reim fieldxyz ... coils, hf reimout reim coils -> hf reimout fieldxyz ...')
