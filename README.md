@@ -1,5 +1,5 @@
 # MAGNET-PINN
-<img src="https://magnet4cardiac7t.github.io/_images/logo_magnet.svg" width="400em" align="right" />
+<img src="https://magnet4cardiac7t.github.io/assets/img/magnet_logo_venn.svg" width="400em" align="right" />
 
 [![PyPI version](https://badge.fury.io/py/magnet_pinn.svg)](https://badge.fury.io/py/magnet_pinn)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
