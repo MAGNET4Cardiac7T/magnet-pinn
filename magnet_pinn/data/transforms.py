@@ -234,6 +234,54 @@ class PhaseShift(BaseTransform):
 class GridPhaseShift(PhaseShift):
     pass
 
+class SingleCoilZeroPhaseShift(PhaseShift):
+    def __init__(self, 
+                 num_coils: int):
+        super().__init__(num_coils=num_coils)
+        self.coil_on_index = 0
+
+    def __call__(self, simulation: DataItem):
+        """
+        Augment simulation data by activating only a single coil in clockwise direction and setting phase shift to zero.
+        For local testing purposes only. Requires that num_samples == num_coils and num_workers == 0
+        Parameters
+        ----------
+        data : DataItem
+            DataItem object with the simulation data
+        
+        Returns
+        -------
+        DataItem
+            augmented DataItem object
+        """
+
+        phase = self._sample_phase_zero(num_coils=self.num_coils, dtype=simulation.dtype)
+        mask = self._sample_mask_single(num_coils=self.num_coils)
+        field_shifted = self._phase_shift_field(simulation.field, phase, mask)
+        coils_shifted = self._phase_shift_coils(simulation.coils, phase, mask)
+        
+        return DataItem(
+            input=simulation.input,
+            subject=simulation.subject,
+            simulation=simulation.simulation,
+            field=field_shifted,
+            phase=phase,
+            mask=mask,
+            coils=coils_shifted,
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
+        )
+    
+    def _sample_phase_zero(self, num_coils: int, dtype: str = None) -> npt.NDArray[np.float32]:
+        return np.zeros(num_coils).astype(dtype)
+    
+    def _sample_mask_single(self, num_coils: int) -> npt.NDArray[np.bool_]:
+        mask = np.zeros(self.num_coils, dtype=bool)
+        mask[self.coil_on_index] = True
+        self.coil_on_index = (self.coil_on_index + 1) % num_coils
+        return mask
+
 class PointPhaseShift(PhaseShift):
     pass
 
