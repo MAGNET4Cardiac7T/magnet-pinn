@@ -326,7 +326,7 @@ class PhaseShift(BaseTransform):
         The calculations are done under the complex numbers in a split way.
         The shift formula is considered as 
         ```
-        field_complex * (e ^ (phase * 1j)) = field_complex * (cos(phase) + sin(phase) * 1j) = (field_re * cos(phase) - field_im * sin(phase)) + (field_re * sin(phase) + field_im * cos(phase)) * 1j
+        field_complex * (e ^ (phase * 1j)) * mask = field_complex * (cos(phase) + sin(phase) * 1j) * mask = (field_re * cos(phase) - field_im * sin(phase)) * mask + mask * (field_re * sin(phase) + field_im * cos(phase)) * 1j
         ```
         These coefficielnts are calculated for each coil and then it is summed up by the coils axis.
         """
@@ -348,7 +348,7 @@ class PhaseShift(BaseTransform):
         """
         Method of creation of shift values for the coils. It uses a split formula for complex numbers multiplications.
         ```
-        coils * (e ^ (phase * 1j)) * mask = coils * (cos(phase) + sin(phase) * 1j) * mask = (coils_re * cos(phase) - coils_im * sin(phase)) + (coils_re * sin(phase) + coils_im * cos(phase)) * 1j
+        coils * (e ^ (phase * 1j)) * mask = coils * (cos(phase) + sin(phase) * 1j) * mask = (coils_re * cos(phase) - coils_im * sin(phase)) * mask + mask * (coils_re * sin(phase) + coils_im * cos(phase)) * 1j
         ```
         It is also done for each coil and then summed up by the coils axis.
         """
