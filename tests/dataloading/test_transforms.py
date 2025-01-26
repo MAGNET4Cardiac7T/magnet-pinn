@@ -353,7 +353,6 @@ def test_phase_shift_transform_check_values_uniform(random_item):
     check_constant_values_not_changed_by_phase_shift(result, random_item)
     assert not np.equal(result.phase, random_item.phase).all()
     assert not np.equal(result.mask, random_item.mask).all()
-    pass
 
 
 def check_constant_values_not_changed_by_phase_shift(result, item):
@@ -363,3 +362,11 @@ def check_constant_values_not_changed_by_phase_shift(result, item):
     assert result.positions == item.positions
     assert result.dtype == item.dtype
     assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
+
+
+def test_phase_shift_transform_check_values_binomial(random_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_item)
+
+    check_constant_values_not_changed_by_phase_shift(result, random_item)
+    assert not np.equal(result.phase, random_item.phase).all()
+    assert not np.equal(result.mask, random_item.mask).all()
