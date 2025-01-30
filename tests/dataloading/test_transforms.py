@@ -7,7 +7,7 @@ from magnet_pinn.data.transforms import (
     PhaseShift, BaseTransform, DefaultTransform
 )
 
-from .helpers import (
+from tests.dataloading.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation
 )
 
