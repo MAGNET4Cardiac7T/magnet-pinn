@@ -1,3 +1,5 @@
+import numpy as np
+
 from magnet_pinn.data._base import BaseTransform
 from magnet_pinn.data.dataitem import DataItem
 
@@ -18,3 +20,68 @@ class ThirdAugmentation(BaseTransform):
     def __call__(self, simulation: DataItem) -> DataItem:
         simulation.simulation += "3"
         return simulation
+    
+
+def check_items_datatypes(result, random_grid_item):
+    assert type(result.simulation) == type(random_grid_item.simulation)
+    assert result.input.dtype == random_grid_item.input.dtype
+    assert result.field.dtype == random_grid_item.field.dtype
+    assert result.subject.dtype == random_grid_item.subject.dtype
+    assert type(result.positions) == type(random_grid_item.positions)
+    assert result.phase.dtype == random_grid_item.phase.dtype
+    assert result.mask.dtype == random_grid_item.mask.dtype
+    assert result.coils.dtype == random_grid_item.coils.dtype
+    assert result.dtype == random_grid_item.dtype
+    assert type(result.dtype) == type(random_grid_item.dtype)
+    assert result.truncation_coefficients.dtype == random_grid_item.truncation_coefficients.dtype
+
+
+def check_cropped_shapes(result):
+    assert result.input.shape == (3, 10, 10, 10)
+    assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
+    assert result.subject.shape == (10, 10, 10)
+    assert len(result.positions) == 0
+    assert result.phase.shape == (8,)
+    assert result.mask.shape == (8,)
+    assert result.coils.shape == (10, 10, 10, 8)
+    assert result.truncation_coefficients.shape == (3,)
+
+
+def check_items_shapes_suppsed_to_be_equal(result, input_item):
+    assert result.input.shape == input_item.input.shape
+    assert result.field.shape == input_item.field.shape
+    assert result.subject.shape == input_item.subject.shape
+    assert len(result.positions) == len(input_item.positions)
+    assert result.phase.shape == input_item.phase.shape
+    assert result.mask.shape == input_item.mask.shape
+    assert result.coils.shape == input_item.coils.shape
+    assert result.truncation_coefficients.shape == input_item.truncation_coefficients.shape
+
+
+def check_elements_not_changed_by_crop(result, input_item):
+    assert result.simulation == input_item.simulation
+    assert result.positions == input_item.positions
+    assert np.equal(result.phase, input_item.phase).all()
+    assert np.equal(result.mask, input_item.mask).all()
+    assert result.dtype == input_item.dtype
+    assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
+
+
+def check_constant_shapes_not_changed_by_phase_shift(result, item): 
+    assert len(result.simulation) == len(item.simulation)
+    assert result.input.shape == item.input.shape
+    assert result.subject.shape == item.subject.shape
+    assert len(result.positions) == len(item.positions)
+    assert result.phase.shape == item.phase.shape
+    assert result.mask.shape == item.mask.shape
+    assert len(result.dtype) == len(item.dtype)
+    assert result.truncation_coefficients.shape == item.truncation_coefficients.shape
+
+
+def check_constant_values_not_changed_by_phase_shift(result, item):
+    assert result.simulation == item.simulation
+    assert np.equal(result.input, item.input).all()
+    assert np.equal(result.subject, item.subject).all()
+    assert result.positions == item.positions
+    assert result.dtype == item.dtype
+    assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()

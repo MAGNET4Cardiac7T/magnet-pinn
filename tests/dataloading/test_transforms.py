@@ -8,7 +8,9 @@ from magnet_pinn.data.transforms import (
 )
 
 from tests.dataloading.helpers import (
-    FirstAugmentation, SecondAugmentation, ThirdAugmentation
+    FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
+    check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
+    check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift
 )
 
 
@@ -84,20 +86,6 @@ def test_crop_transform_crop_check_datatypes_random_crop(random_grid_item):
     check_items_datatypes(result, random_grid_item)
 
 
-def check_items_datatypes(result, random_grid_item):
-    assert type(result.simulation) == type(random_grid_item.simulation)
-    assert result.input.dtype == random_grid_item.input.dtype
-    assert result.field.dtype == random_grid_item.field.dtype
-    assert result.subject.dtype == random_grid_item.subject.dtype
-    assert type(result.positions) == type(random_grid_item.positions)
-    assert result.phase.dtype == random_grid_item.phase.dtype
-    assert result.mask.dtype == random_grid_item.mask.dtype
-    assert result.coils.dtype == random_grid_item.coils.dtype
-    assert result.dtype == random_grid_item.dtype
-    assert type(result.dtype) == type(random_grid_item.dtype)
-    assert result.truncation_coefficients.dtype == random_grid_item.truncation_coefficients.dtype
-
-
 def test_crop_transform_valid_central_crop_position_shape(zero_grid_item):
     augment = Crop(crop_size=(10, 10, 10), crop_position="center")
     result = augment(zero_grid_item)
@@ -110,17 +98,6 @@ def test_crop_transform_valid_random_crop_position_shape(zero_grid_item):
     check_cropped_shapes(result)
 
 
-def check_cropped_shapes(result):
-    assert result.input.shape == (3, 10, 10, 10)
-    assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
-    assert result.subject.shape == (10, 10, 10)
-    assert len(result.positions) == 0
-    assert result.phase.shape == (8,)
-    assert result.mask.shape == (8,)
-    assert result.coils.shape == (10, 10, 10, 8)
-    assert result.truncation_coefficients.shape == (3,)
-
-
 def test_crop_transform_crop_size_matches_original_central_crop_position(zero_grid_item):
     crop = Crop(crop_size=(20, 20, 20), crop_position="center")
     result = crop(zero_grid_item)
@@ -131,17 +108,6 @@ def test_crop_transform_crop_size_matches_original_random_crop_position(zero_gri
     crop = Crop(crop_size=(20, 20, 20), crop_position="random")
     result = crop(zero_grid_item)
     check_items_shapes_suppsed_to_be_equal(result, zero_grid_item)
-
-
-def check_items_shapes_suppsed_to_be_equal(result, input_item):
-    assert result.input.shape == input_item.input.shape
-    assert result.field.shape == input_item.field.shape
-    assert result.subject.shape == input_item.subject.shape
-    assert len(result.positions) == len(input_item.positions)
-    assert result.phase.shape == input_item.phase.shape
-    assert result.mask.shape == input_item.mask.shape
-    assert result.coils.shape == input_item.coils.shape
-    assert result.truncation_coefficients.shape == input_item.truncation_coefficients.shape
 
 
 def test_crop_transform_crop_size_axis_less_equal_zero():
@@ -197,15 +163,6 @@ def test_crop_transform_valid_random_crop_position(zero_grid_item):
     assert np.equal(result.input, zero_grid_item.input[:, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.subject, zero_grid_item.subject[0:10, 0:10, 0:10]).all()
     assert np.equal(result.coils, zero_grid_item.coils[0:10, 0:10, 0:10, :]).all()
-
-
-def check_elements_not_changed_by_crop(result, input_item):
-    assert result.simulation == input_item.simulation
-    assert result.positions == input_item.positions
-    assert np.equal(result.phase, input_item.phase).all()
-    assert np.equal(result.mask, input_item.mask).all()
-    assert result.dtype == input_item.dtype
-    assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
 
 
 def test_crop_transform_actions_not_inplace(zero_grid_item):
@@ -319,17 +276,6 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform(random_grid
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
 
-def check_constant_shapes_not_changed_by_phase_shift(result, item): 
-    assert len(result.simulation) == len(item.simulation)
-    assert result.input.shape == item.input.shape
-    assert result.subject.shape == item.subject.shape
-    assert len(result.positions) == len(item.positions)
-    assert result.phase.shape == item.phase.shape
-    assert result.mask.shape == item.mask.shape
-    assert len(result.dtype) == len(item.dtype)
-    assert result.truncation_coefficients.shape == item.truncation_coefficients.shape
-
-
 def test_phase_shift_transform_check_valid_processing_shapes_binomial(random_grid_item):
     aug = PhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
@@ -345,15 +291,6 @@ def test_phase_shift_transform_check_values_uniform(random_grid_item):
     check_constant_values_not_changed_by_phase_shift(result, random_grid_item)
     assert not np.equal(result.phase, random_grid_item.phase).all()
     assert not np.equal(result.mask, random_grid_item.mask).all()
-
-
-def check_constant_values_not_changed_by_phase_shift(result, item):
-    assert result.simulation == item.simulation
-    assert np.equal(result.input, item.input).all()
-    assert np.equal(result.subject, item.subject).all()
-    assert result.positions == item.positions
-    assert result.dtype == item.dtype
-    assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
 
 
 def test_phase_shift_transform_check_values_binomial(random_grid_item):
