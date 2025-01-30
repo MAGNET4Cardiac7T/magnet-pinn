@@ -11,7 +11,8 @@ from tests.dataloading.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
     check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
     check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift,
-    check_default_transform_resulting_shapes, check_default_transform_resulting_values
+    check_default_transform_resulting_shapes, check_default_transform_resulting_values,
+    check_complex_number_calculations_in_phase_shift
 )
 
 
@@ -234,14 +235,14 @@ def test_phase_shift_transform_check_invalid_simulation():
         _ = PhaseShift(num_coils=8, sampling_method="uniform")(None)
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_uniform(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_grid(random_grid_item):
     aug = PhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
     check_items_datatypes(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_binomial(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_grid(random_grid_item):
     """
     Indeed the data item does not have a phase property in the normal case before entering the
     phase shifter, but we have anyway created it in the item fixture for easy check later
@@ -252,7 +253,17 @@ def test_phase_shift_transform_check_valid_processing_dtypes_binomial(random_gri
     check_items_datatypes(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_uniform(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+    check_items_datatypes(result, random_pointcloud_item)
+
+
+def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+    check_items_datatypes(result, random_pointcloud_item)
+
+
+def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(random_grid_item):
     aug = PhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
@@ -261,7 +272,15 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform(random_grid
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_binomial(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+
+    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    assert result.field.shape == random_pointcloud_item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
+
+
+def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(random_grid_item):
     aug = PhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
 
@@ -270,17 +289,37 @@ def test_phase_shift_transform_check_valid_processing_shapes_binomial(random_gri
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
 
-def test_phase_shift_transform_check_values_uniform(random_grid_item):
+def check_phase_shift_transform_check_valid_processing_shapes_binomial_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+
+    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    assert result.field.shape == random_pointcloud_item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
+
+
+def test_phase_shift_transform_check_values_uniform_for_grid(random_grid_item):
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_grid_item)
 
     check_constant_values_not_changed_by_phase_shift(result, random_grid_item)
-    assert not np.equal(result.phase, random_grid_item.phase).all()
-    assert not np.equal(result.mask, random_grid_item.mask).all()
+    check_complex_number_calculations_in_phase_shift(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_values_binomial(random_grid_item):
+def test_phase_shift_transform_check_values_uniform_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+
+    check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
+
+
+def test_phase_shift_transform_check_values_binomial_for_grid(random_grid_item):
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_grid_item)
 
     check_constant_values_not_changed_by_phase_shift(result, random_grid_item)
-    assert not np.equal(result.phase, random_grid_item.phase).all()
-    assert not np.equal(result.mask, random_grid_item.mask).all()
+    check_complex_number_calculations_in_phase_shift(result, random_grid_item)
+
+
+def test_phase_shift_transform_check_values_binomial_for_pointcloud(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+
+    check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)

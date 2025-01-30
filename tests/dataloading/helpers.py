@@ -117,3 +117,23 @@ def check_default_transform_resulting_values(result, item):
         np.zeros(item.coils.shape[:-1], dtype=item.coils.dtype)
     ], axis=0)
     assert np.equal(result.coils, expected_coils).all()
+
+
+def check_complex_number_calculations_in_phase_shift(result, item):
+    coefs_re = np.cos(result.phase) * result.mask
+    coefs_im = np.sin(result.phase) * result.mask
+
+    field_re = item.field[:, 0]
+    field_im = item.field[:, 1]
+
+    field_shifted_re = field_re @ coefs_re - field_im @ coefs_im
+    field_shifted_im = field_re @ coefs_im + field_im @ coefs_re
+
+    expected_field_result = np.stack([field_shifted_re, field_shifted_im], axis=1)
+    assert np.equal(result.field, expected_field_result).all()
+
+    coils_re = item.coils @ coefs_re
+    coils_im = item.coils @ coefs_im
+
+    expected_coils_result = np.stack([coils_re, coils_im], axis=0)
+    assert np.equal(result.coils, expected_coils_result).all()
