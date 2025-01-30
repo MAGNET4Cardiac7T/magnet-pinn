@@ -10,7 +10,8 @@ from magnet_pinn.data.transforms import (
 from tests.dataloading.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
     check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
-    check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift
+    check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift,
+    check_default_transform_resulting_shapes, check_default_transform_resulting_values
 )
 
 
@@ -189,40 +190,24 @@ def test_default_transform_check_datatypes(zero_grid_item):
     check_items_datatypes(result, zero_grid_item)
 
 
-def test_default_transform_check_shapes(zero_grid_item):
+def test_default_transform_check_shapes_for_grid(zero_grid_item):
     result = DefaultTransform()(zero_grid_item)
-
-    assert result.input.shape == zero_grid_item.input.shape
-    assert result.subject.shape == zero_grid_item.subject.shape
-    assert len(result.positions) == len(zero_grid_item.positions)
-    assert result.phase.shape == zero_grid_item.phase.shape
-    assert result.mask.shape == zero_grid_item.mask.shape
-
-    assert result.field.shape == zero_grid_item.field.shape[:-1]
-    assert result.coils.shape == tuple([2] + list(zero_grid_item.coils.shape[:-1]))
+    check_default_transform_resulting_shapes(result, zero_grid_item)
 
 
-def test_default_transform_check_values(random_grid_item):
+def test_default_transform_check_shapes_for_pointcloud(random_pointcloud_item):
+    result = DefaultTransform()(random_pointcloud_item)
+    check_default_transform_resulting_shapes(result, random_pointcloud_item)
+
+
+def test_default_transform_check_values_for_grid(random_grid_item):
     result = DefaultTransform()(random_grid_item)
+    check_default_transform_resulting_values(result, random_grid_item)
 
-    assert result.simulation == random_grid_item.simulation
-    assert np.equal(result.input, random_grid_item.input).all()
-    assert np.equal(result.subject, random_grid_item.subject).all()
-    assert result.positions == random_grid_item.positions
-    assert result.dtype == random_grid_item.dtype
-    assert np.equal(result.truncation_coefficients, random_grid_item.truncation_coefficients).all()
 
-    assert np.equal(result.field, np.sum(random_grid_item.field, axis=-1)).all()
-
-    coils_num = random_grid_item.coils.shape[-1]
-    assert np.equal(result.phase, np.zeros(coils_num, dtype=random_grid_item.phase.dtype)).all()
-    assert np.equal(result.mask, np.ones(coils_num, dtype=random_grid_item.mask.dtype)).all()
-
-    expected_coils = np.stack([
-        np.sum(random_grid_item.coils, axis=-1),
-        np.zeros(random_grid_item.coils.shape[:-1], dtype=random_grid_item.coils.dtype)
-    ], axis=0)
-    assert np.equal(result.coils, expected_coils).all()
+def test_default_transform_check_values_for_pointcloud(random_pointcloud_item):
+    result = DefaultTransform()(random_pointcloud_item)
+    check_default_transform_resulting_values(result, random_pointcloud_item)
 
 
 def test_phase_shift_transform_check_properties_uniform():

@@ -22,18 +22,18 @@ class ThirdAugmentation(BaseTransform):
         return simulation
     
 
-def check_items_datatypes(result, random_grid_item):
-    assert type(result.simulation) == type(random_grid_item.simulation)
-    assert result.input.dtype == random_grid_item.input.dtype
-    assert result.field.dtype == random_grid_item.field.dtype
-    assert result.subject.dtype == random_grid_item.subject.dtype
-    assert type(result.positions) == type(random_grid_item.positions)
-    assert result.phase.dtype == random_grid_item.phase.dtype
-    assert result.mask.dtype == random_grid_item.mask.dtype
-    assert result.coils.dtype == random_grid_item.coils.dtype
-    assert result.dtype == random_grid_item.dtype
-    assert type(result.dtype) == type(random_grid_item.dtype)
-    assert result.truncation_coefficients.dtype == random_grid_item.truncation_coefficients.dtype
+def check_items_datatypes(result, random_item):
+    assert type(result.simulation) == type(random_item.simulation)
+    assert result.input.dtype == random_item.input.dtype
+    assert result.field.dtype == random_item.field.dtype
+    assert result.subject.dtype == random_item.subject.dtype
+    assert type(result.positions) == type(random_item.positions)
+    assert result.phase.dtype == random_item.phase.dtype
+    assert result.mask.dtype == random_item.mask.dtype
+    assert result.coils.dtype == random_item.coils.dtype
+    assert result.dtype == random_item.dtype
+    assert type(result.dtype) == type(random_item.dtype)
+    assert result.truncation_coefficients.dtype == random_item.truncation_coefficients.dtype
 
 
 def check_cropped_shapes(result):
@@ -85,3 +85,35 @@ def check_constant_values_not_changed_by_phase_shift(result, item):
     assert result.positions == item.positions
     assert result.dtype == item.dtype
     assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
+
+
+def check_default_transform_resulting_shapes(result, item):
+    assert result.input.shape == item.input.shape
+    assert result.subject.shape == item.subject.shape
+    assert len(result.positions) == len(item.positions)
+    assert result.phase.shape == item.phase.shape
+    assert result.mask.shape == item.mask.shape
+
+    assert result.field.shape == item.field.shape[:-1]
+    assert result.coils.shape == tuple([2] + list(item.coils.shape[:-1]))
+
+
+def check_default_transform_resulting_values(result, item):
+    assert result.simulation == item.simulation
+    assert np.equal(result.input, item.input).all()
+    assert np.equal(result.subject, item.subject).all()
+    assert result.positions == item.positions
+    assert result.dtype == item.dtype
+    assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
+
+    assert np.equal(result.field, np.sum(item.field, axis=-1)).all()
+
+    coils_num = item.coils.shape[-1]
+    assert np.equal(result.phase, np.zeros(coils_num, dtype=item.phase.dtype)).all()
+    assert np.equal(result.mask, np.ones(coils_num, dtype=item.mask.dtype)).all()
+
+    expected_coils = np.stack([
+        np.sum(item.coils, axis=-1),
+        np.zeros(item.coils.shape[:-1], dtype=item.coils.dtype)
+    ], axis=0)
+    assert np.equal(result.coils, expected_coils).all()
