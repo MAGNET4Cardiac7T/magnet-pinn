@@ -357,14 +357,26 @@ class PhaseShift(BaseTransform):
         coeffs = np.stack((re_phase, im_phase), axis=0)
         coils_shift = einops.einsum(coils, coeffs, '... coils, reim coils -> reim ...')
         return coils_shift
+    
 
 class GridPhaseShift(PhaseShift):
+    """
+    Class is added for the reversed comparability, the PhaseShift itself works fine with grid simulations
+    """
     pass
+
 
 class PointPhaseShift(PhaseShift):
+    """
+    Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
+    """
     pass
 
+
 class PointFeatureRearrange(BaseTransform):
+    """
+    Class for augmenting the simulation data.
+    """
     def __init__(self, 
                  num_coils: int):
         super().__init__()
@@ -372,10 +384,10 @@ class PointFeatureRearrange(BaseTransform):
 
     def __call__(self, simulation: DataItem):
         """
-        Method for augmenting the simulation data.
+        This method changed the axis of the field and coils data.
         Parameters
         ----------
-        data : DataItem
+        simulation : DataItem
             DataItem object with the simulation data
         
         Returns
@@ -390,6 +402,11 @@ class PointFeatureRearrange(BaseTransform):
     def _rearrange_field(self, 
                          field: npt.NDArray[np.float32], 
                          num_coils: int) -> npt.NDArray[np.float32]:
+        """
+        Changes the order of data axis for the field data. The input data would have axis of 
+        (field_type, re/im parts, x/y/z axis choice, values based on the position) and the output data would have change an order into 
+        (position values, axis x/y/z choice, re/im parts, field_type).
+        """
         field = einops.rearrange(field, 'he reimout fieldxyz points -> points fieldxyz reimout he')
         field_shift = einops.rearrange(field_shift, )
         return field
@@ -397,6 +414,10 @@ class PointFeatureRearrange(BaseTransform):
     def _rearrange_coils(self, 
                          coils: npt.NDArray[np.float32], 
                          num_coils: int) -> npt.NDArray[np.float32]:
+        """
+        Changes the order of data axis for the coils data. The input data has a shape of 
+        (re/im parts coils values for point) and the output data is the other way around
+        """
         coils = einops.rearrange(coils, 'reim points -> points reim')
         return coils
 
