@@ -235,7 +235,19 @@ class GridPhaseShift(PhaseShift):
     pass
 
 class PointPhaseShift(PhaseShift):
-    pass
+    def _phase_shift_field(self, 
+                           fields: npt.NDArray[np.float32], 
+                           phase: npt.NDArray[np.float32], 
+                           mask: npt.NDArray[np.float32], 
+                           ) -> npt.NDArray[np.float32]:
+        re_phase = np.cos(phase) * mask
+        im_phase = np.sin(phase) * mask
+        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
+        coeffs_im = np.stack((im_phase, re_phase), axis=0)
+        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
+        coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
+        field_shift = einops.einsum(fields, coeffs, 'hf reim ... fieldxyz coils, hf reimout reim coils -> hf reimout fieldxyz ...')
+        return field_shift
 
 class PointFeatureRearrange(BaseTransform):
     def __init__(self, 
@@ -274,7 +286,8 @@ class PointFeatureRearrange(BaseTransform):
         return coils
 
 class PointSampling(BaseTransform):
-    def __init__(self, points_sampled: Union[float, int]):
+    def __init__(self, 
+                 points_sampled: Union[float, int]):
         super().__init__()
         self.points_sampled = points_sampled
 
