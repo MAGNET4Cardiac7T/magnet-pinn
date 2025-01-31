@@ -299,7 +299,6 @@ class PointFeatureRearrange(BaseTransform):
                          field: npt.NDArray[np.float32], 
                          num_coils: int) -> npt.NDArray[np.float32]:
         field = einops.rearrange(field, 'he reimout fieldxyz points -> points fieldxyz reimout he')
-        field_shift = einops.rearrange(field_shift, )
         return field
 
     def _rearrange_coils(self, 
