@@ -1,11 +1,12 @@
 from magnet_pinn.data.point import MagnetPointIterator
-from magnet_pinn.data.transforms import PointSampling, PointPhaseShift, Compose
+from magnet_pinn.data.transforms import PointSampling, PointPhaseShift, Compose, PointFeatureRearrange
 import tqdm
 
 augmentation = Compose(
     [
         PointSampling(points_sampled=1000),
-        PointPhaseShift(num_coils=8)
+        PointPhaseShift(num_coils=8),
+        PointFeatureRearrange(num_coils=8)
     ]
 )
 
@@ -16,5 +17,5 @@ iterator = MagnetPointIterator(
 )
 
 for item in tqdm.tqdm(iterator):
-    pass
+    print(item['field'].shape)
 
