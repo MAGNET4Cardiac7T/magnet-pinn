@@ -268,9 +268,20 @@ class PointFeatureRearrange(BaseTransform):
         DataItem
             augmented DataItem object
         """
-        simulation.field = self._rearrange_field(simulation.field, self.num_coils)
-        simulation.coils = self._rearrange_coils(simulation.coils, self.num_coils)
-        return simulation
+        rearranged_field = self._rearrange_field(simulation.field, self.num_coils)
+        rearranged_coils = self._rearrange_coils(simulation.coils, self.num_coils)
+        return DataItem(
+            input=simulation.input,
+            subject=simulation.subject,
+            simulation=simulation.simulation,
+            field=rearranged_field,
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=rearranged_coils,
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
+        )
 
     def _rearrange_field(self, 
                          field: npt.NDArray[np.float32], 
