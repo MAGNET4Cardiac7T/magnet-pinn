@@ -27,7 +27,7 @@ def check_items_datatypes(result, random_item):
     assert result.input.dtype == random_item.input.dtype
     assert result.field.dtype == random_item.field.dtype
     assert result.subject.dtype == random_item.subject.dtype
-    assert type(result.positions) == type(random_item.positions)
+    assert result.positions.dtype == random_item.positions.dtype
     assert result.phase.dtype == random_item.phase.dtype
     assert result.mask.dtype == random_item.mask.dtype
     assert result.coils.dtype == random_item.coils.dtype
@@ -40,7 +40,7 @@ def check_cropped_shapes(result):
     assert result.input.shape == (3, 10, 10, 10)
     assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
     assert result.subject.shape == (10, 10, 10)
-    assert len(result.positions) == 0
+    assert result.positions.shape == (0,)
     assert result.phase.shape == (8,)
     assert result.mask.shape == (8,)
     assert result.coils.shape == (10, 10, 10, 8)
@@ -51,7 +51,7 @@ def check_items_shapes_suppsed_to_be_equal(result, input_item):
     assert result.input.shape == input_item.input.shape
     assert result.field.shape == input_item.field.shape
     assert result.subject.shape == input_item.subject.shape
-    assert len(result.positions) == len(input_item.positions)
+    assert result.positions.shape == input_item.positions.shape
     assert result.phase.shape == input_item.phase.shape
     assert result.mask.shape == input_item.mask.shape
     assert result.coils.shape == input_item.coils.shape
@@ -60,7 +60,7 @@ def check_items_shapes_suppsed_to_be_equal(result, input_item):
 
 def check_elements_not_changed_by_crop(result, input_item):
     assert result.simulation == input_item.simulation
-    assert result.positions == input_item.positions
+    assert np.equal(result.positions, input_item.positions).all()
     assert np.equal(result.phase, input_item.phase).all()
     assert np.equal(result.mask, input_item.mask).all()
     assert result.dtype == input_item.dtype
@@ -71,7 +71,7 @@ def check_constant_shapes_not_changed_by_phase_shift(result, item):
     assert len(result.simulation) == len(item.simulation)
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape
-    assert len(result.positions) == len(item.positions)
+    assert result.positions.shape == item.positions.shape
     assert result.phase.shape == item.phase.shape
     assert result.mask.shape == item.mask.shape
     assert len(result.dtype) == len(item.dtype)
@@ -82,7 +82,7 @@ def check_constant_values_not_changed_by_phase_shift(result, item):
     assert result.simulation == item.simulation
     assert np.equal(result.input, item.input).all()
     assert np.equal(result.subject, item.subject).all()
-    assert result.positions == item.positions
+    assert np.equal(result.positions, item.positions).all()
     assert result.dtype == item.dtype
     assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
 
@@ -90,7 +90,7 @@ def check_constant_values_not_changed_by_phase_shift(result, item):
 def check_default_transform_resulting_shapes(result, item):
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape
-    assert len(result.positions) == len(item.positions)
+    assert result.positions.shape == item.positions.shape
     assert result.phase.shape == item.phase.shape
     assert result.mask.shape == item.mask.shape
 
@@ -102,7 +102,7 @@ def check_default_transform_resulting_values(result, item):
     assert result.simulation == item.simulation
     assert np.equal(result.input, item.input).all()
     assert np.equal(result.subject, item.subject).all()
-    assert result.positions == item.positions
+    assert np.equal(result.positions, item.positions).all()
     assert result.dtype == item.dtype
     assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
 

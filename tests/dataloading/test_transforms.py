@@ -174,6 +174,11 @@ def test_crop_transform_actions_not_inplace(zero_grid_item):
     assert result is not zero_grid_item
 
 
+def test_crop_transform_check_invalid_simulation():
+    with pytest.raises(ValueError):
+        _ = Crop(crop_size=(10, 10, 10))(None)
+
+
 def test_default_transform_invalid_dataitem():
     with pytest.raises(ValueError):
         _ = DefaultTransform()(None)
@@ -323,3 +328,45 @@ def test_phase_shift_transform_check_values_binomial_for_pointcloud(random_point
 
     check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
     check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
+
+
+def test_point_sampling_transform_check_points_sampling_param_is_saved_int():
+    aug = PointSampling(points_sampled=1)
+    assert type(aug.points_sampled) == int
+    assert aug.points_sampled == 1
+
+
+def test_point_sampling_transform_check_points_sampling_param_is_saved_float():
+    aug = PointSampling(points_sampled=0.5)
+    assert type(aug.points_sampled) == float
+    assert aug.points_sampled == 0.5
+
+
+def test_point_sampling_transform_check_points_sampling_param_invalid():
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled="value")
+
+
+def test_point_sampling_transform_check_invalid_simulation():
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=1)(None)
+
+    
+def test_point_sampling_transform_check_points_sampling_integer_equal_zero(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=0)(random_pointcloud_item)
+
+
+def test_point_sampling_transform_check_points_sampling_float_equal_zero(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=0.0)(random_pointcloud_item)
+
+
+def test_point_sampling_transform_check_points_sampling_integer_less_than_zero(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=-1)(random_pointcloud_item)
+
+
+def test_point_sampling_transform_check_points_sampling_float_less_than_zero(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=-1.0)(random_pointcloud_item)

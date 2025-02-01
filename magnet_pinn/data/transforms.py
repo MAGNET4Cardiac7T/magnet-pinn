@@ -187,6 +187,7 @@ class Crop(BaseTransform):
         DataItem
             augmented DataItem object
         """
+        self._check_data(simulation)
         crop_size = self.crop_size
         full_size = simulation.input.shape[1:]
         crop_start = self._sample_crop_start(full_size, crop_size)
@@ -253,8 +254,7 @@ class PhaseShift(BaseTransform):
             augmented DataItem object
         """
 
-        if not isinstance(simulation, DataItem):
-            raise ValueError(f"Simulation should be an instance of DataItem, got {type(simulation)}")
+        self._check_data(simulation)
 
         phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype)
         field_shifted = self._phase_shift_field(simulation.field, phase, mask)
@@ -422,11 +422,25 @@ class PointFeatureRearrange(BaseTransform):
         return coils
 
 class PointSampling(BaseTransform):
+    """
+    Class for sampling the points from the simulation data.
+    Parameters
+    ----------
+    points_sampled : Union[float, int]
+        Number of points to be sampled. If float, it is considered as a fraction of the total number of points.
+    """
     def __init__(self, points_sampled: Union[float, int]):
         super().__init__()
+
+        if not isinstance(points_sampled, (float, int)):
+            raise ValueError("Points sampled should be either float or int")
+        elif points_sampled <= 0:
+            raise ValueError("The `points_sampled` parameter should be larger than 0")
+        
         self.points_sampled = points_sampled
 
     def __call__(self, simulation: DataItem):
+        self._check_data(simulation)
         total_num_points = simulation.positions.shape[0]
         point_indices = self._sample_point_indices(total_num_points=total_num_points)
         return DataItem(
@@ -443,6 +457,20 @@ class PointSampling(BaseTransform):
         )
 
     def _sample_point_indices(self, total_num_points: int) -> npt.NDArray[np.int64]:
+        """
+        Main method for sampling the points from the simulation data. The `total_num_points` can be a percentage from the total number of it 
+        and exact number of points to sample.
+
+        Parameters
+        ----------
+        total_num_points : int
+            Total number of points in the simulation data
+
+        Returns
+        -------
+        npt.NDArray[np.int64]
+            Indices of the sampled points
+        """
         if isinstance(self.points_sampled, float):
             num_points_sampled = int(self.points_sampled * total_num_points)
         else:
