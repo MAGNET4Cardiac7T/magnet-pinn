@@ -12,9 +12,9 @@ class DataItem:
     input: npt.NDArray[np.float32]
     field: npt.NDArray[np.float32]
     subject: npt.NDArray[np.bool_]
-    positions: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
-    phase: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
-    mask: Optional[npt.NDArray[np.bool_]] = field(default_factory=list)
-    coils: Optional[npt.NDArray[np.float32]] = field(default_factory=list)
+    positions: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))
+    phase: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))
+    mask: Optional[npt.NDArray[np.bool_]] = field(default_factory=lambda: np.array([], dtype=np.bool_))
+    coils: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))
     dtype: Optional[str] = field(default_factory=str)
-    truncation_coefficients: Optional[npt.NDArray] = field(default_factory=list)
+    truncation_coefficients: Optional[npt.NDArray] = field(default_factory=lambda: np.array([], dtype=np.float32))
