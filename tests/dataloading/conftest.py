@@ -40,7 +40,7 @@ def random_pointcloud_item():
     return DataItem(
         simulation="",
         input=np.random.rand(8000, 3).astype(np.float32),
-        field=np.random.rand(2, 2, 3, 8000, 8).astype(np.float32),
+        field=np.random.rand(2, 2, 8000, 3, 8).astype(np.float32),
         subject=np.random.choice([0, 1], size=8000).astype(np.bool_),
         positions=np.random.rand(8000, 3).astype(np.float32),
         phase=np.random.rand(8).astype(np.float32),

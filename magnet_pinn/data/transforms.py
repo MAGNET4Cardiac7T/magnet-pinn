@@ -472,7 +472,11 @@ class PointSampling(BaseTransform):
             Indices of the sampled points
         """
         if isinstance(self.points_sampled, float):
+            if self.points_sampled > 1.0:
+                raise ValueError("In the case of the ratio sampling the ration should be less than 1.0")
             num_points_sampled = int(self.points_sampled * total_num_points)
         else:
+            if self.points_sampled > total_num_points:
+                raise ValueError("The number of points to sample should be less than the total number of points")
             num_points_sampled = self.points_sampled
         return np.random.choice(total_num_points, num_points_sampled, replace=False)

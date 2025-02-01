@@ -370,3 +370,45 @@ def test_point_sampling_transform_check_points_sampling_integer_less_than_zero(r
 def test_point_sampling_transform_check_points_sampling_float_less_than_zero(random_pointcloud_item):
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=-1.0)(random_pointcloud_item)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_int_and_bigger_than_points_in_total(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=8001)(random_pointcloud_item)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_int_and_equal_to_points_in_total(random_pointcloud_item):
+        result = PointSampling(points_sampled=8000)(random_pointcloud_item)
+
+        check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_int_and_less_than_points_in_total(random_pointcloud_item):
+    result = PointSampling(points_sampled=4000)(random_pointcloud_item)
+
+    assert result.input.shape == (4000, 3)
+    assert result.field.shape == (2, 2, 4000, 3, 8)
+    assert result.subject.shape == (4000,)
+    assert result.positions.shape == (4000, 3)
+    assert result.coils.shape == (4000, 8)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_float_and_equal_to_points_in_total(random_pointcloud_item):
+    result = PointSampling(points_sampled=1.0)(random_pointcloud_item)
+
+    check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_float_and_less_than_points_in_total(random_pointcloud_item):
+    result = PointSampling(points_sampled=0.5)(random_pointcloud_item)
+
+    assert result.input.shape == (4000, 3)
+    assert result.field.shape == (2, 2, 4000, 3, 8)
+    assert result.subject.shape == (4000,)
+    assert result.positions.shape == (4000, 3)
+    assert result.coils.shape == (4000, 8)
+
+
+def test_points_sampling_transform_check_points_sampling_parameter_float_and_bigger_than_points_in_total(random_pointcloud_item):
+    with pytest.raises(ValueError):
+        _ = PointSampling(points_sampled=1.0001)(random_pointcloud_item)
