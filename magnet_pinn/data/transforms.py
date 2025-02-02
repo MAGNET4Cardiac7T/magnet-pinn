@@ -7,6 +7,7 @@ DESCRIPTION
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union, Literal
 from collections.abc import Iterable
+from copy import copy
 
 import numpy.typing as npt
 import numpy as np
@@ -84,9 +85,11 @@ class Compose(BaseTransform):
             augmented simulation data
         """
         self._check_data(simulation)
+        result = copy(simulation)
         for aug in self.transforms:
-            simulation = aug(simulation)
-        return simulation
+            print(result.simulation)
+            result = aug(result)
+        return result
 
     def __repr__(self):
         return self.__class__.__name__ + str(self.transforms)

@@ -16,6 +16,10 @@ from tests.dataloading.helpers import (
 )
 
 
+def check_base_transform_callable():
+    assert callable(BaseTransform)
+
+
 def test_compose_none_transformations_given():
     with pytest.raises(ValueError):
         _ = Compose(None)
@@ -28,12 +32,12 @@ def test_compose_empty_list():
 
 def test_compose_with_none_transformations():
     with pytest.raises(ValueError):
-        transforms = Compose([None, None])
+        _ = Compose([None, None])
 
     
 def test_compose_with_invalid_type_transform():
     with pytest.raises(ValueError):
-        transforms = Compose(["transformation"])
+        _ = Compose(["transformation"])
 
 
 def test_compose_running_order_for_grid(zero_grid_item):
@@ -48,6 +52,20 @@ def test_compose_running_order_for_pointcloud(random_pointcloud_item):
     result_item = aug(random_pointcloud_item)
 
     assert result_item.simulation == "123"
+
+
+def test_compose_transform_not_inplace_processing_for_grid(zero_grid_item):
+    aug = Compose([FirstAugmentation(), SecondAugmentation(), ThirdAugmentation()])
+    result_item = aug(zero_grid_item)
+
+    assert result_item is not zero_grid_item
+
+
+def test_compose_transform_not_inplace_processing_for_pointcloud(random_pointcloud_item):
+    aug = Compose([FirstAugmentation(), SecondAugmentation(), ThirdAugmentation()])
+    result_item = aug(random_pointcloud_item)
+
+    assert result_item is not random_pointcloud_item
 
 
 def test_crop_transform_crop_size_none():
@@ -184,11 +202,17 @@ def test_default_transform_invalid_dataitem():
         _ = DefaultTransform()(None)
 
 
-def test_default_transform_actions_not_inplace(zero_grid_item):
+def test_default_transform_actions_not_inplace_for_grid(zero_grid_item):
     trans = DefaultTransform()
     result = trans(zero_grid_item)
 
     assert result is not zero_grid_item
+
+
+def test_default_transform_actions_not_inplace_for_pointcloud(random_pointcloud_item):
+    result = DefaultTransform()(random_pointcloud_item)
+
+    assert result is not random_pointcloud_item
 
 
 def test_default_transform_check_datatypes(zero_grid_item):
@@ -330,6 +354,30 @@ def test_phase_shift_transform_check_values_binomial_for_pointcloud(random_point
     check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
 
 
+def test_phase_shift_transform_check_not_inplace_processing_for_grid_uniform(random_grid_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_grid_item)
+
+    assert result is not random_grid_item
+
+
+def test_phase_shift_transform_check_not_inplace_processing_for_grid_binomial(random_grid_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_grid_item)
+
+    assert result is not random_grid_item
+
+
+def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_uniform(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+
+    assert result is not random_pointcloud_item
+
+
+def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_binomial(random_pointcloud_item):
+    result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+
+    assert result is not random_pointcloud_item
+
+
 def test_point_sampling_transform_check_points_sampling_param_is_saved_int():
     aug = PointSampling(points_sampled=1)
     assert type(aug.points_sampled) == int
@@ -412,3 +460,15 @@ def test_points_sampling_transform_check_points_sampling_parameter_float_and_les
 def test_points_sampling_transform_check_points_sampling_parameter_float_and_bigger_than_points_in_total(random_pointcloud_item):
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=1.0001)(random_pointcloud_item)
+
+
+def test_points_sampling_transform_check_not_inplace_processing_for_float(random_pointcloud_item):
+    result = PointSampling(points_sampled=0.5)(random_pointcloud_item)
+
+    assert result is not random_pointcloud_item
+
+
+def test_points_sampling_transform_check_not_inplace_processing_for_int(random_pointcloud_item):
+    result = PointSampling(points_sampled=4000)(random_pointcloud_item)
+
+    assert result is not random_pointcloud_item

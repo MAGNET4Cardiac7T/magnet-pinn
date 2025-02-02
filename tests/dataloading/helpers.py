@@ -1,25 +1,29 @@
 import numpy as np
+from copy import copy
 
 from magnet_pinn.data._base import BaseTransform
 from magnet_pinn.data.dataitem import DataItem
 
 
 class FirstAugmentation(BaseTransform):
-        def __call__(self, simulation: DataItem) -> DataItem:
-            simulation.simulation += "1"
-            return simulation
+    def __call__(self, simulation: DataItem) -> DataItem:
+        result = copy(simulation)
+        result.simulation += "1"
+        return result
 
 
 class SecondAugmentation(BaseTransform):
     def __call__(self, simulation: DataItem) -> DataItem:
-        simulation.simulation += "2"
-        return simulation
+        result = copy(simulation)
+        result.simulation += "2"
+        return result
 
 
 class ThirdAugmentation(BaseTransform):
     def __call__(self, simulation: DataItem) -> DataItem:
-        simulation.simulation += "3"
-        return simulation
+        result = copy(simulation)
+        result.simulation += "3"
+        return result
     
 
 def check_items_datatypes(result, random_item):
