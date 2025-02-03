@@ -13,8 +13,6 @@ from .dataitem import DataItem
 from ._base import MagnetBaseIterator
 
 
-
-
 """
 Iterator for loading the magnetostatic simulation data.
 """
