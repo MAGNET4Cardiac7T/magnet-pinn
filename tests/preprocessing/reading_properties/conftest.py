@@ -9,7 +9,7 @@ from magnet_pinn.preprocessing.reading_properties import (
 from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_invalid_columns(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def property_data_invalid_columns(grid_simulation_path):
     return prop_path
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_invalid_file_name(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
@@ -62,7 +62,7 @@ def create_mesh(cols: int, rows: int) -> Trimesh:
     return Trimesh(vertices=vertices, faces=faces)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_valid(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
