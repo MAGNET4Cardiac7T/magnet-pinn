@@ -122,20 +122,26 @@ class DefaultTransform(BaseTransform):
         self._check_data(simulation)
 
         num_coils = simulation.coils.shape[-1]
+        field = np.sum(simulation.field, axis=-1)
+
+        phase = np.zeros(num_coils, dtype=simulation.dtype)
+        mask= np.ones(num_coils, dtype=np.bool_)
+
         coils_re = np.sum(simulation.coils, axis=-1)
-        coils_im = np.zeros_like(coils_re, dtype=simulation.coils.dtype)
-        
+        coils_im = np.zeros_like(coils_re)
+        coils = np.stack((coils_re, coils_im), axis=0)
+
         return DataItem(
-            simulation=simulation.simulation,
             input=simulation.input,
-            field=np.sum(simulation.field, axis=-1),
             subject=simulation.subject,
-            positions=simulation.positions,
-            phase=np.zeros(num_coils, dtype=simulation.dtype),
-            mask=np.ones(num_coils, dtype=simulation.mask.dtype),
-            coils=np.stack((coils_re, coils_im), axis=0),
+            simulation=simulation.simulation,
+            field=field,
+            phase=phase,
+            mask=mask,
+            coils=coils,
             dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
         )
     
     def check_if_valid(self):
@@ -373,8 +379,20 @@ class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
     """
-    pass
-
+    def _phase_shift_field(self, 
+                           fields: npt.NDArray[np.float32], 
+                           phase: npt.NDArray[np.float32], 
+                           mask: npt.NDArray[np.float32], 
+                           ) -> npt.NDArray[np.float32]:
+        re_phase = np.cos(phase) * mask
+        im_phase = np.sin(phase) * mask
+        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
+        coeffs_im = np.stack((im_phase, re_phase), axis=0)
+        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
+        coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
+        field_shift = einops.einsum(fields, coeffs, 'hf reim ... fieldxyz coils, hf reimout reim coils -> hf reimout fieldxyz ...')
+        return field_shift
+    
 
 class PointFeatureRearrange(BaseTransform):
     """
@@ -398,9 +416,20 @@ class PointFeatureRearrange(BaseTransform):
         DataItem
             augmented DataItem object
         """
-        simulation.field = self._rearrange_field(simulation.field, self.num_coils)
-        simulation.coils = self._rearrange_coils(simulation.coils, self.num_coils)
-        return simulation
+        rearranged_field = self._rearrange_field(simulation.field, self.num_coils)
+        rearranged_coils = self._rearrange_coils(simulation.coils, self.num_coils)
+        return DataItem(
+            input=simulation.input,
+            subject=simulation.subject,
+            simulation=simulation.simulation,
+            field=rearranged_field,
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=rearranged_coils,
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions
+        )
 
     def _rearrange_field(self, 
                          field: npt.NDArray[np.float32], 
@@ -411,7 +440,6 @@ class PointFeatureRearrange(BaseTransform):
         (position values, axis x/y/z choice, re/im parts, field_type).
         """
         field = einops.rearrange(field, 'he reimout fieldxyz points -> points fieldxyz reimout he')
-        field_shift = einops.rearrange(field_shift, )
         return field
 
     def _rearrange_coils(self, 
