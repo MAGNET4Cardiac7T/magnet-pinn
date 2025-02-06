@@ -72,7 +72,7 @@ def check_elements_not_changed_by_crop(result, input_item):
     assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
 
 
-def check_constant_shapes_not_changed_by_phase_shift(result, item): 
+def check_constant_shapes_not_changed_except_for_field_coils(result, item): 
     assert len(result.simulation) == len(item.simulation)
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape
@@ -168,3 +168,31 @@ def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
 
     expected_coils_result = np.stack([coils_re, coils_im], axis=0)
     assert np.equal(result.coils, expected_coils_result).all()
+
+
+def check_pointcloud_feature_rearrange_shapes_field_coils(result, item):
+    assert result.field.shape == tuple(item.field.shape[-1::-1])
+    assert result.coils.shape == tuple(item.coils.shape[-1::-1])
+
+
+def check_constant_values_not_changed_except_for_field_coils(result, item):
+    assert result.simulation == item.simulation
+    assert np.equal(result.input, item.input).all()
+    assert np.equal(result.subject, item.subject).all()
+    assert np.equal(result.positions, item.positions).all()
+    assert np.equal(result.phase, item.phase).all()
+    assert np.equal(result.mask, item.mask).all()
+    assert result.dtype == item.dtype
+    assert np.equal(result.truncation_coefficients, item.truncation_coefficients).all()
+
+
+def check_pointcloud_feature_rearrange_values_field_coils(result, item):
+    expected_field_array = np.ascontiguousarray(rearrange(
+        item.field, "he reim fieldxyz positions -> positions fieldxyz reim he"
+    )).astype(np.float32)
+    assert np.equal(result.field, expected_field_array).all()
+
+    expected_coils_array = np.ascontiguousarray(rearrange(
+        item.coils, "reim positions -> positions reim"
+    ))
+    assert np.equal(result.coils, expected_coils_array).all()

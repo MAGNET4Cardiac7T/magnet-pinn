@@ -6,14 +6,16 @@ from einops import rearrange
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
     Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
-    PhaseShift, BaseTransform, DefaultTransform
+    PhaseShift, BaseTransform, DefaultTransform, PointFeatureRearrange
 )
 from tests.dataloading.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
     check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
-    check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift,
+    check_constant_shapes_not_changed_except_for_field_coils, check_constant_values_not_changed_by_phase_shift,
     check_default_transform_resulting_shapes, check_default_transform_resulting_values,
-    check_complex_number_calculations_in_phase_shift, check_complex_number_calculations_in_pointscloud_phase_shift
+    check_complex_number_calculations_in_phase_shift, check_complex_number_calculations_in_pointscloud_phase_shift,
+    check_pointcloud_feature_rearrange_shapes_field_coils, check_constant_values_not_changed_except_for_field_coils,
+    check_pointcloud_feature_rearrange_values_field_coils
 )
 
 
@@ -302,7 +304,7 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(ra
     aug = PhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_grid_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_grid_item)
     assert result.field.shape == random_grid_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
@@ -310,7 +312,7 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(ra
 def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_pointcloud(random_pointcloud_item):
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
     assert result.field.shape == random_pointcloud_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
@@ -319,7 +321,7 @@ def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(r
     aug = PhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_grid_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_grid_item)
     assert result.field.shape == random_grid_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
@@ -327,7 +329,7 @@ def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(r
 def check_phase_shift_transform_check_valid_processing_shapes_binomial_for_pointcloud(random_pointcloud_item):
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
     assert result.field.shape == random_pointcloud_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
@@ -539,7 +541,7 @@ def test_grid_phase_shift_transform_check_valid_processing_shapes_uniform(random
     aug = GridPhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_grid_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_grid_item)
     assert result.field.shape == random_grid_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
@@ -548,7 +550,7 @@ def test_grid_phase_shift_transform_check_valid_processing_shapes_binomial(rando
     aug = GridPhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_grid_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_grid_item)
     assert result.field.shape == random_grid_item.field.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_grid_item.coils.shape[:-1]))
 
@@ -624,7 +626,7 @@ def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(rando
     """
     result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
     real_expected_array = np.ascontiguousarray(
         rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
     ).astype(np.float32)
@@ -638,7 +640,7 @@ def test_point_phase_shift_transform_check_valid_processing_shapes_binomial(rand
     """
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
     real_expected_array = np.ascontiguousarray(
         rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
     ).astype(np.float32)
@@ -676,3 +678,33 @@ def test_point_phase_shift_transform_check_not_inplace_processing_for_binomial(r
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
     assert result is not random_pointcloud_item
+
+
+def test_point_feature_rearrange_transform_invalid_dataitem():
+    with pytest.raises(ValueError):
+        _ = PointFeatureRearrange(num_coils=8)(None)
+
+
+def test_point_feature_rearrange_transform_actions_not_inplace(random_pointcloud_item_for_features_rearrange):
+    result = PointFeatureRearrange(num_coils=8)(random_pointcloud_item_for_features_rearrange)
+
+    assert result is not random_pointcloud_item_for_features_rearrange
+
+
+def test_point_feature_rearrange_transform_check_datatypes(random_pointcloud_item_for_features_rearrange):
+    result = PointFeatureRearrange(num_coils=8)(random_pointcloud_item_for_features_rearrange)
+    check_items_datatypes(result, random_pointcloud_item_for_features_rearrange)
+
+
+def test_point_feature_rearrange_transform_check_shapes(random_pointcloud_item_for_features_rearrange):
+    result = PointFeatureRearrange(num_coils=8)(random_pointcloud_item_for_features_rearrange)
+
+    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item_for_features_rearrange)
+    check_pointcloud_feature_rearrange_shapes_field_coils(result, random_pointcloud_item_for_features_rearrange)
+
+
+def test_point_feature_rearrange_transform_check_values(random_pointcloud_item_for_features_rearrange):
+    result = PointFeatureRearrange(num_coils=8)(random_pointcloud_item_for_features_rearrange)
+
+    check_constant_values_not_changed_except_for_field_coils(result, random_pointcloud_item_for_features_rearrange)
+    check_pointcloud_feature_rearrange_values_field_coils(result, random_pointcloud_item_for_features_rearrange)

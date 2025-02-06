@@ -5,7 +5,7 @@ import numpy as np
 from magnet_pinn.data.dataitem import DataItem
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def zero_grid_item():
     return DataItem(
         simulation="",
@@ -20,7 +20,7 @@ def zero_grid_item():
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def random_grid_item():
     return DataItem(
         simulation="",
@@ -35,7 +35,7 @@ def random_grid_item():
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def random_pointcloud_item():
     return DataItem(
         simulation="",
@@ -46,6 +46,22 @@ def random_pointcloud_item():
         phase=np.random.rand(8).astype(np.float32),
         mask=np.random.choice([0, 1], size=8).astype(np.bool_),
         coils=np.random.choice([0, 1], size=(8000, 8)).astype(np.float32),
+        dtype="float32",
+        truncation_coefficients=np.ones(3, dtype=np.float32)
+    )
+
+
+@pytest.fixture(scope="function")
+def random_pointcloud_item_for_features_rearrange():
+    return DataItem(
+        simulation="",
+        input=np.random.rand(8000, 3).astype(np.float32),
+        field=np.random.rand(2, 2, 3, 8000).astype(np.float32),
+        subject=np.random.choice([0, 1], size=8000).astype(np.bool_),
+        positions=np.random.rand(8000, 3).astype(np.float32),
+        phase=np.random.rand(8).astype(np.float32),
+        mask=np.random.choice([0, 1], size=8).astype(np.bool_),
+        coils=np.random.rand(2, 8000).astype(np.float32),
         dtype="float32",
         truncation_coefficients=np.ones(3, dtype=np.float32)
     )

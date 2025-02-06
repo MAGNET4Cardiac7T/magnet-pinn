@@ -418,6 +418,7 @@ class PointFeatureRearrange(BaseTransform):
         DataItem
             augmented DataItem object
         """
+        self._check_data(simulation)
         rearranged_field = self._rearrange_field(simulation.field, self.num_coils)
         rearranged_coils = self._rearrange_coils(simulation.coils, self.num_coils)
         return DataItem(
