@@ -1,18 +1,19 @@
 import pytest
 
 import numpy as np
+from einops import rearrange
+
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
     Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
     PhaseShift, BaseTransform, DefaultTransform
 )
-
 from tests.dataloading.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
     check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
     check_constant_shapes_not_changed_by_phase_shift, check_constant_values_not_changed_by_phase_shift,
     check_default_transform_resulting_shapes, check_default_transform_resulting_values,
-    check_complex_number_calculations_in_phase_shift
+    check_complex_number_calculations_in_phase_shift, check_complex_number_calculations_in_pointscloud_phase_shift
 )
 
 
@@ -618,33 +619,51 @@ def test_point_phase_shift_transform_check_valid_processing_dtypes_binomial(rand
 
 
 def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(random_pointcloud_item):
+    """
+    This test assumes the preprocessing did not standartize the axis position and `fieldxyz` and `positions` are having different order
+    """
     result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
     check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
-    assert result.field.shape == random_pointcloud_item.field.shape[:-1]
+    real_expected_array = np.ascontiguousarray(
+        rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
+    ).astype(np.float32)
+    assert result.field.shape == real_expected_array.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
 
 def test_point_phase_shift_transform_check_valid_processing_shapes_binomial(random_pointcloud_item):
+    """
+    This test assumes the preprocessing did not standartize the axis position and `fieldxyz` and `positions` are having different order
+    """
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
     check_constant_shapes_not_changed_by_phase_shift(result, random_pointcloud_item)
-    assert result.field.shape == random_pointcloud_item.field.shape[:-1]
+    real_expected_array = np.ascontiguousarray(
+        rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
+    ).astype(np.float32)
+    assert result.field.shape == real_expected_array.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
 
 def test_point_phase_shift_transform_check_values_uniform(random_pointcloud_item):
+    """
+    This test assumes the preprocessing did not standartize the axis position and `fieldxyz` and `positions` are having different order
+    """
     result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
     check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
-    check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_pointscloud_phase_shift(result, random_pointcloud_item)
 
 
 def test_point_phase_shift_transform_check_values_binomial(random_pointcloud_item):
+    """
+    This test assumes the preprocessing did not standartize the axis position and `fieldxyz` and `positions` are having different order
+    """
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
     check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
-    check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_pointscloud_phase_shift(result, random_pointcloud_item)
 
 
 def test_point_phase_shift_transform_check_not_inplace_processing_for_uniform(random_pointcloud_item):

@@ -378,6 +378,8 @@ class GridPhaseShift(PhaseShift):
 class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
+    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in pointcloud) in early 
+    stages of simulation preprocessing
     """
     def _phase_shift_field(self, 
                            fields: npt.NDArray[np.float32], 
