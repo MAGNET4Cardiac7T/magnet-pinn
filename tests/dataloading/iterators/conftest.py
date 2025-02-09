@@ -25,7 +25,7 @@ def grid_processed_dir(processed_dir_path):
     create_grid_processed_dir(grid_processed_dir_path, random_grid_item, zero_grid_item)
     yield grid_processed_dir_path
     if grid_processed_dir_path.exists():
-        """grid_processed_dir_path.rmdir()"""
+        rmtree(grid_processed_dir_path)
 
 
 @pytest.fixture(scope='function')
@@ -36,4 +36,4 @@ def grid_prodcessed_dir_short_term(processed_dir_path):
     create_grid_processed_dir(grid_processed_dir_path, random_grid_item, zero_grid_item)
     yield grid_processed_dir_path
     if grid_processed_dir_path.exists():
-        """grid_processed_dir_path.rmdir()"""
+        rmtree(grid_processed_dir_path)

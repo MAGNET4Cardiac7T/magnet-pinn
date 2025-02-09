@@ -68,6 +68,8 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         npt.NDArray[np.bool_]
             Coils masks array
         """
+        if not self.coils_path.exists():
+            raise FileNotFoundError(f"File {self.coils_path} not found")
         with h5py.File(self.coils_path) as f:
             coils = f[ANTENNA_MASKS_OUT_KEY][:]
         return coils
