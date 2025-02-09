@@ -8,7 +8,7 @@ from magnet_pinn.data.transforms import (
     Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
     PhaseShift, BaseTransform, DefaultTransform, PointFeatureRearrange
 )
-from tests.dataloading.helpers import (
+from tests.dataloading.transforms.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
     check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
     check_constant_shapes_not_changed_except_for_field_coils, check_constant_values_not_changed_by_phase_shift,

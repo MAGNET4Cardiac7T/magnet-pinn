@@ -15,3 +15,7 @@ def test_grid_dataset_is_iterator():
 
 def test_point_dataset_is_iterator():
     assert issubclass(MagnetPointIterator, MagnetBaseIterator)
+
+
+def test_grid_iterator(grid_processed_dir):
+    pass

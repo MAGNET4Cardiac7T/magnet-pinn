@@ -1,0 +1,87 @@
+from pathlib import Path
+
+import numpy as np
+from h5py import File
+
+from magnet_pinn.data.dataitem import DataItem
+from magnet_pinn.preprocessing.preprocessing import (
+    ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
+    FEATURES_OUT_KEY, SUBJECT_OUT_KEY, FLOAT_DTYPE_KIND, COMPLEX_DTYPE_KIND,
+    DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, VOXEL_SIZE_OUT_KEY,
+    MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, PROCESSED_SIMULATIONS_DIR_PATH,
+    TARGET_FILE_NAME, PROCESSED_ANTENNA_DIR_PATH
+)
+
+
+RANDOM_SIM_FILE_NAME = "children_0_tubes_0_id_0"
+ZERO_SIM_FILE_NAME = "children_0_tubes_0_id_1"
+
+
+def create_grid_processed_dir(grid_processed_dir, random_item, zero_item):
+    grid_processed_dir.mkdir()
+
+    create_grid_antenna_dir(grid_processed_dir, random_item)
+    create_grid_simulation_dir(grid_processed_dir, random_item, zero_item)
+
+
+def create_grid_antenna_dir(grid_processed_dir, random_grid_item):
+    grid_antenna_dir_path = grid_processed_dir / PROCESSED_ANTENNA_DIR_PATH
+    grid_antenna_dir_path.mkdir()
+
+    antenna_file_dir = grid_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    create_processed_coils_file(antenna_file_dir, random_grid_item)
+
+
+def create_grid_simulation_dir(grid_processed_dir, random_item, zero_item):
+    simulations_dir_path = grid_processed_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    simulations_dir_path.mkdir()
+
+    random_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=RANDOM_SIM_FILE_NAME)
+    create_processed_grid_simulation_file(random_grid_file_path, random_item)
+
+    zero_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=ZERO_SIM_FILE_NAME)
+    create_processed_grid_simulation_file(zero_grid_file_path, zero_item)
+
+
+def create_processed_coils_file(path: Path, simulation: DataItem):
+    with File(path, "w") as f:
+        f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=simulation.coils.astype(np.bool_), dtype=np.bool_)
+
+
+def create_processed_grid_simulation_file(path: Path, simulation: DataItem):
+    efield, other_prop_field = format_field(simulation.field[0], simulation.dtype)
+    hfied, _ = format_field(simulation.field[1], simulation.dtype)
+
+    with File(path, "w") as f:
+        f.create_dataset(E_FIELD_OUT_KEY, data=efield)
+        f.create_dataset(H_FIELD_OUT_KEY, data=hfied)
+        f.create_dataset(FEATURES_OUT_KEY, data=simulation.input.astype(other_prop_field))
+        f.create_dataset(SUBJECT_OUT_KEY, data=simulation.subject.astype(np.bool_))
+
+        f.attrs[DTYPE_OUT_KEY] = simulation.dtype
+        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = simulation.truncation_coefficients.astype(other_prop_field)
+        f.attrs[VOXEL_SIZE_OUT_KEY] = 4
+        f.attrs[MIN_EXTENT_OUT_KEY] = np.array([-40, -40, -40])
+        f.attrs[MAX_EXTENT_OUT_KEY] = np.array([36, 36, 36])
+
+
+def format_field(field: np.ndarray, dtype: str) -> np.ndarray:
+    """
+    Method formats e/h field values and also returns the dtype of all other values
+    """
+    writing_type = np.dtype(dtype)
+    real = field[0]
+    im = field[1]
+    if writing_type.kind == FLOAT_DTYPE_KIND:
+        field_type = [("re", writing_type),("im", writing_type)]
+        other_types = writing_type
+        result_field = np.empty_like(real, dtype=field_type)
+        result_field["re"] = real
+        result_field["im"] = im
+    elif writing_type.kind == COMPLEX_DTYPE_KIND:
+        field_type = writing_type
+        float_size = 8 * writing_type.itemsize // 2
+        other_types = np.dtype(f"float{float_size}")
+        result_field = real + 1j * im
+
+    return result_field, other_types
