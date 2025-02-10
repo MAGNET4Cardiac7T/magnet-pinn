@@ -11,6 +11,7 @@ from typing import Union
 
 import numpy as np
 import numpy.typing as npt
+from natsort import natsorted
 
 from typing import Tuple, Optional
 from abc import ABC, abstractmethod
@@ -44,11 +45,13 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
                  num_samples: int = 1):
         super().__init__()
         data_dir = Path(data_dir)
-        self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
+
         self.coils_path = data_dir / PROCESSED_ANTENNA_DIR_PATH / "antenna.h5"
-        self.simulation_list = sorted(self.simulation_dir.glob("*.h5"))
         self.coils = self._read_coils()
         self.num_coils = self.coils.shape[-1]
+
+        self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
+        self.simulation_list = self._get_simulations_list()
 
         ## TODO: check if transform valid:
         check_transforms(transforms)
@@ -73,6 +76,25 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         with h5py.File(self.coils_path) as f:
             coils = f[ANTENNA_MASKS_OUT_KEY][:]
         return coils
+    
+
+    def _get_simulations_list(self) -> list:
+        """
+        This method searches for the list of `.h5` simulations files in the `simulations` directory.
+        It also checks that the directory is not empty and throws an exception if it is so.
+
+        Returns
+        -------
+        list
+            List of simulation file paths 
+        """
+        simulations_list = natsorted(self.simulation_dir.glob("*.h5"))
+
+        if len(simulations_list) == 0:
+            raise FileNotFoundError(f"No simulations found in {self.simulation_dir}")
+        
+        return simulations_list
+
     
     @abstractmethod
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:

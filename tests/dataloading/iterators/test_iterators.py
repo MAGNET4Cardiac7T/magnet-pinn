@@ -8,7 +8,7 @@ from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.point import MagnetPointIterator
 from magnet_pinn.data.transforms import DefaultTransform
 from magnet_pinn.preprocessing.preprocessing import (
-    PROCESSED_ANTENNA_DIR_PATH, TARGET_FILE_NAME
+    PROCESSED_ANTENNA_DIR_PATH, TARGET_FILE_NAME, PROCESSED_SIMULATIONS_DIR_PATH
 )
 
 
@@ -24,7 +24,7 @@ def test_point_dataset_is_iterator():
     assert issubclass(MagnetPointIterator, MagnetBaseIterator)
 
 
-def test_grid_iterator_not_existing_coils_dir(grid_prodcessed_dir_short_term):
+def test_grid_iterator_check_not_existing_coils_dir(grid_prodcessed_dir_short_term):
     antenna_dir_path = grid_prodcessed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH
     rmtree(antenna_dir_path)
 
@@ -33,7 +33,7 @@ def test_grid_iterator_not_existing_coils_dir(grid_prodcessed_dir_short_term):
         _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
 
 
-def test_grid_iterator_not_existing_coils_file(grid_prodcessed_dir_short_term):
+def test_grid_iterator_check_not_existing_coils_file(grid_prodcessed_dir_short_term):
     antenna_file_path = grid_prodcessed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
     antenna_file_path.unlink()
 
@@ -42,7 +42,7 @@ def test_grid_iterator_not_existing_coils_file(grid_prodcessed_dir_short_term):
         _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
 
 
-def test_grid_iterator_invalid_antenna_dir(grid_prodcessed_dir_short_term):
+def test_grid_iterator_check_invalid_antenna_dir(grid_prodcessed_dir_short_term):
     antenna_dir_path = grid_prodcessed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH
     dir_changed_path = antenna_dir_path.with_name("changed")
     antenna_dir_path.rename(dir_changed_path)
@@ -52,10 +52,42 @@ def test_grid_iterator_invalid_antenna_dir(grid_prodcessed_dir_short_term):
         _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
 
 
-def test_grid_iterator_invalid_antenna_file_name(grid_prodcessed_dir_short_term):
+def test_grid_iterator_check_invalid_antenna_file_name(grid_prodcessed_dir_short_term):
     antenna_file_path = grid_prodcessed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
     file_changed_path = antenna_file_path.with_name("changed")
     antenna_file_path.rename(file_changed_path)
+
+    aug = DefaultTransform()
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
+
+
+def test_grid_iterator_check_not_existing_simulations_dir(grid_prodcessed_dir_short_term):
+    simulations_dir_path = grid_prodcessed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    rmtree(simulations_dir_path)
+
+    aug = DefaultTransform()
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
+
+
+def test_grid_iterator_check_invalid_simulations_dir(grid_prodcessed_dir_short_term):
+    simulations_dir_path = grid_prodcessed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    dir_changed_path = simulations_dir_path.with_name("changed")
+    simulations_dir_path.rename(dir_changed_path)
+
+    aug = DefaultTransform()
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetGridIterator(grid_prodcessed_dir_short_term, transforms=aug, num_samples=1)
+
+
+def test_grid_iterator_check_enpty_simulations_dir(grid_prodcessed_dir_short_term):
+    """
+    Instead of just deliting all simulations inside we recreate a directory.
+    """
+    simulations_dir_path = grid_prodcessed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    rmtree(simulations_dir_path)
+    simulations_dir_path.mkdir()
 
     aug = DefaultTransform()
     with pytest.raises(FileNotFoundError):
