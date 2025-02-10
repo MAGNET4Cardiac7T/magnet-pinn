@@ -196,5 +196,38 @@ def test_grid_iterator_check_sampled_data_items_values(grid_processed_dir, rando
     for result in iter:
         if result["simulation"] == random_grid_item.simulation:
             check_values_between_item_result_and_supposed_simulation(result, random_grid_item)
-        else:
+        elif result["simulation"] == zero_grid_item.simulation:
             check_values_between_item_result_and_supposed_simulation(result, zero_grid_item)
+        else:
+            raise ValueError("Unexpected simulation name.")
+
+
+def test_grid_iterator_check_sampled_data_rate(grid_processed_dir, random_grid_item, zero_grid_item):
+    aug = PhaseShift(num_coils=8)
+    iter = MagnetGridIterator(grid_processed_dir, transforms=aug, num_samples=3)
+
+    random_samples_count = 0
+    zero_samples_count = 0
+    for result in iter:
+        if result["simulation"] == random_grid_item.simulation:
+            random_samples_count += 1
+        elif result["simulation"] == zero_grid_item.simulation:
+            zero_samples_count += 1
+        else:
+            raise ValueError("Unexpected simulation name.")
+
+    assert random_samples_count == zero_samples_count == 3
+
+
+def test_grid_iteartor_check_multiple_samples(grid_processed_dir, random_grid_item, zero_grid_item):
+    aug = PhaseShift(num_coils=8)
+    iter = MagnetGridIterator(grid_processed_dir, transforms=aug, num_samples=3)
+
+    sampled = list(iter)
+    for result in sampled:
+        if result["simulation"] == random_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, random_grid_item)
+        elif result["simulation"] == zero_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, zero_grid_item)
+        else:
+            raise ValueError("Unexpected simulation name.")
