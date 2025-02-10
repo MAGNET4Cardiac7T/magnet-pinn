@@ -47,14 +47,14 @@ def test_compose_running_order_for_grid(zero_grid_item):
     aug = Compose([FirstAugmentation(), SecondAugmentation(), ThirdAugmentation()])
     result_item = aug(zero_grid_item)
 
-    assert result_item.simulation == "123"
+    assert result_item.simulation == zero_grid_item.simulation + "123"
 
 
 def test_compose_running_order_for_pointcloud(random_pointcloud_item):
     aug = Compose([FirstAugmentation(), SecondAugmentation(), ThirdAugmentation()])
     result_item = aug(random_pointcloud_item)
 
-    assert result_item.simulation == "123"
+    assert result_item.simulation == random_pointcloud_item.simulation + "123"
 
 
 def test_compose_transform_not_inplace_processing_for_grid(zero_grid_item):
@@ -444,7 +444,7 @@ def test_points_sampling_transform_check_points_sampling_parameter_int_and_less_
 
     assert result.input.shape == (4000, 3)
     assert result.field.shape == (2, 2, 4000, 3, 8)
-    assert result.subject.shape == (4000,)
+    assert result.subject.shape == (4000, 1)
     assert result.positions.shape == (4000, 3)
     assert result.coils.shape == (4000, 8)
 
@@ -460,7 +460,7 @@ def test_points_sampling_transform_check_points_sampling_parameter_float_and_les
 
     assert result.input.shape == (4000, 3)
     assert result.field.shape == (2, 2, 4000, 3, 8)
-    assert result.subject.shape == (4000,)
+    assert result.subject.shape == (4000, 1)
     assert result.positions.shape == (4000, 3)
     assert result.coils.shape == (4000, 8)
 

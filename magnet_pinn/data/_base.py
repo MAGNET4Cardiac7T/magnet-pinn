@@ -57,6 +57,9 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         check_transforms(transforms)
 
         self.transforms = transforms
+
+        if num_samples < 1:
+            raise ValueError("The num_samples must be greater than 0")
         self.num_samples = num_samples
 
     def _get_simulation_name(self, simulation) -> str:

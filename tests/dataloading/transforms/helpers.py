@@ -44,7 +44,7 @@ def check_items_datatypes(result, random_item):
 def check_cropped_shapes(result):
     assert result.input.shape == (3, 10, 10, 10)
     assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
-    assert result.subject.shape == (10, 10, 10)
+    assert result.subject.shape[:-1] == (10, 10, 10)
     assert result.positions.shape == (0,)
     assert result.phase.shape == (8,)
     assert result.mask.shape == (8,)

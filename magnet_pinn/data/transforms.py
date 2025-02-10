@@ -87,7 +87,6 @@ class Compose(BaseTransform):
         self._check_data(simulation)
         result = copy(simulation)
         for aug in self.transforms:
-            print(result.simulation)
             result = aug(result)
         return result
 

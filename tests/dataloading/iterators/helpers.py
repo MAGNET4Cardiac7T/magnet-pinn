@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict
 
 import numpy as np
 from h5py import File
@@ -85,3 +86,42 @@ def format_field(field: np.ndarray, dtype: str) -> np.ndarray:
         result_field = real + 1j * im
 
     return result_field, other_types
+
+
+def check_dtypes_between_iter_result_and_supposed_simulation(result: Dict, item: DataItem):
+    assert type(item.simulation) == type(result["simulation"])
+    assert item.input.dtype == result["input"].dtype
+    assert item.field.dtype == result["field"].dtype
+    assert item.subject.dtype == result["subject"].dtype
+    assert item.positions.dtype == result["positions"].dtype
+    assert item.phase.dtype == result["phase"].dtype
+    assert item.mask.dtype == result["mask"].dtype
+    assert item.coils.dtype == result["coils"].dtype
+    assert type(item.dtype) == type(result["dtype"])
+    assert item.truncation_coefficients.dtype == result["truncation_coefficients"].dtype
+
+
+def check_shapes_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
+    assert item.input.shape == result["input"].shape
+    assert item.field.shape[:-1] == result["field"].shape
+    assert item.subject.shape[:-1] == result["subject"].shape
+    assert item.positions.shape == result["positions"].shape
+    assert item.phase.shape == result["phase"].shape
+    assert item.mask.shape == result["mask"].shape
+    assert tuple([2] + list(item.coils.shape[:-1])) == result["coils"].shape
+    assert len(item.dtype) == len(result["dtype"])
+    assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
+
+
+def check_values_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
+    """
+    We check all elements of the item which potentially have same shape and not changed
+    """
+    print(item.simulation, result["simulation"])
+    assert item.simulation == result["simulation"]
+    assert np.equal(item.input, result["input"]).all()
+    assert np.equal(item.positions, result["positions"]).all()
+    assert not np.equal(item.phase, result["phase"]).all()
+    assert not np.equal(item.mask, result["mask"]).all()
+    assert item.dtype == result["dtype"]
+    assert np.equal(item.truncation_coefficients, result["truncation_coefficients"]).all()
