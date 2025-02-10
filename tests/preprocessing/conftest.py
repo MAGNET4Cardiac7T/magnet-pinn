@@ -70,11 +70,13 @@ def raw_antenna_dir_path(data_dir_path):
 def grid_simulation_path(tmp_path_factory):
     simulation_path = tmp_path_factory.mktemp('simulation_name')
     yield simulation_path
-    rmtree(simulation_path)
+    if simulation_path.exists():
+        rmtree(simulation_path)
 
 
 @pytest.fixture(scope='module')
 def pointslist_simulation_path(tmp_path_factory):
     simulation_path = tmp_path_factory.mktemp('simulation_name')
     yield simulation_path
-    rmtree(simulation_path)
+    if simulation_path.exists():
+        rmtree(simulation_path)

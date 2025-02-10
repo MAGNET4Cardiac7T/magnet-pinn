@@ -37,7 +37,9 @@ def e_field_grid_data(grid_simulation_path):
         0
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -63,7 +65,9 @@ def h_field_grid_data(grid_simulation_path):
         0
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -85,7 +89,9 @@ def e_field_grid_data_with_mixed_axis(grid_simulation_path):
         (126, 121, 111)
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -107,7 +113,9 @@ def h_field_grid_data_with_mixed_axis(grid_simulation_path):
         (126, 121, 111)
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -122,7 +130,9 @@ def e_field_grid_data_with_inconsistent_shape(grid_simulation_path):
         (111, 126, 126)
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -137,7 +147,9 @@ def h_field_grid_data_with_inconsistent_shape(grid_simulation_path):
         (111, 126, 126)
     )
 
-    return grid_simulation_path
+    yield grid_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -154,7 +166,9 @@ def e_field_pointslist_data(pointslist_simulation_path):
         field_path / "e-field (f=297.2) [AC2].h5",
         E_FIELD_DATABASE_KEY
     )
-    return pointslist_simulation_path
+    yield pointslist_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
 
 
 @pytest.fixture(scope='module')
@@ -172,4 +186,6 @@ def h_field_pointslist_data(pointslist_simulation_path):
         H_FIELD_DATABASE_KEY
     )
 
-    return pointslist_simulation_path
+    yield pointslist_simulation_path
+    if field_path.exists():
+        rmtree(field_path)
