@@ -147,7 +147,9 @@ def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(resu
 
 def check_values_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
     """
-    We check all elements of the item which potentially have same shape and not changed
+    We check all elements of the item which potentially have same shape and not changed.
+    Tese tests check iterators, not transformers, so we mostly do not care about values,
+    values are tested specifically in transformers tests.
     """
     print(item.simulation, result["simulation"])
     assert item.simulation == result["simulation"]

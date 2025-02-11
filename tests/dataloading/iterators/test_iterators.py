@@ -347,3 +347,42 @@ def test_point_iterator_check_sampled_data_items_shapes(pointcloud_processed_dir
     for item in iter:
         check_shapes_between_item_result_and_supposed_simulation_for_pointclous(item, random_pointcloud_item)
 
+
+def test_point_iterator_check_sampled_data_items_values(pointcloud_processed_dir, random_pointcloud_item, zero_pointcloud_item, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+    for result in iter:
+        if result["simulation"] == random_pointcloud_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, random_pointcloud_item)
+        elif result["simulation"] == zero_pointcloud_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, zero_pointcloud_item)
+        else:
+            raise ValueError("Unexpected simulation name.")
+        
+
+def test_point_iterator_check_sampled_data_rate(pointcloud_processed_dir, random_pointcloud_item, zero_pointcloud_item, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=3)
+
+    random_samples_count = 0
+    zero_samples_count = 0
+    for result in iter:
+        if result["simulation"] == random_pointcloud_item.simulation:
+            random_samples_count += 1
+        elif result["simulation"] == zero_pointcloud_item.simulation:
+            zero_samples_count += 1
+        else:
+            raise ValueError("Unexpected simulation name.")
+
+    assert random_samples_count == zero_samples_count == 3
+
+
+def test_point_iteartor_check_multiple_samples(pointcloud_processed_dir, random_pointcloud_item, zero_pointcloud_item, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=3)
+
+    sampled = list(iter)
+    for result in sampled:
+        if result["simulation"] == random_pointcloud_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, random_pointcloud_item)
+        elif result["simulation"] == zero_pointcloud_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, zero_pointcloud_item)
+        else:
+            raise ValueError("Unexpected simulation name.")
