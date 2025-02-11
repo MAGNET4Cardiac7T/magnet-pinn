@@ -4,6 +4,9 @@ import pytest
 import numpy as np
 from h5py import File
 
+from magnet_pinn.data.transforms import (
+    Compose, PhaseShift, PointPhaseShift, PointFeatureRearrange
+)
 from tests.dataloading.iterators.helpers import (
     create_processed_dir
 )
@@ -49,3 +52,16 @@ def pointcloud_processed_dir_short_term(processed_dir_path, random_pointcloud_it
     yield pointcloud_processed_dir_path
     if pointcloud_processed_dir_path.exists():
         rmtree(pointcloud_processed_dir_path)
+
+
+@pytest.fixture(scope='module')
+def grid_aug():
+    return PhaseShift(num_coils=8)
+
+
+@pytest.fixture(scope='module')
+def pointcloud_aug():
+    return Compose([
+        PointPhaseShift(num_coils=8),
+        PointFeatureRearrange(num_coils=8)
+    ])
