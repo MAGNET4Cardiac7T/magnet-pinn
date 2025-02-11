@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Callable
 
 import numpy as np
 from h5py import File
@@ -10,7 +10,7 @@ from magnet_pinn.preprocessing.preprocessing import (
     FEATURES_OUT_KEY, SUBJECT_OUT_KEY, FLOAT_DTYPE_KIND, COMPLEX_DTYPE_KIND,
     DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, VOXEL_SIZE_OUT_KEY,
     MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, PROCESSED_SIMULATIONS_DIR_PATH,
-    TARGET_FILE_NAME, PROCESSED_ANTENNA_DIR_PATH
+    TARGET_FILE_NAME, PROCESSED_ANTENNA_DIR_PATH, COORDINATES_OUT_KEY
 )
 
 
@@ -18,11 +18,11 @@ RANDOM_SIM_FILE_NAME = "children_0_tubes_0_id_0"
 ZERO_SIM_FILE_NAME = "children_0_tubes_0_id_1"
 
 
-def create_grid_processed_dir(grid_processed_dir, random_item, zero_item):
+def create_processed_dir(grid_processed_dir, random_item, zero_item, is_grid: bool):
     grid_processed_dir.mkdir()
 
     create_grid_antenna_dir(grid_processed_dir, random_item)
-    create_grid_simulation_dir(grid_processed_dir, random_item, zero_item)
+    create_simulation_dir(grid_processed_dir, random_item, zero_item, is_grid)
 
 
 def create_grid_antenna_dir(grid_processed_dir, random_grid_item):
@@ -33,15 +33,17 @@ def create_grid_antenna_dir(grid_processed_dir, random_grid_item):
     create_processed_coils_file(antenna_file_dir, random_grid_item)
 
 
-def create_grid_simulation_dir(grid_processed_dir, random_item, zero_item):
+def create_simulation_dir(grid_processed_dir, random_item, zero_item, is_grid: bool):
     simulations_dir_path = grid_processed_dir / PROCESSED_SIMULATIONS_DIR_PATH
     simulations_dir_path.mkdir()
 
+    additional_attributes = add_grid_attribures_to_file if is_grid else add_pointcloud_attributes_to_file
+
     random_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=RANDOM_SIM_FILE_NAME)
-    create_processed_grid_simulation_file(random_grid_file_path, random_item)
+    create_processed_simulation_file(random_grid_file_path, random_item, additional_attributes)
 
     zero_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=ZERO_SIM_FILE_NAME)
-    create_processed_grid_simulation_file(zero_grid_file_path, zero_item)
+    create_processed_simulation_file(zero_grid_file_path, zero_item, additional_attributes)
 
 
 def create_processed_coils_file(path: Path, simulation: DataItem):
@@ -49,7 +51,11 @@ def create_processed_coils_file(path: Path, simulation: DataItem):
         f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=simulation.coils.astype(np.bool_), dtype=np.bool_)
 
 
-def create_processed_grid_simulation_file(path: Path, simulation: DataItem):
+def create_processed_simulation_file(path: Path, simulation: DataItem, additional_attributes: Callable):
+    """
+    Considering that fact that grid/points datasets writing is shape-agnostic, we can unify it, just add additional functions
+    to write specific attributes
+    """
     efield, other_prop_field = format_field(simulation.field[0], simulation.dtype)
     hfied, _ = format_field(simulation.field[1], simulation.dtype)
 
@@ -61,9 +67,18 @@ def create_processed_grid_simulation_file(path: Path, simulation: DataItem):
 
         f.attrs[DTYPE_OUT_KEY] = simulation.dtype
         f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = simulation.truncation_coefficients.astype(other_prop_field)
-        f.attrs[VOXEL_SIZE_OUT_KEY] = 4
-        f.attrs[MIN_EXTENT_OUT_KEY] = np.array([-40, -40, -40])
-        f.attrs[MAX_EXTENT_OUT_KEY] = np.array([36, 36, 36])
+
+        additional_attributes(f, simulation)
+
+
+def add_grid_attribures_to_file(f: File, simulation: DataItem):
+    f.attrs[VOXEL_SIZE_OUT_KEY] = 4
+    f.attrs[MIN_EXTENT_OUT_KEY] = np.array([-40, -40, -40])
+    f.attrs[MAX_EXTENT_OUT_KEY] = np.array([36, 36, 36])
+
+
+def add_pointcloud_attributes_to_file(f: File, simulation: DataItem):
+    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions.astype(np.float32))
 
 
 def format_field(field: np.ndarray, dtype: str) -> np.ndarray:
