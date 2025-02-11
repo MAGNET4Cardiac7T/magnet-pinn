@@ -128,6 +128,23 @@ def check_shapes_between_item_result_and_supposed_simulation(result: Dict, item:
     assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
 
 
+def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(result: Dict, item: DataItem):
+    """
+    During the testing we gonna use compose of `PointPhaseShift` and `PointFeatureRearrange` transforms so our dimensions will be mirrowed
+    for the field and coils properties.
+    """
+    assert item.input.shape == result["input"].shape
+    assert item.subject.shape[:-1] == result["subject"].shape
+    assert item.positions.shape == result["positions"].shape
+    assert item.phase.shape == result["phase"].shape
+    assert item.mask.shape == result["mask"].shape
+    assert len(item.dtype) == len(result["dtype"])
+    assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
+
+    assert tuple([item.field.shape[2], item.field.shape[-2], item.field.shape[1], item.field.shape[0]]) == result["field"].shape
+    assert tuple([item.coils.shape[0], 2]) == result["coils"].shape
+
+
 def check_values_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
     """
     We check all elements of the item which potentially have same shape and not changed

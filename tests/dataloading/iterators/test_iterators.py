@@ -19,7 +19,8 @@ from tests.dataloading.iterators.helpers import (
 from tests.dataloading.iterators.helpers import (
     check_dtypes_between_iter_result_and_supposed_simulation,
     check_shapes_between_item_result_and_supposed_simulation,
-    check_values_between_item_result_and_supposed_simulation
+    check_values_between_item_result_and_supposed_simulation,
+    check_shapes_between_item_result_and_supposed_simulation_for_pointclous
 )
 
 
@@ -161,18 +162,14 @@ def test_grid_iterator_check_overall_samples_numbers_for_multiple_num_samples(gr
 
 def test_grid_iterator_check_sampled_data_items_datatypes(grid_processed_dir, random_grid_item, grid_aug):
     iter = MagnetGridIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
-    sampled = list(iter)
-    random_processed_item, zero_processed_iter = sampled
-    check_dtypes_between_iter_result_and_supposed_simulation(random_processed_item, random_grid_item)
-    check_dtypes_between_iter_result_and_supposed_simulation(zero_processed_iter, random_grid_item)
+    for item in iter:
+        check_dtypes_between_iter_result_and_supposed_simulation(item, random_grid_item)
 
 
 def test_grid_iterator_check_sampled_data_items_shapes(grid_processed_dir, random_grid_item, grid_aug):
     iter = MagnetGridIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
-    sampled = list(iter)
-    random_processed_item, zero_processed_iter = sampled
-    check_shapes_between_item_result_and_supposed_simulation(random_processed_item, random_grid_item)
-    check_shapes_between_item_result_and_supposed_simulation(zero_processed_iter, random_grid_item)
+    for item in iter:
+        check_shapes_between_item_result_and_supposed_simulation(item, random_grid_item)
 
 
 def test_grid_iterator_check_sampled_data_items_values(grid_processed_dir, random_grid_item, zero_grid_item, grid_aug):
@@ -221,3 +218,132 @@ def test_point_iterator_check_not_existing_coils_dir(pointcloud_processed_dir_sh
 
     with pytest.raises(FileNotFoundError):
         _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_not_existing_coils_file(pointcloud_processed_dir_short_term, pointcloud_aug):
+    antenna_file_path = pointcloud_processed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file_path.unlink()
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_invalid_antenna_dir(pointcloud_processed_dir_short_term, pointcloud_aug):
+    antenna_dir_path = pointcloud_processed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH
+    dir_changed_path = antenna_dir_path.with_name("changed")
+    antenna_dir_path.rename(dir_changed_path)
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_invalid_antenna_file_name(pointcloud_processed_dir_short_term, pointcloud_aug):
+    antenna_file_path = pointcloud_processed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
+    file_changed_path = antenna_file_path.with_name("changed")
+    antenna_file_path.rename(file_changed_path)
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_not_existing_simulations_dir(pointcloud_processed_dir_short_term, pointcloud_aug):
+    simulations_dir_path = pointcloud_processed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    rmtree(simulations_dir_path)
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_invalid_simulations_dir(pointcloud_processed_dir_short_term, pointcloud_aug):
+    simulations_dir_path = pointcloud_processed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    dir_changed_path = simulations_dir_path.with_name("changed")
+    simulations_dir_path.rename(dir_changed_path)
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_empty_simulations_dir(pointcloud_processed_dir_short_term, pointcloud_aug):
+    simulations_dir_path = pointcloud_processed_dir_short_term / PROCESSED_SIMULATIONS_DIR_PATH
+    rmtree(simulations_dir_path)
+    simulations_dir_path.mkdir()
+
+    with pytest.raises(FileNotFoundError):
+        _ = MagnetPointIterator(pointcloud_processed_dir_short_term, transforms=pointcloud_aug, num_samples=1)
+
+
+def test_point_iterator_check_coils_properties(pointcloud_processed_dir, random_pointcloud_item, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+
+    expected_coils_path = pointcloud_processed_dir / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
+    assert iter.coils_path == expected_coils_path
+    assert iter.num_coils == random_pointcloud_item.coils.shape[-1]
+
+    assert iter.coils.shape == random_pointcloud_item.coils.shape
+    assert iter.coils.dtype == np.bool_
+    assert np.equal(iter.coils, random_pointcloud_item.coils.astype(np.bool_)).all()
+
+
+def test_point_iterator_check_simulations_properties(pointcloud_processed_dir, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+
+    expected_sim_dir = pointcloud_processed_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    assert iter.simulation_dir == expected_sim_dir
+
+    expected_sim_list = [
+        expected_sim_dir / TARGET_FILE_NAME.format(name=RANDOM_SIM_FILE_NAME),
+        expected_sim_dir / TARGET_FILE_NAME.format(name=ZERO_SIM_FILE_NAME)
+    ]
+    assert iter.simulation_list == expected_sim_list
+
+
+def test_grid_iterator_check_other_properties(pointcloud_processed_dir, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=2)
+
+    assert iter.num_samples == 2
+    assert iter.transforms == pointcloud_aug
+
+
+def test_point_iterator_check_num_samples_eq_to_zero(pointcloud_processed_dir, pointcloud_aug):
+    with pytest.raises(ValueError):
+        _ = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=0)
+
+
+def test_point_iterator_check_num_samples_less_than_0(pointcloud_processed_dir, pointcloud_aug):
+    with pytest.raises(ValueError):
+        _ = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=-1)
+
+
+def test_point_iterator_check_invalid_transforms(pointcloud_processed_dir):
+    with pytest.raises(ValueError):
+        _ = MagnetPointIterator(pointcloud_processed_dir, transforms=None, num_samples=1)
+
+
+def test_point_iterator_check_overall_samples_numbers_for_unit_num_samples(pointcloud_processed_dir, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+    sampled = list(iter)
+
+    assert len(sampled) == 2
+
+
+def test_point_iterator_check_overall_samples_numbers_for_multiple_num_samples(pointcloud_processed_dir, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=100)
+    sampled = list(iter)
+
+    assert len(sampled) == 200
+
+
+def test_point_iterator_check_sampled_data_items_datatypes(pointcloud_processed_dir, random_pointcloud_item, pointcloud_aug):
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+    for item in iter:
+        check_dtypes_between_iter_result_and_supposed_simulation(item, random_pointcloud_item)
+
+
+def test_point_iterator_check_sampled_data_items_shapes(pointcloud_processed_dir, random_pointcloud_item, pointcloud_aug):
+    """
+    Zero and random data items have same data shapes so it is whatsoever which of them to use for the shape check
+    """
+    iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=1)
+    for item in iter:
+        check_shapes_between_item_result_and_supposed_simulation_for_pointclous(item, random_pointcloud_item)
+
