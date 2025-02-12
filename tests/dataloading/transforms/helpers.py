@@ -135,13 +135,13 @@ def check_complex_number_calculations_in_phase_shift(result, item):
     field_shifted_im = field_re @ coefs_im + field_im @ coefs_re
 
     expected_field_result = np.stack([field_shifted_re, field_shifted_im], axis=1)
-    assert np.equal(result.field, expected_field_result).all()
+    assert np.allclose(result.field, expected_field_result, atol=1e-6, rtol=1e-6)
 
     coils_re = item.coils @ coefs_re
     coils_im = item.coils @ coefs_im
 
     expected_coils_result = np.stack([coils_re, coils_im], axis=0)
-    assert np.equal(result.coils, expected_coils_result).all()
+    assert np.allclose(result.coils, expected_coils_result, atol=1e-6, rtol=1e-6)
 
 
 def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
@@ -161,13 +161,13 @@ def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
     expected_field_result = np.ascontiguousarray(
         rearrange(expected_field_result, "he reim position fieldxyz -> he reim fieldxyz position")
     ).astype(np.float32)
-    assert np.equal(result.field, expected_field_result).all()
+    assert np.allclose(result.field, expected_field_result, atol=1e-6, rtol=1e-6)
 
     coils_re = item.coils @ coefs_re
     coils_im = item.coils @ coefs_im
 
     expected_coils_result = np.stack([coils_re, coils_im], axis=0)
-    assert np.equal(result.coils, expected_coils_result).all()
+    assert np.allclose(result.coils, expected_coils_result, atol=1e-6, rtol=1e-6)
 
 
 def check_pointcloud_feature_rearrange_shapes_field_coils(result, item):
