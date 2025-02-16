@@ -10,7 +10,21 @@
 This is the software package for simulating EM Fields using NNs
 
 ## preprocessing
-This module is used to preprocess the data. 
+The package `magnet_pinn/preprocessing` is used to preprocess data in the `grid` or `pointscloud` art. In the following modules you can find examples of how to use existing code:
+- `examples/grid_preprocessing.py` - preprocess data into the grid way
+- `examples/point_preprocessing.py` - preprocess data into the pointcloud way
+
+Also you are free to use a cli interface for the preprocessor package. For the detailed information about the arguments please use a command 
+
+```shell
+python -m magnet_pinn.preprocessing --help
+```
+
+A basic examples of the usage is:
+
+```shell
+python -m magnet_pinn.preprocessing grid
+```
 
 ### data
 The simulation data needs to be placed in the data folder under `data/raw/GROUP_NAME/simulations`.
