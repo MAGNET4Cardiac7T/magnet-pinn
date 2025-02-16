@@ -1,4 +1,13 @@
+"""
+NAME
+    cli.py
+DESCRIPTION
+    This module implements CLI interface for the preprocessing module.
+"""
 import argparse
+from pathlib import Path
+
+from natsort import natsorted
 
 
 def parse_arguments():
@@ -8,25 +17,25 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        "--batches_dir_paths",
+        "--batches",
         nargs="+",
         type=str,
-        required=True,
-        help="Paths of batch directories"
+        help="Paths of batch directories, be default takes all batches in the directory `./data/raw/batches` by the batch directory name `batch_*`",
+        default=natsorted(Path("./data/raw/batches").glob("batch_*"))
     )
 
     parser.add_argument(
-        "--antenna_dir_path",
+        "--antenna",
         type=str,
-        required=True,
-        help="Path of the antenna directory"
+        help="Path of the antenna directory, by default takes the directory `./data/raw/antenna`",
+        default=Path("./data/raw/antenna")
     )
 
     parser.add_argument(
-        "--output_dir_path",
+        "--output",
         type=str,
-        required=True,
-        help="Path of the output directory"
+        help="Path of the output directory, by default takes the directory `./data/processed`",
+        default=Path("./data/processed")
     )
 
     parser.add_argument(
@@ -44,7 +53,8 @@ def parse_arguments():
         help="Names of the simulations we would like to preprocess, leave empty to preprocess all simulations"
     )
 
-    subparsers = parser.add_subparsers(dest="command", description="Type of preprocessing")
+    subparsers = parser.add_subparsers(dest="preprocessing_type", description="Type of preprocessing data")
+    subparsers.required = True
 
     grid_parser = subparsers.add_parser("grid", help="Consider data in the 3D grid form")
     grid_parser.add_argument(
@@ -93,3 +103,25 @@ def parse_arguments():
     points_parser = subparsers.add_parser("pointcloud", help="Consider data as a point cloud")
     return parser.parse_args()
 
+
+def print_general_report(args):
+    print("Preprocessing repot:")
+    print("Batches paths: ", args.batches)
+    print("Antenna path: ", args.antenna)
+    print("Output path: ", args.output)
+
+    expected_sim_names = args.sim_names if args.sim_names else "All"
+    print("Simulations to preprocess: ", expected_sim_names)
+    print("Field data type: ", args.field_dtype)
+    print("Preprocessing type: ", args.preprocessing_type)
+
+
+def print_grid_report(args): 
+    print_general_report(args)
+    print("x_min: ", args.x_min)
+    print("x_max: ", args.x_max)
+    print("y_min: ", args.y_min)
+    print("y_max: ", args.y_max)
+    print("z_min: ", args.z_min)
+    print("z_max: ", args.z_max)
+    print("voxel size: ", args.voxel_size)
