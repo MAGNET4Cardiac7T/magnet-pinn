@@ -1,8 +1,8 @@
 """
 NAME
-    dataset.py
+    _base.py
 DESCRIPTION
-    This module contains classes for loading the magnetostatic simulation data.
+    A module consists of the abstract base class for oading the magnetostatic simulation data.
 """
 import os
 import h5py
@@ -37,12 +37,41 @@ from magnet_pinn.preprocessing.preprocessing import (
 
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
-    Iterator for loading the magnetostatic simulation data.
+    Abstract base Iterator class for loading the magnetostatic simulation data.
+
+    Attributes
+    ----------
+    coils_path : Union[str, Path]
+        Path to the file with the coils masks
+    simulation_dir : Union[str, Path]
+        Path to the directory with the simulations
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
+    coils: npt.NDArray[np.bool_]
+        Coils masks array
+    num_coils: int
+        Number of coils
+    simulation_list: List[Path]
+        List of simulation `.h5` file paths
     """
     def __init__(self, 
                  data_dir: Union[str, Path],
                  transforms: Optional[BaseTransform] = None,
                  num_samples: int = 1):
+        """
+        Parameters
+        ----------
+        data_dir : Union[str, Path]
+            A data directory, which was created after the preprocessing step
+        transforms : Optional[BaseTransform]
+            Transformations to apply to the data during the data loading, can have a sequence of transformations,
+            at least one of them should make a phase shift of the field
+        num_samples : int
+            Number of samples to generate from each simulation
+        """
         super().__init__()
         data_dir = Path(data_dir)
 
@@ -62,12 +91,26 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             raise ValueError("The num_samples must be greater than 0")
         self.num_samples = num_samples
 
-    def _get_simulation_name(self, simulation) -> str:
-        return os.path.basename(simulation)[:-3]
+    def _get_simulation_name(self, simulation_path: Union[str, Path]) -> str:
+        """
+        Mathod gets the simulation file name without an extension `.h5`.
+        Then it 
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation file
+
+        Returns
+        -------
+        str
+            File name without an extension
+        """
+        return os.path.basename(simulation_path)[:-3]
 
     def _read_coils(self) -> npt.NDArray[np.bool_]:
         """
-        Method reads coils masks from the h5 file.
+        Method reads coils masks from the h5 file and returns it as a float array.
 
         Returns
         -------
@@ -101,24 +144,38 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     
     @abstractmethod
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
-        raise NotImplementedError("This method should be implemented in the derived class")
-        
-
-    def _read_fields(self, simulation_path: str) -> npt.NDArray[np.float32]:
         """
-        A method for reading the field from the h5 file.
-        Reads and splits the field into real and imaginary parts.
+        This method supposed to implement a logic how each individual simulation file is read and loaded into the `DataItem` object.
 
         Parameters
         ----------
-        f : h5py.File
-            h5 file desc    pass
+        simulation_path : Union[Path, str]
+            Path to the simulation file
 
         Returns
         -------
-        Dict
-            A dictionary with `re_field_key` and `im_field_key` keys
-            with real and imaginary parts of the field
+        DataItem
+            A `DataItem` object with the loaded data
+        """
+        raise NotImplementedError("This method should be implemented in the derived class")
+        
+
+    def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
+        """
+        A method for reading the field from the h5 file. After the extraction 
+        we join e- and h-fiels in the first axis, and real and imaginary parts in the second axis.
+        As a result we get the axis (e/h, re/im, ...). The next axis are dependent on the grid/pointscloud
+        type of the data.
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation
+
+        Returns
+        -------
+        npy.NDArray[np.float32]
+            Field array
         """
 
         def read_field(f: h5py.File, field_key: str) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
@@ -137,6 +194,11 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         """
         Method reads input features from the h5 file.
 
+        Parameters
+        ----------
+        simulation_path : Union[Path, str]
+            Path to the simulation
+
         Returns
         -------
         npt.NDArray[np.float32]
@@ -146,9 +208,14 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             features = f[FEATURES_OUT_KEY][:]
         return features
     
-    def _read_subject(self, simulation_path: str) -> npt.NDArray[np.bool_]:
+    def _read_subject(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.bool_]:
         """
         Method reads the subject mask from the h5 file.
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation
 
         Returns
         -------
@@ -164,6 +231,11 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         """
         Method reads the dtype from the h5 file.
 
+        Parameters
+        ----------
+        simulation_path : Union[Path, str]
+            Path to the simulation
+
         Returns
         -------
         str
@@ -177,6 +249,11 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         """
         Method reads the truncation coefficients from the h5 file.
 
+        Parameters
+        ----------
+        simulation_path : Union[Path, str]
+            Path to the simulation
+
         Returns
         -------
         npt.NDArray
@@ -187,6 +264,10 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         return truncation_coefficients
     
     def __iter__(self):
+        """
+        The main method to iterate. It shuffles the simulation list and then for each simulation
+        it loads the data, applies the transformations and yields the augmented data.
+        """
         random.shuffle(self.simulation_list)
         for simulation in self.simulation_list:
             loaded_simulation = self._load_simulation(simulation)
