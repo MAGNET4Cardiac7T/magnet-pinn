@@ -373,52 +373,48 @@ class GridPhaseShift(PhaseShift):
     """
     pass
 
-class SingleCoilZeroPhaseShift(PhaseShift):
+
+## TODO move the coil enumerator logic to sample_phase and sample_mask methods, without modifying the _sample_phase_and_mask method
+class CoilEnumeratorPhaseShift(PhaseShift):
     def __init__(self, 
                  num_coils: int):
         super().__init__(num_coils=num_coils)
         self.coil_on_index = 0
 
-    def __call__(self, simulation: DataItem):
+    
+    def _sample_phase_and_mask(self, 
+                               dtype: str = None
+                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
-        Augment simulation data by activating only a single coil in clockwise direction and setting phase shift to zero.
-        For local testing purposes only. Requires that num_samples == num_coils and num_workers == 0
-        Parameters
+        Augment simulation data by activating only a single coil in clockwise direction and setting phase to zero.
+        Requires that num_samples == num_coils.
+
         ----------
-        data : DataItem
-            DataItem object with the simulation data
+        num_coils : int
+            Number of coils in the simulation data
+        dtype : str
+            Data type of the phase coefficients
         
         Returns
         -------
-        DataItem
-            augmented DataItem object
+        npt.NDArray[np.float32]:
+            phase coefficients
+        npt.NDArray[np.bool_]:
+            mask for the phase coefficients
         """
 
-        phase = self._sample_phase_zero(num_coils=self.num_coils, dtype=simulation.dtype)
-        mask = self._sample_mask_single(num_coils=self.num_coils)
-        field_shifted = self._phase_shift_field(simulation.field, phase, mask)
-        coils_shifted = self._phase_shift_coils(simulation.coils, phase, mask)
-        
-        return DataItem(
-            input=simulation.input,
-            subject=simulation.subject,
-            simulation=simulation.simulation,
-            field=field_shifted,
-            phase=phase,
-            mask=mask,
-            coils=coils_shifted,
-            dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions
-        )
+        phase = self._sample_phase_zero(dtype=dtype)
+        mask = self._sample_mask_single()
+
+        return phase.astype(dtype), mask.astype(np.bool_)  
     
-    def _sample_phase_zero(self, num_coils: int, dtype: str = None) -> npt.NDArray[np.float32]:
-        return np.zeros(num_coils).astype(dtype)
+    def _sample_phase_zero(self, dtype: str = None) -> npt.NDArray[np.float32]:
+        return np.zeros(self.num_coils).astype(dtype)
     
-    def _sample_mask_single(self, num_coils: int) -> npt.NDArray[np.bool_]:
+    def _sample_mask_single(self) -> npt.NDArray[np.bool_]:
         mask = np.zeros(self.num_coils, dtype=bool)
         mask[self.coil_on_index] = True
-        self.coil_on_index = (self.coil_on_index + 1) % num_coils
+        self.coil_on_index = (self.coil_on_index + 1) % self.num_coils
         return mask
 
 class PointPhaseShift(PhaseShift):
