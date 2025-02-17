@@ -4,6 +4,8 @@ NAME
 DESCRIPTION
     This module contains classes for loading the magnetostatic simulation data.
 """
+from typing import Union
+from pathlib import Path
 
 import numpy as np
 
@@ -11,13 +13,11 @@ from .dataitem import DataItem
 from ._base import MagnetBaseIterator
 
 
-
-
 """
 Iterator for loading the magnetostatic simulation data.
 """
 class MagnetGridIterator(MagnetBaseIterator):
-    def _load_simulation(self, simulation_path: str) -> DataItem:
+    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
         Loads simulation data from the h5 file.
         Parameters
@@ -30,7 +30,6 @@ class MagnetGridIterator(MagnetBaseIterator):
         DataItem
             DataItem object with the loaded data
         """
-
         return DataItem(
             input=self._read_input(simulation_path),
             subject=self._read_subject(simulation_path),

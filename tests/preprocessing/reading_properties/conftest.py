@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
+from shutil import rmtree
 from trimesh import Trimesh
 
 from magnet_pinn.preprocessing.reading_properties import (
@@ -9,7 +10,7 @@ from magnet_pinn.preprocessing.reading_properties import (
 from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_invalid_columns(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
@@ -22,10 +23,12 @@ def property_data_invalid_columns(grid_simulation_path):
     )
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
 
-    return prop_path
+    yield prop_path
+    if prop_path.exists():
+        rmtree(prop_path)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_invalid_file_name(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
@@ -40,7 +43,9 @@ def property_data_invalid_file_name(grid_simulation_path):
     )
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
 
-    return prop_path
+    yield prop_path
+    if prop_path.exists():
+        rmtree(prop_path)
 
 
 def create_mesh(cols: int, rows: int) -> Trimesh:
@@ -62,7 +67,7 @@ def create_mesh(cols: int, rows: int) -> Trimesh:
     return Trimesh(vertices=vertices, faces=faces)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def property_data_valid(grid_simulation_path):
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
@@ -79,4 +84,6 @@ def property_data_valid(grid_simulation_path):
     })
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
 
-    return prop_path
+    yield prop_path
+    if prop_path.exists():
+        rmtree(prop_path)

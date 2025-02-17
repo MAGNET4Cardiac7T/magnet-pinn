@@ -6,11 +6,12 @@ DESCRIPTION
 """
 import os
 import h5py
+from pathlib import Path
+from typing import Union
 
-
-import glob
 import numpy as np
 import numpy.typing as npt
+from natsort import natsorted
 
 from typing import Tuple, Optional
 from abc import ABC, abstractmethod
@@ -33,25 +34,32 @@ from magnet_pinn.preprocessing.preprocessing import (
     DTYPE_OUT_KEY
 )
 
+
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
     Iterator for loading the magnetostatic simulation data.
     """
     def __init__(self, 
-                 data_dir: str,
-                 transforms: BaseTransform = DefaultTransform(),
+                 data_dir: Union[str, Path],
+                 transforms: Optional[BaseTransform] = None,
                  num_samples: int = 1):
         super().__init__()
-        self.simulation_dir = os.path.join(data_dir, PROCESSED_SIMULATIONS_DIR_PATH)
-        self.coils_path = os.path.join(data_dir, PROCESSED_ANTENNA_DIR_PATH, "antenna.h5")
-        self.simulation_list = glob.glob(os.path.join(self.simulation_dir, "*.h5"))
+        data_dir = Path(data_dir)
+
+        self.coils_path = data_dir / PROCESSED_ANTENNA_DIR_PATH / "antenna.h5"
         self.coils = self._read_coils()
         self.num_coils = self.coils.shape[-1]
+
+        self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
+        self.simulation_list = self._get_simulations_list()
 
         ## TODO: check if transform valid:
         check_transforms(transforms)
 
         self.transforms = transforms
+
+        if num_samples < 1:
+            raise ValueError("The num_samples must be greater than 0")
         self.num_samples = num_samples
 
     def _get_simulation_name(self, simulation) -> str:
@@ -66,12 +74,33 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         npt.NDArray[np.bool_]
             Coils masks array
         """
+        if not self.coils_path.exists():
+            raise FileNotFoundError(f"File {self.coils_path} not found")
         with h5py.File(self.coils_path) as f:
             coils = f[ANTENNA_MASKS_OUT_KEY][:]
         return coils
     
+
+    def _get_simulations_list(self) -> list:
+        """
+        This method searches for the list of `.h5` simulations files in the `simulations` directory.
+        It also checks that the directory is not empty and throws an exception if it is so.
+
+        Returns
+        -------
+        list
+            List of simulation file paths 
+        """
+        simulations_list = natsorted(self.simulation_dir.glob("*.h5"))
+
+        if len(simulations_list) == 0:
+            raise FileNotFoundError(f"No simulations found in {self.simulation_dir}")
+        
+        return simulations_list
+
+    
     @abstractmethod
-    def _load_simulation(self, simulation_path: str) -> DataItem:
+    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         raise NotImplementedError("This method should be implemented in the derived class")
         
 
@@ -104,7 +133,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         
         return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
     
-    def _read_input(self, simulation_path: str) -> npt.NDArray[np.float32]:
+    def _read_input(self, simulation_path: Union[Path, str]) -> npt.NDArray[np.float32]:
         """
         Method reads input features from the h5 file.
 
@@ -131,7 +160,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         subject = np.max(subject, axis=-1)
         return subject
     
-    def _get_dtype(self, simulation_path: str) -> str:
+    def _get_dtype(self, simulation_path: Union[Path, str]) -> str:
         """
         Method reads the dtype from the h5 file.
 
@@ -144,7 +173,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             dtype = f.attrs[DTYPE_OUT_KEY]
         return dtype
     
-    def _get_truncation_coefficients(self, simulation_path: str) -> npt.NDArray:
+    def _get_truncation_coefficients(self, simulation_path: Union[Path, str]) -> npt.NDArray:
         """
         Method reads the truncation coefficients from the h5 file.
 
