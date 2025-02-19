@@ -85,7 +85,7 @@ def parse_arguments():
     grid_parser.add_argument(
         "--voxel_size",
         type=float,
-        default=1.0,
+        default=4.0,
         help="Size of the voxel"
     )
     grid_parser.add_argument(
