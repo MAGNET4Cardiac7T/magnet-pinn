@@ -1,6 +1,6 @@
 import trimesh
 import numpy as np
-from perlin_noise import PerlinNoise
+from ._perlin_noise import PerlinNoise
 
 from typing import Union, Tuple
 
@@ -101,24 +101,63 @@ class BlobGenerator:
                  center: np.ndarray,
                  num_children: int,
                  num_tubes: int,
-                 relative_disruption_strength: float = 0.3,):
+                 relative_disruption_strength: float = 0.3,
+                 num_children_position_samples: int = 1000,
+                 seed: int = 42):
         self.radius = radius
         self.center = center
         self.relative_disruption_strength = relative_disruption_strength
         self.num_children = num_children
         self.num_tubes = num_tubes
 
-        self.children_candidates = self._sample_points_within_ball(center, radius, (10000, num_children))
+        self.seed = seed
+        self.num_children_position_samples = num_children_position_samples
 
-        # evaluate candidates 
-        radii_between_children = self._radii_between_points(self.children_candidates)
-        distance_to_shell = self._distance_to_shell(self.children_candidates)
-        radii_per_child = np.minimum(radii_between_children, distance_to_shell)
+        self.rng = np.random.default_rng(seed)
+        self.children_seeds = self.rng.integers(0, 2**32-1, size=num_children)
+        self.tube_seeds = self.rng.integers(0, 2**32-1, size=num_tubes)
 
-        best_candidate_idx = np.argmin(np.min(radii_per_child, axis=-1), axis=0)
-        print(best_candidate_idx)
-        print(self.children_candidates[best_candidate_idx])
-        print(radii_per_child[best_candidate_idx])
+        # generate blobs
+        self.children_positions = self._sample_children_positions()
+        self.children_radii = self._get_children_radii(self.children_positions)
+        self.children = [Blob(center=position, radius=radius, seed=int(seed)) for position, radius, seed in zip(self.children_positions, self.children_radii, self.children_seeds)]
+
+    def _get_children_radii(self,
+                            children_positions: np.ndarray):
+        """
+        Find the approximately maximal radii for the children.
+        """
+
+        radii_between_children = self._radii_between_points(children_positions)
+        radii_to_shell = self._distance_to_shell(children_positions)
+
+        selected_radii = np.minimum(radii_between_children, radii_to_shell)
+
+        return selected_radii
+
+    def _sample_children_positions(self):
+        """
+        Find the best candidate points.
+        """
+
+        # Sample candidate points.
+        candidate_points = self._sample_points_within_ball(self.center, self.radius*(1-self.relative_disruption_strength), (self.num_children_position_samples, self.num_children))
+
+        # calculate pairwise distances for all children positions (should yield a matrix of shape (num_candidates, num_children, num_children))
+        distances = np.linalg.norm(candidate_points[:, :, None] - candidate_points[:, None], axis=-1)
+        distances[distances == 0] = np.infty
+
+        # calculate the distances to the border of the shell    
+        distances_to_border = 2*(self.radius*(1-self.relative_disruption_strength) - np.linalg.norm(candidate_points, axis=-1))
+
+        # append the distances to the border of the shell to the distances matrix
+        distances = np.concatenate([distances, distances_to_border[:, :, None], ], axis=-1)
+
+        # calculate the best candidate set
+        best_candidate_idx = np.argmax(np.min(distances, axis=(-1,-2)), axis=-1)
+        return candidate_points[best_candidate_idx]
+
+        
 
     def _sample_points_within_ball(self, 
                                    center: np.ndarray, 
@@ -133,22 +172,20 @@ class BlobGenerator:
         shape = (*num_points, len(center))
 
         # Sample a point on the surface of the ball.
-        point = np.random.normal(size=shape)
+        point = self.rng.normal(size=shape)
         point = radius*point / np.linalg.norm(point, axis=-1, keepdims=True)
         
         # Sample a point within the ball.
-        point = np.random.uniform(0, 1, size=(*num_points, 1)) ** (1 / len(center)) * point
+        point = self.rng.uniform(0, 1, size=(*num_points, 1)) ** (1 / len(center)) * point
         return point+center
     
     def _radii_between_points(self,
                               point_candidates: np.ndarray):
-        # point candidates of shape (num_candidates, num_children, 3)
+        distances = np.linalg.norm(point_candidates[:, None] - point_candidates[None], axis=-1)
 
-        # calculate pairwise distances for all children positions (should yield a matrix of shape (num_candidates, num_children, num_children))
-        distances = np.linalg.norm(point_candidates[:, :, None] - point_candidates[:, None], axis=-1)/2
-        distances = distances*(1-self.relative_disruption_strength)
-        distances[:, np.eye(distances.shape[1], dtype=bool)] = np.infty
-        distances = np.min(distances, axis=-2)
+        distances = 0.5*distances/(1+self.relative_disruption_strength)
+        distances[distances==0] = np.infty
+        distances = np.min(distances, axis=-1)
         return distances
     
     def _distance_to_shell(self,
@@ -156,16 +193,18 @@ class BlobGenerator:
         """
         Calculate the distance between the point candidates and the shell.
         """
-        return (self.radius*(1-self.relative_disruption_strength) - np.linalg.norm(point_candidates - self.center, axis=-1))*(1-self.relative_disruption_strength)
+        return (self.radius*(1-self.relative_disruption_strength) - np.linalg.norm(point_candidates - self.center, axis=-1))/(1+self.relative_disruption_strength)
         
-    def generate(self, **kwargs):
-        blob = Blob(**kwargs)
-        return blob.generate_mesh()
-    
-    def __call__(self, **kwargs):
-        return self.generate(**kwargs)
+    def generate_mesh(self,
+                      detail_level: int = 5):
+        """
+        Generate the mesh of the blob.
+        """
+        scene = trimesh.scene.Scene()
 
+        for child in self.children:
+            scene.add_geometry(child.generate_mesh(detail_level=detail_level))
 
-if __name__ == "__main__":
+        return scene
     
-    generator = BlobGenerator(radius=1, center=np.array([0,0,0]), num_children=5, num_tubes=5)
+
