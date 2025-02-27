@@ -19,6 +19,7 @@ import pandas as pd
 from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
+from ordered_set import OrderedSet
 from einops import rearrange, repeat, reduce
 from igl import fast_winding_number_for_meshes
 
@@ -241,6 +242,11 @@ class Preprocessing(ABC):
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
 
+        The method works in 2 phases:
+
+        - check simulations for being in the batch
+        - process each simulation
+
         This method make iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
         After the main work is done it also calls `_write_dipoles` method 
@@ -254,9 +260,24 @@ class Preprocessing(ABC):
         simulations : List[Union[str, Path]] | None
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
-            The argument should be or fully names or fully paths.
         """
-        all_sim_names = set(map(lambda x: x.name, self.all_sim_paths))
+        simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
+        pbar = tqdm(simulations, total=len(simulations))
+        for simulation in pbar:
+            self.__process_simulation(simulation)
+            pbar.set_postfix({"done": simulation}, refresh=True)
+        
+        self._write_dipoles()
+
+
+    def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
+        """
+        A divided method to resolve simulations. Based on the data path process it like a Path
+        or searches for the simulation name in the list of simulations from the batches. ANyway it returns
+        a list of absolute paths of simulations we will need to process.
+        """
+
+        all_sim_names = OrderedSet(map(lambda x: x.name, self.all_sim_paths))
 
         def resolve_simulation(simulation: Union[str, Path]) -> Path:
             """
@@ -274,7 +295,7 @@ class Preprocessing(ABC):
                 if simulation not in all_sim_names:
                     raise Exception(f"Simulation is not in the batches")
                 
-                simulation = self.all_sim_paths[list(all_sim_names).index(simulation)]
+                simulation = self.all_sim_paths[all_sim_names.index(simulation)]
 
             else:
                 raise TypeError("Simulation should be a string or a path")
@@ -283,14 +304,8 @@ class Preprocessing(ABC):
                 raise FileNotFoundError(f"Simulation {simulation} does not exist")
             
             return simulation
-
-        pbar = tqdm(simulations, total=len(simulations))
-        for simulation in pbar:
-            simulation = resolve_simulation(simulation)
-            self.__process_simulation(simulation)
-            pbar.set_postfix({"done": simulation.name}, refresh=True)
         
-        self._write_dipoles()
+        return list(map(resolve_simulation, simulations))
             
     def __process_simulation(self, sim_path: Path):
         """
@@ -529,6 +544,8 @@ class Preprocessing(ABC):
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
             f.create_dataset(SUBJECT_OUT_KEY, data=object_masks)
             self._write_extra_data(out_simulation, f)
+
+        return output_file_path
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """
