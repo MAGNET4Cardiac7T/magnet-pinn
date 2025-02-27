@@ -6,9 +6,10 @@ from magnet_pinn.preprocessing.preprocessing import Preprocessing, GridPreproces
 def print_report(args: Namespace, prep: Preprocessing):
     print("Preprocessing report:")
     print("Batches: ", len(args.batches))
+    print("Overall simulations: ", len(prep.all_sim_paths))
+    print("Chosen simulations: ", len(args.simulations))
     print("Antenna: ", args.antenna)
     print("Output: ", args.output)
-    print("Simulations: ", len(prep.all_sim_paths))
     print("Field data type: ", args.field_dtype)
     print("Preprocessing type: ", args.preprocessing_type)
 

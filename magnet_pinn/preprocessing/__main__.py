@@ -9,6 +9,7 @@ from magnet_pinn.preprocessing.cli import (
 
 
 args = parse_arguments()
+print(args)
 
 if args.preprocessing_type == "grid":
     prep = GridPreprocessing(
@@ -29,11 +30,10 @@ elif args.preprocessing_type == "point":
         args.batches,
         args.antenna,
         args.output,
-        field_dtype=np.dtype(args.field_dtype),
-        sim_names=args.sim_names
+        field_dtype=np.dtype(args.field_dtype)
     )
 else:
     raise ValueError("Invalid preprocessing type")
 
 print_report(args, prep)
-prep.process_simulations(simulation_names=args.sim_names)
+prep.process_simulations(simulations=args.simulations)

@@ -31,21 +31,21 @@ def parse_arguments():
         "-b",
         "--batches",
         nargs="+",
-        type=str,
+        type=Path,
         help="Paths of batch directories",
         default=natsorted(Path("./data/raw/batches").glob("batch_*"))
     )
     global_parser.add_argument(
         "-a",
         "--antenna",
-        type=str,
+        type=Path,
         help="Path of the antenna directory",
         default=Path("./data/raw/antenna")
     )
     global_parser.add_argument(
         "-o",
         "--output",
-        type=str,
+        type=Path,
         help="Path of the output directory",
         default=Path("./data/processed")
     )
@@ -58,11 +58,11 @@ def parse_arguments():
     )
     global_parser.add_argument(
         "-s",
-        "--sim_names",
+        "--simulations",
         nargs="+",
-        type=str,
+        type=Path,
         default=None,
-        help="Names of simulations to preprocess"
+        help="Paths/names of simulations to preprocess"
     )
 
     
