@@ -35,6 +35,8 @@ class Simulation:
             The object masks.
         features : np.array, optional
             The physical features - permittivity, permeability, conductivity.
+        resulting_path : Path, optional
+            The path to the resulting `.h5` file
     """
 
     name: str
@@ -43,3 +45,4 @@ class Simulation:
     h_field: Optional[np.array] = None
     object_masks: Optional[np.array] = None
     features: Optional[np.array] = None
+    resulting_path: Optional[Path] = None

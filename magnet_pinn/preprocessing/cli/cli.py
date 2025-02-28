@@ -5,8 +5,9 @@ DESCRIPTION
     This module implements CLI interface for the preprocessing module.
 """
 import argparse
-from argparse import Namespace
 from pathlib import Path
+from argparse import Namespace
+from multiprocessing import cpu_count
 
 from natsort import natsorted
 
@@ -15,7 +16,7 @@ from magnet_pinn.preprocessing.preprocessing import (
 )
 
 
-def parse_arguments():
+def parse_arguments() -> Namespace:
     """
     So, here is the function to parse the CLI arguments. It creates a global parser, which predefines the arguments
     for `batches`, `antenna`, `output`, `field_dtype`, and `sim_names`. This parent parse is inherited by the all parsers:
@@ -63,6 +64,12 @@ def parse_arguments():
         type=Path,
         default=None,
         help="Paths/names of simulations to preprocess"
+    )
+    global_parser.add_argument(
+        "--workers",
+        type=int,
+        default=cpu_count() // 2,
+        help="Number of workers for multiprocessing, by default it is the half number of CPUs in your machine"
     )
 
     

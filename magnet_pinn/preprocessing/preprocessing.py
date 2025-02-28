@@ -11,6 +11,7 @@ CLASSES
     PointPreprocessing
 """
 from pathlib import Path
+from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional, Union
 
@@ -237,7 +238,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None):
+    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None, workers: int = 1):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -262,13 +263,13 @@ class Preprocessing(ABC):
             If None, all simulations will be processed.
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
-        pbar = tqdm(simulations, total=len(simulations))
-        for simulation in pbar:
-            self.__process_simulation(simulation)
-            pbar.set_postfix({"done": simulation}, refresh=True)
+        pbar = tqdm(total=len(simulations), desc="Simulations processing")
+        with Pool(workers) as pool:
+            for sim_res_path in pool.imap_unordered(self._process_simulation, simulations):
+                pbar.set_postfix({"done": sim_res_path}, refresh=True)
+                pbar.update(1)
         
         self._write_dipoles()
-
 
     def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
         """
@@ -307,7 +308,7 @@ class Preprocessing(ABC):
         
         return list(map(resolve_simulation, simulations))
             
-    def __process_simulation(self, sim_path: Path):
+    def _process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
@@ -331,6 +332,8 @@ class Preprocessing(ABC):
         self.__calculate_features(simulation)
 
         self._format_and_write_dataset(simulation)
+
+        return simulation.resulting_path
 
     def _extract_fields_data(self, out_simulation: Simulation):
         """
@@ -526,6 +529,8 @@ class Preprocessing(ABC):
         The method formats data from the `out_simulation` instance 
         and writes it to the output directory.
 
+        Also it writes resulting file path to the `out_simulation` instance.
+
         Parameters
         ----------
         out_simulation : Simulation
@@ -545,7 +550,7 @@ class Preprocessing(ABC):
             f.create_dataset(SUBJECT_OUT_KEY, data=object_masks)
             self._write_extra_data(out_simulation, f)
 
-        return output_file_path
+        out_simulation.resulting_path = output_file_path.resolve().absolute()
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """
