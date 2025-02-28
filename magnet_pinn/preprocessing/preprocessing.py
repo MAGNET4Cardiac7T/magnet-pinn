@@ -11,7 +11,6 @@ CLASSES
     PointPreprocessing
 """
 from pathlib import Path
-from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional, Union
 
@@ -238,7 +237,7 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None, workers: int = 1):
+    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
@@ -264,10 +263,10 @@ class Preprocessing(ABC):
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
         pbar = tqdm(total=len(simulations), desc="Simulations processing")
-        with Pool(workers) as pool:
-            for sim_res_path in pool.imap_unordered(self._process_simulation, simulations):
-                pbar.set_postfix({"done": sim_res_path}, refresh=True)
-                pbar.update(1)
+        for i in simulations:
+            sim_res_path = self._process_simulation(i)           
+            pbar.set_postfix({"done": sim_res_path}, refresh=True)
+            pbar.update(1)
         
         self._write_dipoles()
 

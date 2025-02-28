@@ -12,7 +12,6 @@ def print_report(args: Namespace, prep: Preprocessing):
     print("Output: ", args.output)
     print("Field data type: ", args.field_dtype)
     print("Preprocessing type: ", args.preprocessing_type)
-    print("Workers: ", args.workers)
 
     if isinstance(prep, GridPreprocessing):
         _print_grid_report(args)

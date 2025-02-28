@@ -7,7 +7,6 @@ DESCRIPTION
 import argparse
 from pathlib import Path
 from argparse import Namespace
-from multiprocessing import cpu_count
 
 from natsort import natsorted
 
@@ -64,12 +63,6 @@ def parse_arguments() -> Namespace:
         type=Path,
         default=None,
         help="Paths/names of simulations to preprocess"
-    )
-    global_parser.add_argument(
-        "--workers",
-        type=int,
-        default=cpu_count() // 2,
-        help="Number of workers for multiprocessing, by default it is the half number of CPUs in your machine"
     )
 
     
