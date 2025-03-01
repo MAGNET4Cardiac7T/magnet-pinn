@@ -262,6 +262,10 @@ class Preprocessing(ABC):
             If None, all simulations will be processed.
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
+
+        if len(simulations) == 0:
+            return
+
         pbar = tqdm(total=len(simulations), desc="Simulations processing")
         for i in simulations:
             sim_res_path = self._process_simulation(i)           
