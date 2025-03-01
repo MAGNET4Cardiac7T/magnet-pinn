@@ -11,6 +11,11 @@ from argparse import Namespace
 from natsort import natsorted
 
 
+BATCHES = natsorted(Path("./data/raw/batches").glob("batch_*"))
+ANTENNA_DIR = Path("./data/raw/antenna")
+OUTPUT_DIR = Path("./data/processed")
+
+
 def parse_arguments() -> Namespace:
     """
     So, here is the function to parse the CLI arguments. It creates a global parser, which predefines the arguments
