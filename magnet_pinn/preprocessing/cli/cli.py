@@ -6,13 +6,9 @@ DESCRIPTION
 """
 import argparse
 from pathlib import Path
+
 from argparse import Namespace
-
 from natsort import natsorted
-
-from magnet_pinn.preprocessing.preprocessing import (
-    GridPreprocessing, Preprocessing
-)
 
 
 def parse_arguments() -> Namespace:
