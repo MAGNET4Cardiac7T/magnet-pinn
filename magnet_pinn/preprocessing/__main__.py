@@ -16,7 +16,7 @@ if args.preprocessing_type == "grid":
         args.batches,
         args.antenna,
         args.output,
-        field_dtype=np.dtype(args.field_dtype),
+        field_dtype=args.field_dtype,
         x_min=args.x_min,
         x_max=args.x_max,
         y_min=args.y_min,
@@ -30,7 +30,7 @@ elif args.preprocessing_type == "point":
         args.batches,
         args.antenna,
         args.output,
-        field_dtype=np.dtype(args.field_dtype)
+        field_dtype=args.field_dtype
     )
 else:
     raise ValueError("Invalid preprocessing type")

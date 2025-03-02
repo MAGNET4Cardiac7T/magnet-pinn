@@ -7,6 +7,7 @@ DESCRIPTION
 import argparse
 from pathlib import Path
 
+import numpy as np
 from argparse import Namespace
 from natsort import natsorted
 
@@ -14,6 +15,14 @@ from natsort import natsorted
 BATCHES = natsorted(Path("./data/raw/batches").glob("batch_*"))
 ANTENNA_DIR = Path("./data/raw/antenna")
 OUTPUT_DIR = Path("./data/processed")
+FIEld_DTYPE = np.float32
+VOXEL_SIZE = 4.0
+X_MIN = -240
+X_MAX = 240
+Y_MIN = -220
+Y_MAX = 220
+Z_MIN = -250
+Z_MAX = 250
 
 
 def parse_arguments() -> Namespace:
@@ -34,28 +43,28 @@ def parse_arguments() -> Namespace:
         nargs="+",
         type=Path,
         help="Paths of batch directories",
-        default=natsorted(Path("./data/raw/batches").glob("batch_*"))
+        default=BATCHES
     )
     global_parser.add_argument(
         "-a",
         "--antenna",
         type=Path,
         help="Path of the antenna directory",
-        default=Path("./data/raw/antenna")
+        default=ANTENNA_DIR
     )
     global_parser.add_argument(
         "-o",
         "--output",
         type=Path,
         help="Path of the output directory",
-        default=Path("./data/processed")
+        default=OUTPUT_DIR
     )
     global_parser.add_argument(
         "-t",
         "--field_dtype",
-        type=str,
-        default="float32",
-        help="Data type of the field"
+        type=np.dtype,
+        default=FIEld_DTYPE,
+        help="Data type of the field, must be a string representative of the np.dtype"
     )
     global_parser.add_argument(
         "-s",
