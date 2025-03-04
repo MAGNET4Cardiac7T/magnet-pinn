@@ -6,10 +6,10 @@ import pytest
 import numpy as np
 from h5py import File
 
-from tests.preprocessing.conftest import (
+from tests.preprocessing.conftest import ALL_SIM_NAMES
+from tests.preprocessing.helpers import (
     CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
-    SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME,
-    ALL_SIM_NAMES
+    SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
 )
 from magnet_pinn.preprocessing.preprocessing import (
     GridPreprocessing, PointPreprocessing, 

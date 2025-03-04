@@ -44,3 +44,5 @@
 - Fix: positions not being returned in point phase shift
 - Fix: change wrong order of point phase shift
 - Fix: change wrong calculation of imag field during phase shift
+- Fix: point cloud axis rearranging and order of axis now fixed
+- Add tests for dataloading
