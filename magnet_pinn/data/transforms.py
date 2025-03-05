@@ -254,6 +254,7 @@ class Rotate(BaseTransform):
             raise ValueError("Rotation angle should be either 'random' or '90'")
 
         self.rot_angle = rot_angle
+        self.n_rot = 0
 
     def __call__(self, simulation: DataItem):
         """
@@ -269,6 +270,11 @@ class Rotate(BaseTransform):
             augmented DataItem object
         """
         self._check_data(simulation)
+        
+        if self.rot_angle == 'random':
+            self.n_rot = np.random.randint(0, 3)
+        else:
+            self.n_rot = 1
 
         return DataItem(
             input=self._rot_array(simulation.input, plane=(1,2)),
@@ -285,10 +291,7 @@ class Rotate(BaseTransform):
     def _rot_array(self,
                     array: npt.NDArray[np.float32],
                     plane: tuple[int, int]) -> npt.NDArray[np.float32]:
-        if self.rot_angle == 'random':
-            return np.rot90(array, k=np.random.randint(0, 3), axes=plane).copy()
-        else:
-            return np.rot90(array, k=1, axes=plane).copy()
+        return np.rot90(array, k=self.n_rot, axes=plane).copy()
 
 
 class PhaseShift(BaseTransform):
