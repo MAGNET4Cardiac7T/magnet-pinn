@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.7"
+version = "0.0.8"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
@@ -24,6 +24,7 @@ pandas = "^2.2.2"
 tqdm = "^4.66.4"
 einops = "^0.8.0"
 libigl = "^2.5.1"
+findiff = "^0.10.2"
 natsort = "^8.4.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -56,6 +57,12 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+
+[tool.pytest.ini_options]
+addopts = [
+    # Allow test files to have the same name in different directories.
+    "--import-mode=importlib",
+]
 
 [build-system]
 requires = ["poetry-core"]

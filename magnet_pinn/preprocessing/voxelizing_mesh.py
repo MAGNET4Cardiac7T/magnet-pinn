@@ -11,6 +11,8 @@ import numpy as np
 import numpy.typing as npt
 from trimesh import Trimesh
 from trimesh.voxel.creation import local_voxelize
+from igl import fast_winding_number_for_meshes
+import einops
 
 
 class MeshVoxelizer:
@@ -64,9 +66,13 @@ class MeshVoxelizer:
         self.__validate_input(y_unique, "y")
         self.__validate_input(z_unique, "z")
 
-        self.center, self.radius, self.bounds = self.__get_center_radius_bounds__(
-            x_unique, y_unique, z_unique
-        )
+        self.x = x_unique
+        self.y = y_unique
+        self.z = z_unique
+
+        x_grid, y_grid, z_grid = np.meshgrid(x_unique, y_unique, z_unique, indexing='ij')
+        self.points = np.stack([x_grid, y_grid, z_grid], axis=-1)
+        self.points = einops.rearrange(self.points, 'x y z d -> (x y z) d')
 
     def __validate_input(self, grid: npt.NDArray[np.float64], axis: str):
         if grid[0] >= grid[-1]:
@@ -77,70 +83,6 @@ class MeshVoxelizer:
 
         if not np.equal(grid, supposed_grid).all():
             raise ValueError(f"Invalid {axis} grid {grid} for the {self.voxel_size} vixel size.")
-
-    def __get_center_radius_bounds__(self, 
-                                     x_unique: np.array,
-                                     y_unique: np.array,
-                                     z_unique: np.array
-                                     ) -> Tuple[np.array, int, np.array]:
-        """
-        Claculate center and radius for voxelizing and bounds for cropping.
-
-        The method uses unique grids x, y, z values to define the central point
-        as a voxel grid center. Based on it we also define the radius as a maximum 
-        distance from center to the min/max values of the grid. Then based on the center
-        and radius we calculate the bounds for cropping.
-
-        Parameters
-        ----------
-        x_unique: np.array
-            x grid
-        y_unique: np.array
-            y grid
-        z_unique: np.array
-            z grid
-
-        Returns
-        -------
-        np.array
-            The center of the voxel grid
-        int
-            The radius of the voxel grid
-        np.array
-            The bounds for cropping the voxelized mesh
-        """
-        x_center_index = x_unique.shape[0] // 2
-        y_center_index = y_unique.shape[0] // 2
-        z_center_index = z_unique.shape[0] // 2
-
-        center = np.array(
-            [
-                x_unique[x_center_index],
-                y_unique[y_center_index],
-                z_unique[z_center_index],
-            ]
-        ).astype(int)
-
-        radius = max(
-            (
-                x_center_index,
-                y_center_index,
-                z_center_index,
-                x_unique.shape[0] - x_center_index - 1,
-                y_unique.shape[0] - y_center_index - 1,
-                z_unique.shape[0] - z_center_index - 1,
-            )
-        )
-
-        lows = np.array(
-            [radius - x_center_index, radius - y_center_index, radius - z_center_index]
-        )
-        highs = lows + np.array(
-            [x_unique.shape[0], y_unique.shape[0], z_unique.shape[0]]
-        )
-        bounds = np.row_stack([lows, highs]).astype(int)
-
-        return center, radius, bounds
 
     def process_mesh(self, mesh: Trimesh) -> np.array:
         """
@@ -158,9 +100,12 @@ class MeshVoxelizer:
         np.array
             The voxel grid
         """
-        voxel_grid = local_voxelize(
-            mesh, self.center, self.voxel_size, self.radius
-        ).matrix
-        x_low, y_low, z_low = self.bounds[0]
-        x_high, y_high, z_high = self.bounds[1]
-        return voxel_grid[x_low:x_high, y_low:y_high, z_low:z_high] * 1.0
+        
+
+        vertices = mesh.vertices
+        faces = mesh.faces
+
+        winding_number = fast_winding_number_for_meshes(vertices, faces, self.points)
+        mask = winding_number > 0.5
+        mask = einops.rearrange(mask, '(x y z) -> x y z', x=len(self.x), y=len(self.y), z=len(self.z))
+        return mask
