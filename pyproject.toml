@@ -8,7 +8,7 @@ authors = [
     "Farzad Jabbarigargari <Jabbarigar_F@ukw.de>",
     "Alex Tarasov <tarasov.oleksander@gmail.com>"
 ]
-license = "GNU"
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
