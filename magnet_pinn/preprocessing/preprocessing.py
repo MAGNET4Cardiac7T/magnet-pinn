@@ -87,6 +87,8 @@ class Preprocessing(ABC):
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
         Dipoles mask in each measurement point
+    coil_thick_coef : float | None
+        Controlls the thickness of coils
 
     Methods
     -------
@@ -98,6 +100,7 @@ class Preprocessing(ABC):
 
     __dipoles_masks = None
     __dipoles_features = None
+    coil_thick_coef = None
 
     @property
     def _dipoles_masks(self) -> np.array:
@@ -126,7 +129,8 @@ class Preprocessing(ABC):
                  batches_dir_paths: Union[str, Path, List[str], List[Path]], 
                  antenna_dir_path: Union[str, Path],
                  output_dir_path: Union[str, Path],
-                 field_dtype: np.dtype = np.complex64) -> None:
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Optional[float] = 2.0) -> None:
         """
         Parameters
         ----------
@@ -138,6 +142,8 @@ class Preprocessing(ABC):
             Path to the output directory. All processed data will be saved here.
         field_dtype : np.dtype
             type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering
         """
         self.field_dtype = np.dtype(field_dtype)
 
@@ -165,6 +171,29 @@ class Preprocessing(ABC):
         self.dipoles_properties, self.dipoles_meshes = self.__get_properties_and_meshes(
             antenna_dir_path
         )
+
+        self.coil_thick_coef = coil_thick_coef
+        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
+            raise Exception("Coil thick coef should be greater than 0")
+        elif self.coil_thick_coef is not None:
+            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
+
+    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Makes coils mesh thicker.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+
+        Returns
+        -------
+        Trimesh:
+            a thicker mesh
+        """
+        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
+        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
 
     def __extract_simulations(self, batches_paths: List[str]) -> List[Path]:
         """
@@ -649,6 +678,7 @@ class GridPreprocessing(Preprocessing):
         output_dir_path: str, 
         voxel_size: int = STANDARD_VOXEL_SIZE, 
         field_dtype: np.dtype = np.complex64, 
+        coil_thick_coef: Optional[float] = 1.0,
         **kwargs
     ):
         """
@@ -666,9 +696,11 @@ class GridPreprocessing(Preprocessing):
             The size of the voxel for creating a grid
         field_dtype : np.dtype
             type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering
         """
         self.voxel_size = voxel_size
-        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
+        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
 
         # check extent for validity
         min_values = np.array(
@@ -899,56 +931,7 @@ class PointPreprocessing(Preprocessing):
     process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
-    coil_thick_coef = None
     _coordinates = None
-
-    def __init__(self, 
-                 simulations_dir_path: Union[str, List[str]],
-                 antenna_dir_path: str,
-                 output_dir_path: str, 
-                 field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Optional[float] = 1.0):
-        """
-        Initializes the point preprocessing object.
-
-        Parameters
-        ----------
-        simulations_dir_path : str
-            Path to the batch directory
-        antenna_dir_path : str
-            Path to the antenna directory
-        output_dir_path : str
-            Path to the output directory
-        field_dtype : np.dtype
-            type of saving field data
-        coil_thick_coef : float | None
-            colis are mostly flat, this parameters controlls thickering 
-            of the coils; only the values >0 can be used; to switch it off set it None
-        """
-        self.coil_thick_coef = coil_thick_coef
-        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
-
-        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
-            raise Exception("Coil thick coef should be greater than 0")
-        elif self.coil_thick_coef is not None:
-            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
-
-    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
-        """
-        Makes coils mesh thicker.
-
-        Parameters
-        ----------
-        mesh : Trimesh
-            a mesh object
-
-        Returns
-        -------
-        Trimesh:
-            a thicker mesh
-        """
-        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
-        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
 
     @property
     def coordinates(self):
