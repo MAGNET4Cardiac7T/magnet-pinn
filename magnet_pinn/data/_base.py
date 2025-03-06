@@ -2,7 +2,7 @@
 NAME
     _base.py
 DESCRIPTION
-    A module consists of the abstract base class for oading the magnetostatic simulation data.
+    A module consists of the abstract base class for adding the magnetostatic simulation data.
 """
 import os
 import h5py
@@ -93,8 +93,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
 
     def _get_simulation_name(self, simulation_path: Union[str, Path]) -> str:
         """
-        Mathod gets the simulation file name without an extension `.h5`.
-        Then it 
+        Method gets the simulation file name without an extension `.h5`.
 
         Parameters
         ----------
