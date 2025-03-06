@@ -276,9 +276,10 @@ class Preprocessing(ABC):
 
     def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
         """
-        A divided method to resolve simulations. Based on the data path process it like a Path
-        or searches for the simulation name in the list of simulations from the batches. ANyway it returns
-        a list of absolute paths of simulations we will need to process.
+        A method to resolve simulations given by user. Each element in the simulations
+        collection is checked to be path or str. In the case or Path we just return the resolved
+        absolute path. In the case of just a simulation name we check if it is in the list
+        of simulations in the batches and return the first one with the same name.
         """
 
         all_sim_names = OrderedSet(map(lambda x: x.name, self.all_sim_paths))
