@@ -283,7 +283,7 @@ class Rotate(BaseTransform):
             field=self._rot_array(simulation.field, plane=(3,4)),
             phase=simulation.phase,
             mask=simulation.mask,
-            coils=self._rot_array(simulation.coils, plane=(0,1)),
+            coils=self._rot_array(simulation.coils, plane=(1,2)),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
         )
