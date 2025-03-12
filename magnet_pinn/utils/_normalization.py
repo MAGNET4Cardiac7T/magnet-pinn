@@ -1,6 +1,7 @@
 import torch
 import tqdm
 import einops
+import numpy as np
 
 from abc import ABC, abstractmethod
 from typing import Iterable, cast
@@ -143,5 +144,31 @@ class StandardNormalizer(Normalizer):
         pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
         cur_mean = einops.reduce(x, pattern, reduction='mean').tolist()
         cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean').tolist()
+        self._params["x_mean"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean"], cur_mean, fillvalue=0)]
+        self._params["x_mean_sq"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)]
+
+class arcsinhStandardNormalizer(Normalizer):
+    def _normalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
+        return (torch.arcsinh(x) - params['x_mean']) / params['x_var']**0.5
+    
+    def _denormalize(self, x, axis: int = 0):
+        params = self._cast_params(dtype=x.dtype, device=x.device)
+        params = self._expand_params(params, axis=axis, ndims=x.ndim)
+        params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
+        return torch.sinh(x * params['x_var']**0.5 + params['x_mean'])
+    
+    def _reset_params(self):
+        self._params["x_mean"] = [0]
+        self._params["x_mean_sq"] = [0]
+
+    def _update_params(self, x, axis: int = 0):
+        def mean_update(prev_avg, cur_avg, counter):
+            return counter / (counter + 1) * prev_avg + cur_avg / (counter + 1)
+        pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
+        cur_mean = einops.reduce(np.arcsinh(x), pattern, reduction='mean').tolist()
+        cur_mean_sq = einops.reduce(np.arcsinh(x)**2, pattern, reduction='mean').tolist()
         self._params["x_mean"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean"], cur_mean, fillvalue=0)]
         self._params["x_mean_sq"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)]
