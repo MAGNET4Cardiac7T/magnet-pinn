@@ -1,1 +1,1 @@
-from ._normalization import StandardNormalizer, MinMaxNormalizer, arcsinhStandardNormalizer
+from ._normalization import StandardNormalizer, MinMaxNormalizer, StandardNormalizerSqrt
