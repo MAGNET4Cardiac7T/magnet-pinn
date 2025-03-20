@@ -9,7 +9,7 @@
 project = 'magnet-pinn'
 copyright = '2024, Andrzej Dulny'
 author = 'Andrzej Dulny'
-release = '0.0.8'
+release = '0.0.9'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
