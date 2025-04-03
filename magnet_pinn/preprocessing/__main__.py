@@ -36,4 +36,4 @@ else:
     raise ValueError("Invalid preprocessing type")
 
 print_report(args, prep)
-prep.process_simulations(simulations=args.simulations, workers=args.workers)
+prep.process_simulations(simulations=args.simulations)
