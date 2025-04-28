@@ -23,12 +23,14 @@ class MeshVoxelizer:
     ----------
     voxel_size: float
         The size of the voxel cube.
-    center: np.array
-        an array with float x, y, z center coordinates
-    radius: int
-        a number of voxels we create in each direction
-    bounds: np.array
-        2 * 3 shaped array where the first row saves bottom border for cropping voxelized mesh, and the second row does the same for the top border. 
+    x: np.array
+        x grid
+    y: np.array
+        y grid
+    z: np.array
+        z grid
+    points: np.array
+        The points in the grid 
 
     Methods
     -------
@@ -72,7 +74,7 @@ class MeshVoxelizer:
 
         x_grid, y_grid, z_grid = np.meshgrid(x_unique, y_unique, z_unique, indexing='ij')
         self.points = np.stack([x_grid, y_grid, z_grid], axis=-1)
-        self.points = einops.rearrange(self.points, 'x y z d -> (x y z) d')
+        self.points = np.ascontiguousarray(einops.rearrange(self.points, 'x y z d -> (x y z) d'))
 
     def __validate_input(self, grid: npt.NDArray[np.float64], axis: str):
         if grid[0] >= grid[-1]:
@@ -100,12 +102,18 @@ class MeshVoxelizer:
         np.array
             The voxel grid
         """
-        
-
         vertices = mesh.vertices
         faces = mesh.faces
 
-        winding_number = fast_winding_number_for_meshes(vertices, faces, self.points)
-        mask = winding_number > 0.5
-        mask = einops.rearrange(mask, '(x y z) -> x y z', x=len(self.x), y=len(self.y), z=len(self.z))
+        fast_winding_number = fast_winding_number_for_meshes(vertices, faces, self.points)
+        mask = np.logical_and(
+            ~ np.isclose(fast_winding_number, 0.5),
+            fast_winding_number > 0.5
+        )
+        mask = np.ascontiguousarray(
+            einops.rearrange(
+                mask, '(x y z) -> x y z',
+                x=len(self.x), y=len(self.y), z=len(self.z)
+            )
+        ).astype(np.uint8)
         return mask
