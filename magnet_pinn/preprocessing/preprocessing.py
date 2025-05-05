@@ -21,7 +21,11 @@ from tqdm import tqdm
 from trimesh import Trimesh
 from ordered_set import OrderedSet
 from einops import rearrange, repeat, reduce
-from igl import fast_winding_number_for_meshes
+
+try:
+    from igl import fast_winding_number
+except ImportError:
+    from igl import fast_winding_number_for_meshes as fast_winding_number
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -760,12 +764,10 @@ class GridPreprocessing(Preprocessing):
 
         # check extent for validity
         min_values = np.array(
-            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"]),
-            dtype=np.float32
+            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
         )
         max_values = np.array(
-            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"]),
-            dtype=np.float32
+            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
         )
         if not np.all((max_values - min_values) % voxel_size == 0):
             raise Exception("Extent not divisible by voxel size")
@@ -1116,15 +1118,20 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-        fast_winding_number = fast_winding_number_for_meshes(
-            mesh.vertices.astype(np.float32),
-            mesh.faces.astype(np.int32),
-            self.coordinates.astype(np.float32)
+        
+        vertices = np.ascontiguousarray(mesh.vertices)
+        faces = np.ascontiguousarray(mesh.faces)
+        points = np.ascontiguousarray(self.coordinates, dtype=vertices.dtype)
+
+        winding_number = fast_winding_number(
+            vertices,
+            faces,
+            points
         )
 
         return np.logical_and(
-            ~ np.isclose(fast_winding_number, 0.5),
-            fast_winding_number > 0.5
+            ~ np.isclose(winding_number, 0.5),
+            winding_number > 0.5
         )
     
     @property

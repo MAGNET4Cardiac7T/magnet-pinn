@@ -393,20 +393,22 @@ def check_central_subject_mask(f: File):
     assert subject_mask.shape == (9, 9, 9, 1)
     assert subject_mask.dtype == np.bool_
     expected_subject_mask = np.zeros((9, 9), dtype=np.bool_)
-    expected_subject_mask[3:6, 3:6] = 1
-    assert np.equal(subject_mask[:, :, 3, 0], expected_subject_mask).all()
+    expected_subject_mask[4, 4] = 1
+    empty_mask = np.zeros((9, 9), dtype=np.bool_)
+    assert np.equal(subject_mask[:, :, 3, 0], empty_mask).all()
     assert np.equal(subject_mask[:, :, 4, 0], expected_subject_mask).all()
-    assert np.equal(subject_mask[:, :, 5, 0], expected_subject_mask).all()
+    assert np.equal(subject_mask[:, :, 5, 0], empty_mask).all()
 
 def check_shifted_subject_mask(f: File):
     subject_mask = f[SUBJECT_OUT_KEY][:]
     assert subject_mask.shape == (9, 9, 9, 1)
     assert subject_mask.dtype == np.bool_
     expected_subject_mask = np.zeros((9, 9), dtype=np.bool_)
-    expected_subject_mask[4:7, 4:7] = 1
-    assert np.equal(subject_mask[:, :, 3, 0], expected_subject_mask).all()
+    expected_subject_mask[5, 5] = 1
+    empty_mask = np.zeros((9, 9), dtype=np.bool_)
+    assert np.equal(subject_mask[:, :, 3, 0], empty_mask).all()
     assert np.equal(subject_mask[:, :, 4, 0], expected_subject_mask).all()
-    assert np.equal(subject_mask[:, :, 5, 0], expected_subject_mask).all()
+    assert np.equal(subject_mask[:, :, 5, 0], empty_mask).all()
 
 
 def check_central_features(f: File):
@@ -415,9 +417,11 @@ def check_central_features(f: File):
     assert features.dtype == np.float32
     expected_features = np.zeros((9, 9), dtype=np.float32)
     expected_features[0:3, 3:6] = 1
-    expected_features[3:6, :] = 1
+    expected_features[3:6, 0:3] = 1
+    expected_features[3:6, 6:9] = 1
+    expected_features[4, 4] = 1
     expected_features[6:9, 3:6] = 1
-    assert np.equal(features[0, :, :, 3], expected_features).all()
+    assert np.equal(features[0, :, :, 4], expected_features).all()
 
 
 def check_shifted_features(f: File):
@@ -429,13 +433,12 @@ def check_shifted_features(f: File):
     expected_features[0:3, 3:6] = 1
     expected_features[3:6, 0:3] = 1
     expected_features[3:6, 6:9] = 1
-    expected_features[4:7, 4:7] = 1
     expected_features[6:9, 3:6] = 1
-    expected_features[6, 4:6] = 2
-    expected_features[4:6, 6] = 2
-    assert np.equal(features[0, :, :, 3], expected_features).all()
+    features_without_subject = expected_features.copy()
+    expected_features[5, 5] = 1
+    assert np.equal(features[0, :, :, 3], features_without_subject).all()
     assert np.equal(features[0, :, :, 4], expected_features).all()
-    assert np.equal(features[0, :, :, 5], expected_features).all()
+    assert np.equal(features[0, :, :, 5], features_without_subject).all()
 
 
 def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
