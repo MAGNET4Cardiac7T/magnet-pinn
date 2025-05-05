@@ -293,7 +293,7 @@ class Crop(BaseTransform):
 
 class PhaseShift(BaseTransform):
     """
-    Class for augmenting the field ans coild data. It uses a complex phase rotation augmentation for the field and coils data.
+    Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
     `exp(1 + phase * j) * mask` is used to calculate the shift coefficients.
     """
     def __init__(self, 
