@@ -20,7 +20,7 @@ from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
 from einops import rearrange, repeat, reduce
-from igl import fast_winding_number_for_meshes
+from igl import fast_winding_number
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -1060,15 +1060,20 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-        fast_winding_number = fast_winding_number_for_meshes(
-            mesh.vertices.astype(np.float32),
-            mesh.faces.astype(np.int32),
-            self.coordinates.astype(np.float32)
+        
+        vertices = np.array(mesh.vertices)
+        faces = np.array(mesh.faces)
+        points = np.array(self.coordinates)
+
+        winding_number = fast_winding_number(
+            vertices,
+            faces,
+            points
         )
 
         return np.logical_and(
-            ~ np.isclose(fast_winding_number, 0.5),
-            fast_winding_number > 0.5
+            ~ np.isclose(winding_number, 0.5),
+            winding_number > 0.5
         )
     
     @property

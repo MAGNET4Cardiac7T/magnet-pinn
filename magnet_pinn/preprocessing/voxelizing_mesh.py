@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 from trimesh import Trimesh
 from trimesh.voxel.creation import local_voxelize
-from igl import fast_winding_number_for_meshes
+from igl import fast_winding_number
 import einops
 
 
@@ -102,13 +102,14 @@ class MeshVoxelizer:
         np.array
             The voxel grid
         """
-        vertices = mesh.vertices
-        faces = mesh.faces
+        vertices = np.array(mesh.vertices)
+        faces = np.array(mesh.faces)
 
-        fast_winding_number = fast_winding_number_for_meshes(vertices, faces, self.points)
+        winding_number = fast_winding_number(vertices, faces, self.points)
+
         mask = np.logical_and(
-            ~ np.isclose(fast_winding_number, 0.5),
-            fast_winding_number > 0.5
+            ~ np.isclose(winding_number, 0.5),
+            winding_number > 0.5
         )
         mask = np.ascontiguousarray(
             einops.rearrange(
