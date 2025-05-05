@@ -408,13 +408,13 @@ class Preprocessing(ABC):
         Tuple
             A tuple of features and masks
         """
-        mask = rearrange(
+        mask = np.ascontiguousarray(rearrange(
             list(map(
                 self._get_mask,
                 meshes,
             )),
             self._masks_stack_pattern
-        )
+        ))
         
         features = self._get_features(properties, mask)
         return (
@@ -459,17 +459,17 @@ class Preprocessing(ABC):
         props = properties.loc[:, FEATURE_NAMES].to_numpy().T
         extended_props = self._extend_props(props, masks)
 
-        extended_masks = repeat(
+        extended_masks = np.ascontiguousarray(repeat(
             masks,
             self._extend_masks_pattern,
             feature=len(FEATURE_NAMES)
-        )
+        ))
 
-        result = reduce(
+        result = np.ascontiguousarray(reduce(
             extended_props * extended_masks,
             self._features_sum_pattern,
             "sum"
-        )
+        ), dtype=np.float32)
         return result
 
     @abstractmethod
@@ -785,13 +785,13 @@ class GridPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extneded_air_prop = repeat(
+        extneded_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
             "feature -> feature x y z",
             x=features.shape[1],
             y=features.shape[2],
             z=features.shape[3]
-        )
+        ))
 
         return features + extneded_air_prop * air_mask
 
@@ -840,13 +840,13 @@ class GridPreprocessing(Preprocessing):
         masks : np.array
             a mask array
         """
-        return repeat(
+        return np.ascontiguousarray(repeat(
             props,
             "feature component -> feature x y z component",
             x=masks.shape[0],
             y=masks.shape[1],
             z=masks.shape[2]
-        )
+        ))
     
     @property
     def _extend_masks_pattern(self) -> str:
@@ -1001,11 +1001,11 @@ class PointPreprocessing(Preprocessing):
         np.array
             an extended properties array
         """
-        return repeat(
+        return np.ascontiguousarray(repeat(
             props,
             "feature component -> points feature component",
             points=masks.shape[0]
-        )
+        ))
     
     @property
     def _extend_masks_pattern(self) -> str:
@@ -1037,11 +1037,11 @@ class PointPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extneded_air_prop = repeat(
+        extneded_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
             "feature -> points feature",
             points=features.shape[0]
-        )
+        ))
 
         return features + extneded_air_prop * air_mask
     

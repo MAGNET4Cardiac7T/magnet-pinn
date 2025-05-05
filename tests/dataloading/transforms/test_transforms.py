@@ -627,8 +627,9 @@ def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(rando
     result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
     check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
-    real_expected_array = rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
-
+    real_expected_array = np.ascontiguousarray(
+        rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
+    ).astype(np.float32)
     assert result.field.shape == real_expected_array.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
@@ -640,7 +641,9 @@ def test_point_phase_shift_transform_check_valid_processing_shapes_binomial(rand
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
     check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
-    real_expected_array = rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
+    real_expected_array = np.ascontiguousarray(
+        rearrange(random_pointcloud_item.field, "he reim positions fieldxyz coils -> he reim fieldxyz positions coils")
+    ).astype(np.float32)
     assert result.field.shape == real_expected_array.shape[:-1]
     assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[:-1]))
 
