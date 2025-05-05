@@ -275,10 +275,10 @@ class FieldReader(ABC):
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
 
-        return np.ascontiguousarray(rearrange(
+        return rearrange(
             [Ex, Ey, Ez],
             self._compose_field_pattern(Ex.shape)
-        ), dtype=np.complex64)
+        )
 
     @abstractmethod
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
@@ -396,10 +396,10 @@ class GridReader(FieldReader):
         
         x, y, z = self._coordinates
         xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-        values = np.ascontiguousarray(rearrange(
+        values = rearrange(
             [xx, yy, zz],
             "ax x y z -> (x y z) ax"
-        ), dtype=np.float32)
+        )
         return values
     
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
@@ -452,7 +452,7 @@ class GridReader(FieldReader):
                 "components ax x y z -> (x y z) ax components"
             )
 
-        return np.ascontiguousarray(result, dtype=np.complex64)
+        return result
 
 
 class PointReader(FieldReader):
@@ -487,10 +487,10 @@ class PointReader(FieldReader):
             x = f[POSITIONS_DATABASE_KEY]["x"][:]
             y = f[POSITIONS_DATABASE_KEY]["y"][:]
             z = f[POSITIONS_DATABASE_KEY]["z"][:]
-        return np.ascontiguousarray(rearrange(
+        return rearrange(
             [x, y, z],
             "ax batch -> batch ax"
-        ), dtype=np.float32)
+        )
     
     def _check_coordinates(self, other_coordinates) -> bool:
         """
@@ -538,7 +538,7 @@ class PointReader(FieldReader):
         np.array
             The field values
         """
-        return np.ascontiguousarray(rearrange(
+        return rearrange(
             field_components,
             "components batch ax -> batch ax components"
-        ), dtype=np.complex64)
+        )

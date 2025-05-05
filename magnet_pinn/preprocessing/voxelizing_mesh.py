@@ -74,7 +74,7 @@ class MeshVoxelizer:
 
         x_grid, y_grid, z_grid = np.meshgrid(x_unique, y_unique, z_unique, indexing='ij')
         self.points = np.stack([x_grid, y_grid, z_grid], axis=-1)
-        self.points = np.ascontiguousarray(einops.rearrange(self.points, 'x y z d -> (x y z) d'))
+        self.points = einops.rearrange(self.points, 'x y z d -> (x y z) d')
 
     def __validate_input(self, grid: npt.NDArray[np.float64], axis: str):
         if grid[0] >= grid[-1]:
@@ -111,10 +111,9 @@ class MeshVoxelizer:
             ~ np.isclose(winding_number, 0.5),
             winding_number > 0.5
         )
-        mask = np.ascontiguousarray(
-            einops.rearrange(
+        mask = einops.rearrange(
                 mask, '(x y z) -> x y z',
                 x=len(self.x), y=len(self.y), z=len(self.z)
             )
-        ).astype(np.uint8)
+
         return mask
