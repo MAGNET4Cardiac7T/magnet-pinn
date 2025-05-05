@@ -708,12 +708,10 @@ class GridPreprocessing(Preprocessing):
 
         # check extent for validity
         min_values = np.array(
-            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"]),
-            dtype=np.float32
+            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
         )
         max_values = np.array(
-            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"]),
-            dtype=np.float32
+            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
         )
         if not np.all((max_values - min_values) % voxel_size == 0):
             raise Exception("Extent not divisible by voxel size")
@@ -1067,7 +1065,7 @@ class PointPreprocessing(Preprocessing):
         
         vertices = np.ascontiguousarray(mesh.vertices)
         faces = np.ascontiguousarray(mesh.faces)
-        points = np.ascontiguousarray(self.coordinates)
+        points = np.ascontiguousarray(self.coordinates, dtype=vertices.dtype)
 
         winding_number = fast_winding_number(
             vertices,

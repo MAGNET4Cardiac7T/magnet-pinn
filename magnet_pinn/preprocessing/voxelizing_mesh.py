@@ -107,7 +107,7 @@ class MeshVoxelizer:
         """
         vertices = np.ascontiguousarray(mesh.vertices)
         faces = np.ascontiguousarray(mesh.faces)
-        points = np.ascontiguousarray(self.points)
+        points = np.ascontiguousarray(self.points, dtype=vertices.dtype)
 
         winding_number = fast_winding_number(
             vertices, 
