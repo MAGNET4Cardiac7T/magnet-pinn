@@ -26,7 +26,7 @@ if args.preprocessing_type == "grid":
         voxel_size=args.voxel_size
     )
 elif args.preprocessing_type == "point":
-    PointPreprocessing(
+    prep = PointPreprocessing(
         args.batches,
         args.antenna,
         args.output,
