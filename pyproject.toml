@@ -26,6 +26,7 @@ einops = "^0.8.0"
 libigl = "^2.5.1"
 findiff = "^0.10.2"
 natsort = "^8.4.0"
+ordered-set = "^4.1.0"
 
 [tool.poetry.group.dev.dependencies]
 matplotlib = "^3.8.4"

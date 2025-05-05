@@ -19,6 +19,7 @@ import pandas as pd
 from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
+from ordered_set import OrderedSet
 from einops import rearrange, repeat, reduce
 from igl import fast_winding_number_for_meshes
 
@@ -132,6 +133,9 @@ class Preprocessing(ABC):
                  field_dtype: np.dtype = np.complex64,
                  coil_thick_coef: Optional[float] = 2.0) -> None:
         """
+        The method checks the input and output directories, reads antenna data and 
+        prepares the output directories. It also checks if simulations have unique names.
+
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -155,6 +159,8 @@ class Preprocessing(ABC):
             raise TypeError("Source/s should be a string/list of strings")
         
         self.all_sim_paths = self.__extract_simulations(batches)
+        if len(self.all_sim_paths) != len(set(map(lambda x: x.name, self.all_sim_paths))):
+            raise Exception("Simulation names should be unique")
 
         # create output directories
         target_dir_name = self._output_target_dir
@@ -198,6 +204,7 @@ class Preprocessing(ABC):
     def __extract_simulations(self, batches_paths: List[str]) -> List[Path]:
         """
         Extract the list of simulation files from the batch directories.
+        We save the absolute path for each simulation.
 
         Parameters
         ----------
@@ -219,7 +226,7 @@ class Preprocessing(ABC):
             elif len(list(batch_path.iterdir())) == 0:
                 raise FileNotFoundError(f"Batch directory {batch_path} is empty")
 
-            all_simulations_paths.extend([i for i in batch_path.iterdir() if i.is_dir()])
+            all_simulations_paths.extend([i.resolve().absolute() for i in batch_path.iterdir() if i.is_dir()])
 
         if len(all_simulations_paths) == 0:
             raise FileNotFoundError("No simulations found")
@@ -259,39 +266,82 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: Optional[List[str]] = None):
+    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
+
+        The method works in 2 phases:
+
+        - check simulations for being in the batch
+        - process each simulation
 
         This method make iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
         After the main work is done it also calls `_write_dipoles` method 
         to save processed antenna data. 
 
+        Simulation names in different batches can not be the same, 
+        if they are we would choose a random one would be chosen to preprocess. 
+
         Parameters
         ----------
-        simulation_names : List[str] | None
+        simulations : List[Union[str, Path]] | None
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
-        all_sims_set = set(map(lambda x: x.name, self.all_sim_paths))
-        given_sim_set = all_sims_set if simulation_names is None else set(simulation_names)
-        if not given_sim_set.issubset(all_sims_set):
-            not_existing_simulations = given_sim_set - all_sims_set
-            not_existing_dirs_enumeration = ", ".join(not_existing_simulations)
-            raise Exception(f"Simulations [{not_existing_dirs_enumeration}] do not exist in the directory")
-        
-        sim_we_use = list(filter(lambda x: x.name in given_sim_set, self.all_sim_paths))
+        simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
 
-        pbar = tqdm(sim_we_use, total=len(sim_we_use))
-        for sim_path in pbar:
-            self.__process_simulation(sim_path)
-            pbar.set_postfix({"done": sim_path.name}, refresh=True)
+        if len(simulations) == 0:
+            return
+
+        pbar = tqdm(total=len(simulations), desc="Simulations processing")
+        for i in simulations:
+            sim_res_path = self._process_simulation(i)           
+            pbar.set_postfix({"done": sim_res_path}, refresh=True)
+            pbar.update(1)
         
         self._write_dipoles()
 
-    def __process_simulation(self, sim_path: Path):
+    def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
+        """
+        A method to resolve simulations given by user. Each element in the simulations
+        collection is checked to be path or str. In the case or Path we just return the resolved
+        absolute path. In the case of just a simulation name we check if it is in the list
+        of simulations in the batches and return the first one with the same name.
+        """
+
+        all_sim_names = OrderedSet(map(lambda x: x.name, self.all_sim_paths))
+
+        def resolve_simulation(simulation: Union[str, Path]) -> Path:
+            """
+            Resolves the path to the simulation directory.
+            If it is path it is resolved and saved in the abs form, 
+            if a name - check if it is in the list and return the path, which
+            satisfies the name.
+            """
+            if isinstance(simulation, Path):
+                simulation = simulation.resolve().absolute()
+                if not simulation in self.all_sim_paths:
+                    raise Exception(f"Simulation is not in the batches")
+                
+            elif isinstance(simulation, str):
+                if simulation not in all_sim_names:
+                    raise Exception(f"Simulation is not in the batches")
+                
+                simulation = self.all_sim_paths[all_sim_names.index(simulation)]
+
+            else:
+                raise TypeError("Simulation should be a string or a path")
+            
+            if not simulation.exists():
+                raise FileNotFoundError(f"Simulation {simulation} does not exist")
+            
+            return simulation
+        
+        return list(map(resolve_simulation, simulations))
+            
+    def _process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
@@ -315,6 +365,8 @@ class Preprocessing(ABC):
         self.__calculate_features(simulation)
 
         self._format_and_write_dataset(simulation)
+
+        return simulation.resulting_path
 
     def _extract_fields_data(self, out_simulation: Simulation):
         """
@@ -510,6 +562,8 @@ class Preprocessing(ABC):
         The method formats data from the `out_simulation` instance 
         and writes it to the output directory.
 
+        Also it writes resulting file path to the `out_simulation` instance.
+
         Parameters
         ----------
         out_simulation : Simulation
@@ -528,6 +582,8 @@ class Preprocessing(ABC):
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
             f.create_dataset(SUBJECT_OUT_KEY, data=object_masks)
             self._write_extra_data(out_simulation, f)
+
+        out_simulation.resulting_path = output_file_path.resolve().absolute()
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """

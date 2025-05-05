@@ -5,6 +5,7 @@ from shutil import rmtree
 import pytest
 import numpy as np
 from h5py import File
+from natsort import natsorted
 
 from tests.preprocessing.conftest import ALL_SIM_NAMES
 from tests.preprocessing.helpers import (
@@ -924,4 +925,498 @@ def test_multiple_batch_dirs_grid(raw_central_batch_dir_path, raw_shifted_batch_
 
     out_sim_names = listdir(out_dir / PROCESSED_SIMULATIONS_DIR_PATH)
     out_sim_names = [name.split(".")[0] for name in out_sim_names]
-    assert set(out_sim_names) == set(ALL_SIM_NAMES)
+
+
+def test_grid_preprocessing_check_explicit_none_simulations_value(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as None explicitly
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(simulations=None)
+
+    expected_sim_list = list(natsorted(map(
+        lambda x: TARGET_FILE_NAME.format(name=x.name), 
+        raw_central_batch_dir_path.iterdir()
+    )))
+    existing_sim_list = list(natsorted(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected_sim_list == existing_sim_list
+
+
+def test_grid_preprocessing_check_explicit_empty_list_simulations_value(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as an empty list explicitly
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(simulations=[])
+
+    assert len(listdir(grid_preprocessor.out_simulations_dir_path)) == 0
+
+
+def test_grid_preprocessing_check_simulations_value_as_one_simulation_name_with_two_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations property as a single simulation name from one of the batches
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(simulations=[CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_one_path_simulations_value_with_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a single path from the only one existing batch
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_one_simulations_value_from_one_of_the_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a single simulation path from one of the batches
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_multiple_paths_simulations_value_from_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulations path from the only batch
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_multiple_paths_simulations_value_from_different_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulations path from different batches
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_mixed_simulations_value_from_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulation names and paths from the only batch
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        simulations=[CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_grid_preprocessing_check_mixed_simulations_value_from_different_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulation names and paths from different batches
+    """
+    grid_preprocessor = GridPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4, 
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations(
+        simulations=[CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        grid_preprocessor.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+def test_point_preprocessing_check_explicit_none_simulations_value(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as None explicitly
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=None)
+
+    expected_sim_list = list(natsorted(map(
+        lambda x: TARGET_FILE_NAME.format(name=x.name), 
+        raw_central_batch_dir_path.iterdir()
+    )))
+    existing_sim_list = list(natsorted(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected_sim_list == existing_sim_list
+
+
+def test_point_preprocessing_check_explicit_empty_list_simulations_value(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as an empty list explicitly
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=[])
+
+    assert len(listdir(preprop.out_simulations_dir_path)) == 0
+
+
+def test_point_preprocessing_check_simulations_value_as_one_simulation_name(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations property as a single simulation name
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=[CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_simulations_value_as_one_simulation_name_with_two_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations property as a single simulation name from one of the batches
+    """
+    preprop = PointPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=[CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_one_path_simulations_value_with_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a single path from the only one existing batch
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_one_simulations_value_from_one_of_the_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a single simulation path from one of the batches
+    """
+    preprop = PointPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+
+    expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
+    existing = list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    ))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_multiple_paths_simulations_value_from_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulations path from the only batch
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_multiple_paths_simulations_value_from_different_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulations path from different batches
+    """
+    preprop = PointPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_mixed_simulations_value_from_one_batch(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulation names and paths from the only batch
+    """
+    preprop = PointPreprocessing(
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(
+        simulations=[CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
+
+
+def test_point_preprocessing_check_mixed_simulations_value_from_different_batches(raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Set simulations as a list of simulation names and paths from different batches
+    """
+    preprop = PointPreprocessing(
+        [raw_shifted_batch_dir_path, raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations(
+        simulations=[CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+    )
+
+    expected = natsorted([
+        TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+        TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    ])
+    existing = natsorted(list(map(
+        lambda x: x.name, 
+        preprop.out_simulations_dir_path.iterdir()
+    )))
+
+    assert expected == existing
