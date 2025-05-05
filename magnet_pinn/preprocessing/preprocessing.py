@@ -286,7 +286,7 @@ class Preprocessing(ABC):
 
         def resolve_simulation(simulation: Union[str, Path]) -> Path:
             """
-            Resolves the path to the simulatiuon directory.
+            Resolves the path to the simulation directory.
             If it is path it is resolved and saved in the abs form, 
             if a name - check if it is in the list and return the path, which
             satisfies the name.
