@@ -11,7 +11,10 @@ import numpy as np
 import numpy.typing as npt
 from trimesh import Trimesh
 from trimesh.voxel.creation import local_voxelize
-from igl import fast_winding_number
+try:
+    from igl import fast_winding_number
+except ImportError:
+    from igl import fast_winding_number_for_meshes
 import einops
 
 

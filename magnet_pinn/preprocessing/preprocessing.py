@@ -20,7 +20,11 @@ from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
 from einops import rearrange, repeat, reduce
-from igl import fast_winding_number
+
+try:
+    from igl import fast_winding_number
+except ImportError:
+    from igl import fast_winding_number_for_meshes
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
