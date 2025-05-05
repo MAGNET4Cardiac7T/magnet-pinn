@@ -345,7 +345,7 @@ class PhaseShift(BaseTransform):
                                dtype: str = None
                                ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
-        A method for samplint the phase and mask. The phase is sampled from the uniform distribution and the mask is 
+        A method for sampling the phase and mask. The phase is sampled from the uniform distribution and the mask is 
         sampled based on the given method.
 
         Parameters
