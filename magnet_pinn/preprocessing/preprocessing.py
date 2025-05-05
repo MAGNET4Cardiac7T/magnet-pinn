@@ -1065,9 +1065,9 @@ class PointPreprocessing(Preprocessing):
             a mask array
         """
         
-        vertices = np.array(mesh.vertices)
-        faces = np.array(mesh.faces)
-        points = np.array(self.coordinates)
+        vertices = np.ascontiguousarray(mesh.vertices)
+        faces = np.ascontiguousarray(mesh.faces)
+        points = np.ascontiguousarray(self.coordinates)
 
         winding_number = fast_winding_number(
             vertices,

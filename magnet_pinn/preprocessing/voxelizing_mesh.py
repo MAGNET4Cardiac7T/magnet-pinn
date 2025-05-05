@@ -105,10 +105,15 @@ class MeshVoxelizer:
         np.array
             The voxel grid
         """
-        vertices = np.array(mesh.vertices)
-        faces = np.array(mesh.faces)
+        vertices = np.ascontiguousarray(mesh.vertices)
+        faces = np.ascontiguousarray(mesh.faces)
+        points = np.ascontiguousarray(self.points)
 
-        winding_number = fast_winding_number(vertices, faces, self.points)
+        winding_number = fast_winding_number(
+            vertices, 
+            faces, 
+            points
+        )
 
         mask = np.logical_and(
             ~ np.isclose(winding_number, 0.5),
