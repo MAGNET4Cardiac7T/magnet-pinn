@@ -1,8 +1,8 @@
 """
 NAME
-    dataset.py
+    grid.py
 DESCRIPTION
-    This module contains classes for loading the magnetostatic simulation data.
+    This module consists of the iterator of the voxelized electromagnetic simulation data, so it is in the 3d grid format.
 """
 from typing import Union
 from pathlib import Path
@@ -13,17 +13,18 @@ from .dataitem import DataItem
 from ._base import MagnetBaseIterator
 
 
-"""
-Iterator for loading the magnetostatic simulation data.
-"""
 class MagnetGridIterator(MagnetBaseIterator):
+    """
+    Iterator for loading the electromagnetic simulation data.
+    """
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
-        Loads simulation data from the h5 file.
+        Main method to implement for the children of the `MagnetBaseIterator` class.
+        It loads the data from the simulation file and return the `DataItem` object.
         Parameters
         ----------
-        index : int
-            Index of the simulation file
+        simulation_path : Union[Path, str]
+            Path to the simulation file
         
         Returns
         -------
