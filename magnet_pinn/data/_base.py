@@ -2,7 +2,7 @@
 NAME
     _base.py
 DESCRIPTION
-    A module consists of the abstract base class for adding the magnetostatic simulation data.
+    This module consists of the abstract base class for loading the electromagnetic simulation data.
 """
 import os
 import h5py
