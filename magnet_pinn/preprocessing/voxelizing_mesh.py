@@ -14,7 +14,7 @@ from trimesh.voxel.creation import local_voxelize
 try:
     from igl import fast_winding_number
 except ImportError:
-    from igl import fast_winding_number_for_meshes
+    from igl import fast_winding_number_for_meshes as fast_winding_number
 import einops
 
 

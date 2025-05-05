@@ -24,7 +24,7 @@ from einops import rearrange, repeat, reduce
 try:
     from igl import fast_winding_number
 except ImportError:
-    from igl import fast_winding_number_for_meshes
+    from igl import fast_winding_number_for_meshes as fast_winding_number
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
