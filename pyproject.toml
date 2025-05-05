@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.8"
+version = "0.0.9"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
@@ -8,7 +8,7 @@ authors = [
     "Farzad Jabbarigargari <Jabbarigar_F@ukw.de>",
     "Alex Tarasov <tarasov.oleksander@gmail.com>"
 ]
-license = "GNU"
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -26,6 +26,7 @@ einops = "^0.8.0"
 libigl = "^2.5.1"
 findiff = "^0.10.2"
 natsort = "^8.4.0"
+ordered-set = "^4.1.0"
 
 [tool.poetry.group.dev.dependencies]
 matplotlib = "^3.8.4"

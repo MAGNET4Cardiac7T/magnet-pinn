@@ -1,8 +1,8 @@
 """
 NAME
-    dataset.py
+    point.py
 DESCRIPTION
-    This module contains classes for loading the magnetostatic simulation data.
+    This module contains classes for loading the electromagnetic simulation data in the pointscloud format.
 """
 from typing import Union
 from pathlib import Path
@@ -12,16 +12,18 @@ import numpy as np
 
 from .dataitem import DataItem
 from ._base import MagnetBaseIterator
-
-
 from magnet_pinn.preprocessing.preprocessing import COORDINATES_OUT_KEY
 
 
 class MagnetPointIterator(MagnetBaseIterator):
+    """
+    Iterator for loading the electromagnetic simulation data in the point cloud format.
+    """
 
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
-        Loads simulation data from the h5 file.
+        Main method to implement for the children of the `MagnetBaseIterator` class.
+        It loads the data from the simulation file and return the `DataItem` object.
         Parameters
         ----------
         index : int
@@ -48,7 +50,7 @@ class MagnetPointIterator(MagnetBaseIterator):
     
     def _read_positions(self, simulation_path: str) -> np.ndarray:
         """
-        Reads the positions of points from the h5 file.
+        Reads the positions of points from the h5 file. 
         Parameters
         ----------
         simulation_path : str
