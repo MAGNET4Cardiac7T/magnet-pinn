@@ -2,7 +2,7 @@
 NAME
     grid.py
 DESCRIPTION
-    This module consists of the iterator of the voxelized magnetostatic simulation data, so it is in the 3d grid format.
+    This module consists of the iterator of the voxelized electromagnetic simulation data, so it is in the 3d grid format.
 """
 from typing import Union
 from pathlib import Path
@@ -15,7 +15,7 @@ from ._base import MagnetBaseIterator
 
 class MagnetGridIterator(MagnetBaseIterator):
     """
-    Iterator for loading the magnetostatic simulation data.
+    Iterator for loading the electromagnetic simulation data.
     """
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """

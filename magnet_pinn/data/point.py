@@ -2,7 +2,7 @@
 NAME
     point.py
 DESCRIPTION
-    This module contains classes for loading the magnetostatic simulation data in the pointscloud format.
+    This module contains classes for loading the electromagnetic simulation data in the pointscloud format.
 """
 from typing import Union
 from pathlib import Path
@@ -17,7 +17,7 @@ from magnet_pinn.preprocessing.preprocessing import COORDINATES_OUT_KEY
 
 class MagnetPointIterator(MagnetBaseIterator):
     """
-    Iterator for loading the magnetostatic simulation data in the point cloud format.
+    Iterator for loading the electromagnetic simulation data in the point cloud format.
     """
 
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:

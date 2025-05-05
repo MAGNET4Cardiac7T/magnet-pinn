@@ -37,7 +37,7 @@ from magnet_pinn.preprocessing.preprocessing import (
 
 class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
-    Abstract base Iterator class for loading the magnetostatic simulation data.
+    Abstract base Iterator class for loading the electromagnetic simulation data.
 
     Attributes
     ----------
