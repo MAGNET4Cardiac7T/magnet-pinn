@@ -162,7 +162,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
         """
         A method for reading the field from the h5 file. After the extraction 
-        we join e- and h-fiels in the first axis, and real and imaginary parts in the second axis.
+        we join e- and h-fields in the first axis, and real and imaginary parts in the second axis.
         As a result we get the axis (e/h, re/im, ...). The next axis are dependent on the grid/pointscloud
         type of the data.
 
