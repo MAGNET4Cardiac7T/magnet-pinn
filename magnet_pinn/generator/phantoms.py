@@ -26,8 +26,11 @@ class Phantom(ABC):
         self.seed = seed
         np.random.seed(seed)
 
+    def prepare_structures(self, subdivisions: int = 5):
+        raise NotImplementedError("Subclasses must implement `prepare_structures`")
 
-class Tissue:
+
+class Tissue(Phantom):
     num_children_blobs: int
     blob_radius_decrease_per_level: float
     
@@ -195,14 +198,14 @@ class Tissue:
 
 
                 # check if tube completely within the ball.
-                if np.linalg.norm(tube.point - center) + tube.radius >= radius:
+                if np.linalg.norm(tube.position - center) + tube.radius >= radius:
                     print("Tube is not completely within the ball.")
                     continue
                 
                 # Check if the tube intersects with any existing tube.
                 is_intersecting = False
                 for existing_tube in tubes:
-                    if tube.distance_to_line(existing_tube) < tube.radius + existing_tube.radius:
+                    if Tube.distance_to_tube(tube, existing_tube) < tube.radius + existing_tube.radius:
                         is_intersecting = True
                         break
                 if not is_intersecting:
@@ -210,27 +213,15 @@ class Tissue:
             tubes.append(tube)
         return tubes
         
-    def export_as_meshes(self, subdivisions: int = 5):
+    def prepare_structures(self, subdivisions: int = 5):
         
         logging.info("Generating meshes.")
-        parent_blob_mesh = self.parent_blob.generate_mesh(sphere_subdivisions=subdivisions)
-        children_blob_meshes = [blob.generate_mesh(sphere_subdivisions=subdivisions) for blob in self.children_blobs]
-        tube_meshes = [tube.generate_mesh() for tube in self.tubes]
+        self.parent_blob.generate_geometry(subdivisions=subdivisions)
+        list(map(
+            lambda blob: blob.generate_geometry(subdivisions=subdivisions), self.children_blobs
+        ))
+        list(map(
+            lambda tube: tube.generate_geometry(subdivisions=subdivisions), self.tubes
+        ))
 
-        return parent_blob_mesh, children_blob_meshes, tube_meshes
-        
-        logging.info("Cutting out parent mesh.")
-        #parent_blob_mesh_cutout = trimesh.boolean.difference([parent_blob_mesh] + children_blob_meshes + tube_meshes, engine="blender")
-        
-        parent_blob_mesh_cutout = trimesh.boolean.difference([parent_blob_mesh] + children_blob_meshes, engine="blender")
-        parent_blob_mesh_cutout = trimesh.boolean.difference([parent_blob_mesh_cutout] + tube_meshes, engine="blender")
-
-        logging.info("Cutting out children meshes.")
-        children_blob_meshes_cutout = [trimesh.boolean.difference([blob_mesh] + tube_meshes, engine="blender") for blob_mesh in children_blob_meshes]
-        
-        return parent_blob_mesh_cutout, children_blob_meshes_cutout, tube_meshes
-    
-        logging.info("Embedding tubes in parent mesh.")
-        tube_meshes_cutout = [trimesh.boolean.intersection([tube_mesh, parent_blob_mesh], engine="blender") for tube_mesh in tube_meshes]
-        
-        return parent_blob_mesh_cutout, children_blob_meshes_cutout, tube_meshes_cutout
+        return self.parent_blob, self.children_blobs, self.tubes

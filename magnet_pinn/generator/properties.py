@@ -16,4 +16,4 @@ class PropertySampler:
     def sample(self, properties_list: List = None):
         if properties_list is None:
             properties_list = list(self.properties_cfg.keys())
-        return {key: np.random.uniform(dim[0], dim[1]) for key, dim in self.properties_cfg.items() if key in properties_list}
+        return {key: np.random.uniform(dim["min"], dim["max"]) for key, dim in self.properties_cfg.items() if key in properties_list}
