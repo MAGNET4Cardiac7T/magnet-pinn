@@ -60,7 +60,7 @@ class Tissue(Phantom):
         self.relative_disruption_strength = 0.1
         
         logging.info("Generating parent blob.")
-        self.parent_blob = Blob(self.initial_blob_center, self.initial_blob_radius)
+        self.parent_blob = Blob(self.initial_blob_center, self.initial_blob_radius, seed=None)
         
         logging.info("Generating children blobs.")
         self.children_blobs = self._generate_children_blobs(parent_blob=self.parent_blob)
@@ -80,8 +80,8 @@ class Tissue(Phantom):
             return []
         
         child_radius = parent_blob.radius*self.blob_radius_decrease_per_level
-        zero_center = np.zeros_like(parent_blob.center)
-        blobs = [Blob(zero_center, child_radius) for _ in range(self.num_children_blobs)]
+        zero_center = np.zeros_like(parent_blob.position)
+        blobs = [Blob(zero_center, child_radius, seed=None) for _ in range(self.num_children_blobs)]
         
         min_offset_children = np.min([blob.empirical_min_offset for blob in blobs])
         max_offset_children = np.max([blob.empirical_max_offset for blob in blobs])
@@ -100,7 +100,7 @@ class Tissue(Phantom):
         idx = 0
         logging.info("Finding suitable points for child blobs. Packing ratio: {:.3f}".format(child_radius_with_safe_margin/parent_inner_radius))
         while True:
-            points = self._sample_points_within_ball(parent_blob.center, parent_allowed_radius, num_points=self.num_children_blobs)
+            points = self._sample_points_within_ball(parent_blob.position, parent_allowed_radius, num_points=self.num_children_blobs)
 
             # check if all points are at least child_radius_with_safe_margin away from each other
             if self._check_points_are_at_least_distance_away(points, 2*child_radius_with_safe_margin):
@@ -111,7 +111,7 @@ class Tissue(Phantom):
         
         # update centers of child blobs
         for point, blob in zip(points, blobs):
-            blob.center = point
+            blob.position = point
             
         return blobs
     

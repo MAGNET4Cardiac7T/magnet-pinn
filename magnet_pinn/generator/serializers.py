@@ -12,16 +12,33 @@ class Serializer(ABC):
         raise NotImplementedError("Subclasses must implement `serialize` method")
     
 
-class TrimeshSerializer(Serializer):
-    def serialize(self, structure: Structure3D) -> Trimesh:
+class MeshSerializer(Serializer):
+    def serialize(self, structure: Structure3D, subdivisions: int = 5) -> Trimesh:
         if isinstance(structure, Blob):
-            return Trimesh(vertices=structure.vertices, faces=structure.faces)
+            return self._serialize_blob(structure, subdivisions)
         elif isinstance(structure, Tube):
-            return trimesh.creation.cylinder(
-                radius=structure.radius,
-                segment=np.vstack([structure.start, structure.end]),
-                sections=structure.subdivisions ** 2,
-                transform=structure.transform
-            )
+            return self._serialize_tube(structure, subdivisions)
         else:
             raise ValueError("Unsupported structure type")
+        
+
+    def _serialize_blob(self, blob: Blob, subdivisions: int = 5) -> Trimesh:
+        unit_sphere = trimesh.primitives.Sphere(1, subdivisions=subdivisions)
+        offsets = np.array([blob.noise(list(point)) for point in unit_sphere.vertices])
+        vertices = (1 + offsets.reshape(-1, 1)) * unit_sphere.vertices
+        mesh = trimesh.Trimesh(vertices=vertices, faces=unit_sphere.faces)
+        mesh.apply_translation(blob.position)
+        mesh.apply_scale(blob.radius)
+        return mesh
+    
+    def _serialize_tube(self, tube: Tube, subdivisions: int = 5) -> Trimesh:
+        transform = (
+            trimesh.transformations.translation_matrix(tube.position)
+            @ trimesh.geometry.align_vectors([0, 0, 1], tube.direction)
+        )
+        return trimesh.creation.cylinder(
+            radius=tube.radius,
+            height=tube.height * tube.radius,
+            sections=subdivisions ** 2,
+            transform=transform
+        )
