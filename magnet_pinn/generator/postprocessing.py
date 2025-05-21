@@ -12,19 +12,19 @@ class Postprocessing(ABC):
 class TrimeshPostprocessing(Postprocessing):
     def process(self, parent: Trimesh, children: list[Trimesh], tubes: list[Trimesh]):
         cutters = children + tubes
-        union_cutters = trimesh.boolean.union(cutters, engine='scad')
-        parent_cut = trimesh.boolean.difference(parent, union_cutters, engine='scad')
+        union_cutters = trimesh.boolean.union(cutters, engine='blender')
+        parent_cut = trimesh.boolean.difference([parent, union_cutters], engine='blender')
         if not tubes:
             children_cut = children.copy()
         else:
             children_cut = []
-            tubes_union = trimesh.boolean.union(tubes, engine='scad')
+            tubes_union = trimesh.boolean.union(tubes, engine='blender')
             for c in children:
                 children_cut.append(
-                    trimesh.boolean.difference(c, tubes_union, engine='scad')
+                    trimesh.boolean.difference([c, tubes_union], engine='blender')
                 )
         tubes_cut = [
-            trimesh.boolean.intersection(t, parent, engine='scad')
+            trimesh.boolean.intersection([t, parent], engine='blender')
             for t in tubes
         ]
         
