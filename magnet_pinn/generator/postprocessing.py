@@ -2,7 +2,7 @@ from abc import ABC
 
 import trimesh
 from trimesh import Trimesh
-from trimesh.remesh import subdivide_to_size
+from trimesh.remesh import subdivide_to_size, subdivide_loop
 
 class Postprocessing(ABC):
     def process(self, parent, children, tubes):
@@ -36,9 +36,13 @@ class MeshPostprocessing(Postprocessing):
             [self._remesh(t) for t in tubes_cut]
         )
 
-    def _remesh(self, mesh: Trimesh, max_len=0.8):
-        vertices, faces = subdivide_to_size(mesh.vertices, mesh.faces, max_len)
-        mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-        mesh.remove_degenerate_faces()
+    def _remesh(self, mesh: Trimesh, max_len=8.0):
+        mesh.update_faces(mesh.nondegenerate_faces())
         mesh.remove_unreferenced_vertices()
-        return mesh
+        mesh.merge_vertices()
+        v, f = subdivide_loop(
+            mesh.vertices,
+            mesh.faces,
+            iterations=3
+        )
+        return trimesh.Trimesh(vertices=v, faces=f)
