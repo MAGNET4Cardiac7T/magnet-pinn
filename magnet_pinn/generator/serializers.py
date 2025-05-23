@@ -27,8 +27,8 @@ class MeshSerializer(Serializer):
         offsets = blob.calculate_offsets(unit_sphere.vertices)
         vertices = (1 + offsets) * unit_sphere.vertices
         mesh = trimesh.Trimesh(vertices=vertices, faces=unit_sphere.faces)
-        mesh.apply_translation(blob.position)
         mesh.apply_scale(blob.radius)
+        mesh.apply_translation(blob.position)
         return mesh
     
     def _serialize_tube(self, tube: Tube, subdivisions: int = 5) -> Trimesh:
