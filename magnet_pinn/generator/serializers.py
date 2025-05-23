@@ -24,8 +24,8 @@ class MeshSerializer(Serializer):
 
     def _serialize_blob(self, blob: Blob, subdivisions: int = 5) -> Trimesh:
         unit_sphere = trimesh.primitives.Sphere(1, subdivisions=subdivisions)
-        offsets = np.array([blob.noise(list(point)) for point in unit_sphere.vertices])
-        vertices = (1 + offsets.reshape(-1, 1)) * unit_sphere.vertices
+        offsets = blob.calculate_offsets(unit_sphere.vertices)
+        vertices = (1 + offsets) * unit_sphere.vertices
         mesh = trimesh.Trimesh(vertices=vertices, faces=unit_sphere.faces)
         mesh.apply_translation(blob.position)
         mesh.apply_scale(blob.radius)

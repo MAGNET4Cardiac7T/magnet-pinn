@@ -42,9 +42,7 @@ class Blob(Structure3D):
         self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
 
         points = self._generate_fibonacci_points_on_sphere(num_points=10000)
-        offsets_at_points = np.array([self.noise(point.tolist()) for point in points])
-        offsets_at_points = offsets_at_points * self.relative_disruption_strength / 0.4
-        offsets_at_points = offsets_at_points.reshape(-1, 1)
+        offsets_at_points = self.calculate_offsets(points)
 
         self.empirical_max_offset = np.max(offsets_at_points)
         self.empirical_min_offset = np.min(offsets_at_points)
@@ -63,6 +61,12 @@ class Blob(Structure3D):
             z = np.sin(theta) * radius
             points.append([x, y, z])
         return np.array(points)
+    
+    def calculate_offsets(self, vertices: np.ndarray) -> np.ndarray:
+        offsets = np.array([self.noise(list(point)) for point in vertices])
+        offsets = offsets * self.relative_disruption_strength / 0.4
+        offsets = offsets.reshape(-1, 1)
+        return offsets
 
 
 @dataclass

@@ -89,7 +89,10 @@ class Tissue(Phantom):
         child_radius_with_safe_margin = child_radius*(1+max_offset_children)
         
         parent_inner_radius = parent_blob.radius*(1+parent_blob.empirical_min_offset)
+        # enforce additional safety margin to account for mesh sampling differences
         parent_allowed_radius = parent_inner_radius - child_radius_with_safe_margin
+        safety_margin = 0.02
+        parent_allowed_radius = parent_allowed_radius * (1 - safety_margin)
         
         if parent_allowed_radius < 0:
             raise Exception("Parent blob is too small to fit child blob")
