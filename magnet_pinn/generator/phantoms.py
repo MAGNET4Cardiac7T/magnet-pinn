@@ -212,16 +212,3 @@ class Tissue(Phantom):
                     break
             tubes.append(tube)
         return tubes
-        
-    def prepare_structures(self, subdivisions: int = 5):
-        
-        logging.info("Generating meshes.")
-        self.parent_blob.generate_geometry(subdivisions=subdivisions)
-        list(map(
-            lambda blob: blob.generate_geometry(subdivisions=subdivisions), self.children_blobs
-        ))
-        list(map(
-            lambda tube: tube.generate_geometry(subdivisions=subdivisions), self.tubes
-        ))
-
-        return self.parent_blob, self.children_blobs, self.tubes
