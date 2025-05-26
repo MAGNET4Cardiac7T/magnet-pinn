@@ -20,7 +20,7 @@ from cadquery import Vector
 from cadquery.cq import VectorLike
 
 from ._util import toTuples, signum
-from ._typing import MeshGrid, Point3D, FaceIndices
+from .typing import MeshGrid, Point3D, FaceIndices
 
 import numpy
 

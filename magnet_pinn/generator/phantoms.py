@@ -10,6 +10,7 @@ from abc import ABC
 import numpy as np
 
 from .meshes import Blob, Tube
+from .typing import PhantomItem
 
 
 class Phantom(ABC):
@@ -17,17 +18,14 @@ class Phantom(ABC):
     initial_blob_center: np.ndarray
     seed: int
 
-    def __init__(self, initial_blob_radius: float, initial_blob_center: np.ndarray, seed: int):
+    def __init__(self, initial_blob_radius: float, initial_blob_center: np.ndarray):
         self.initial_blob_radius = initial_blob_radius
         
         initial_blob_center = [np.random.uniform(dim[0], dim[1]) for key, dim in initial_blob_center.items()]
         self.initial_blob_center = np.array(initial_blob_center)
 
-        self.seed = seed
-        np.random.seed(seed)
-
-    def prepare_structures(self, subdivisions: int = 5):
-        raise NotImplementedError("Subclasses must implement `prepare_structures`")
+    def generate(self, seed: int = None) -> PhantomItem:
+        raise NotImplementedError("Subclasses should implement this method.")
 
 
 class Tissue(Phantom):
@@ -43,11 +41,9 @@ class Tissue(Phantom):
                  initial_blob_center: np.ndarray,
                  blob_radius_decrease_per_level: float, 
                  num_tubes: int, relative_tube_max_radius: float,
-                 relative_tube_min_radius: float = 0.01,
-                 seed: int = 0):
+                 relative_tube_min_radius: float = 0.01):
         
-        logging.info("Setting seed: {}".format(seed))
-        super().__init__(initial_blob_radius, initial_blob_center, seed)
+        super().__init__(initial_blob_radius, initial_blob_center)
 
         self.num_children_blobs = num_children_blobs
         
@@ -58,7 +54,9 @@ class Tissue(Phantom):
         self.tube_max_radius = self.relative_tube_max_radius*initial_blob_radius
         self.tube_min_radius = self.relative_tube_min_radius*initial_blob_radius
         self.relative_disruption_strength = 0.1
-        
+
+    def generate(self, seed: int = None) -> PhantomItem:
+                
         logging.info("Generating parent blob.")
         self.parent_blob = Blob(self.initial_blob_center, self.initial_blob_radius, seed=None)
         
@@ -68,6 +66,12 @@ class Tissue(Phantom):
         logging.info("Generating tubes.")
         parent_inner_radius = self.parent_blob.radius*(1+self.parent_blob.empirical_min_offset)
         self.tubes = self._sample_tubes_within_ball(self.initial_blob_center, parent_inner_radius, self.num_tubes, self.tube_max_radius, self.tube_min_radius)
+
+        return PhantomItem(
+            parent=self.parent_blob,
+            children=self.children_blobs,
+            tubes=self.tubes
+        )
         
     def _generate_children_blobs(self, parent_blob: Blob = None, max_iterations: int = 10000000):
         """
