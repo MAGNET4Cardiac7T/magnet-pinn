@@ -8,7 +8,6 @@
 from abc import ABC
 from dataclasses import dataclass
 
-import trimesh
 import numpy as np
 from perlin_noise import PerlinNoise
 
