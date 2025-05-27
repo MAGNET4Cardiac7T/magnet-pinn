@@ -98,6 +98,10 @@ class MeshesCleaning(Transform):
 
 class MeshesRemesh(Transform):
 
+    """
+    Warning: class returns not watertight meshes, because of usage of the `trimesh.remesh.subdivide_to_size` function.
+    """
+
     def __init__(self, max_len: float = 8.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_len = max_len
