@@ -4,7 +4,7 @@ import trimesh
 import numpy as np
 from trimesh import Trimesh
 
-from magnet_pinn.generator.meshes import Structure3D, Blob, Tube
+from .structures import Structure3D, Blob, Tube
 
 
 class Serializer(ABC):

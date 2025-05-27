@@ -9,7 +9,7 @@ from abc import ABC
 
 import numpy as np
 
-from .meshes import Blob, Tube
+from .structures import Blob, Tube
 from .typing import PhantomItem
 
 
