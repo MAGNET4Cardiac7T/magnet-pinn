@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import igl
 import trimesh
 from trimesh import Trimesh
 
@@ -32,7 +33,7 @@ class Compose(Transform):
         return f"{self.__class__.__name__}({', '.join([str(t) for t in self.transforms])})"
     
 
-class ToMeshTransform(Transform):
+class ToMesh(Transform):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.serializer = MeshSerializer()
@@ -45,7 +46,7 @@ class ToMeshTransform(Transform):
         )
 
 
-class MeshesCutoutTransform(Transform):
+class MeshesCutout(Transform):
 
     def __call__(self, tissue: PhantomItem, *args, **kwds):
         return PhantomItem(
@@ -76,33 +77,43 @@ class MeshesCutoutTransform(Transform):
         ]
     
 
-class MeshesCleaningTransform(Transform):
+class MeshesCleaning(Transform):
     def __call__(self, tissue: PhantomItem, *args, **kwds):
         return PhantomItem(
-            parent=self._clean_mesh(tissue.parent.copy()),
-            children=[self._clean_mesh(c.copy()) for c in tissue.children],
-            tubes=[self._clean_mesh(t.copy()) for t in tissue.tubes]
+            parent=self._clean_mesh(tissue.parent),
+            children=[self._clean_mesh(c) for c in tissue.children],
+            tubes=[self._clean_mesh(t) for t in tissue.tubes]
         )
     
     def _clean_mesh(self, mesh: Trimesh) -> Trimesh:
+        mesh = mesh.copy()
         mesh.update_faces(mesh.nondegenerate_faces())
-        mesh.remove_unreferenced_vertices()
+        mesh.update_faces(mesh.unique_faces())
+        trimesh.repair.fill_holes(mesh)
         mesh.merge_vertices()
+        mesh.fix_normals()
+        mesh.remove_unreferenced_vertices()
         return mesh
     
 
-class MeshesRemeshTransform(Transform):
-    def __call__(self, tissue: PhantomItem, max_len: float = 8.0, *args, **kwds):
+class MeshesRemesh(Transform):
+
+    def __init__(self, max_len: float = 8.0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_len = max_len
+
+    def __call__(self, tissue: PhantomItem, *args, **kwds):
         return PhantomItem(
-            parent=self._remesh(tissue.parent, max_len),
-            children=[self._remesh(c, max_len) for c in tissue.children],
-            tubes=[self._remesh(t, max_len) for t in tissue.tubes]
+            parent=self._remesh(tissue.parent),
+            children=[self._remesh(c) for c in tissue.children],
+            tubes=[self._remesh(t) for t in tissue.tubes]
         )
     
-    def _remesh(self, mesh: Trimesh, max_len: float) -> Trimesh:
-        v, f = trimesh.remesh.subdivide_loop(
-            mesh.vertices,
-            mesh.faces,
-            iterations=3
+    def _remesh(self, mesh: Trimesh) -> Trimesh:
+        v, f = trimesh.remesh.subdivide_to_size(
+            mesh.vertices, 
+            mesh.faces, 
+            max_edge=self.max_len
         )
-        return trimesh.Trimesh(vertices=v, faces=f)
+        mesh = trimesh.Trimesh(vertices=v, faces=f)
+        return mesh
