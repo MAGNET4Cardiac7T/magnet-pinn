@@ -62,8 +62,8 @@ class Tissue(Phantom):
         ])
 
         logging.info("Generating parent blob.")
-        parent_blob = Blob(initial_blob_center, self.initial_blob_radius, seed=gen_object.uniform())
-        
+        parent_blob = Blob(initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32-1).item())
+
         logging.info("Generating children blobs.")
         children_blobs = self._generate_children_blobs(parent_blob=parent_blob, gen_object=gen_object)
 
@@ -82,15 +82,15 @@ class Tissue(Phantom):
         Generate one hierarchy level.
         """
         if parent_blob is None:
-            return [Blob(self.initial_blob_center, self.initial_blob_radius, seed=gen_object.uniform())]
-        
+            return [Blob(self.initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32-1).item())]
+
         if self.num_children_blobs == 0:
             return []
         
         child_radius = parent_blob.radius*self.blob_radius_decrease_per_level
         zero_center = np.zeros_like(parent_blob.position)
-        blobs = [Blob(zero_center, child_radius, seed=gen_object.uniform()) for _ in range(self.num_children_blobs)]
-        
+        blobs = [Blob(zero_center, child_radius, seed=gen_object.integers(0, 2**32-1).item()) for _ in range(self.num_children_blobs)]
+
         min_offset_children = np.min([blob.empirical_min_offset for blob in blobs])
         max_offset_children = np.max([blob.empirical_max_offset for blob in blobs])
         
