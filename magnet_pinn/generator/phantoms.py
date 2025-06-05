@@ -210,7 +210,6 @@ class Tissue(Phantom):
 
                 # check if tube completely within the ball.
                 if np.linalg.norm(tube.position - center) + tube.radius >= radius:
-                    print("Tube is not completely within the ball.")
                     continue
                 
                 # Check if the tube intersects with any existing tube.
