@@ -1,8 +1,12 @@
 """
 NAME
     phantoms.py
+
 DESCRIPTION
-    This module contains main complex generative objects.
+    This module provides high-level phantom generation classes for MRI simulation.
+    Contains complex generative objects that combine multiple geometric structures
+    to create realistic tissue phantoms with anatomical features like blood vessels
+    and hierarchical blob structures.
 """
 import logging
 from abc import ABC
@@ -11,22 +15,101 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from .structures import Blob, Tube
-from .typing import PhantomItem
+from .typing import StructurePhantom
+from .samplers import BlobSampler, TubeSampler
+from .utils import spheres_packable
 
 
 class Phantom(ABC):
+    """
+    Abstract base class for phantom generators.
+    
+    Defines the common interface for generating structured phantoms with
+    configurable geometric parameters and reproducible random generation
+    using seed values. All concrete phantom implementations must inherit
+    from this class and implement the generate method.
+
+    Attributes
+    ----------
+    initial_blob_radius : float
+        Base radius for the primary blob structure in the phantom.
+        Must be a positive value representing the characteristic size scale.
+    initial_blob_center_extent : np.ndarray
+        Dictionary-like structure defining the spatial bounds for phantom placement.
+        Contains coordinate ranges for initial blob center positioning.
+    """
     initial_blob_radius: float
     initial_blob_center_extent: np.ndarray
 
     def __init__(self, initial_blob_radius: float, initial_blob_center_extent: np.ndarray):
+        """
+        Initialize phantom generator with basic geometric parameters.
+
+        Parameters
+        ----------
+        initial_blob_radius : float
+            Base radius for the primary blob structure. Must be positive.
+        initial_blob_center_extent : np.ndarray
+            Spatial bounds dictionary for phantom center placement.
+        """
         self.initial_blob_radius = initial_blob_radius
         self.initial_blob_center_extent = initial_blob_center_extent
 
-    def generate(self, seed: int = None) -> PhantomItem:
+    def generate(self, seed: int = None) -> StructurePhantom:
+        """
+        Generate a complete phantom structure.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Random seed for reproducible generation. If None, uses system time.
+
+        Returns
+        -------
+        StructurePhantom
+            Complete phantom structure with all geometric components.
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented by concrete subclasses.
+        """
         raise NotImplementedError("Subclasses should implement this method.")
 
 
 class Tissue(Phantom):
+    """
+    Generator for complex tissue phantoms with hierarchical blob structures and vasculature.
+    
+    Creates realistic tissue phantoms by combining a parent blob with multiple child blobs
+    and a network of tube structures representing blood vessels. The generator uses 
+    sphere packing algorithms to ensure non-overlapping placement and provides extensive
+    validation to prevent invalid configurations. Child blobs are scaled versions of the
+    parent blob, positioned using progressive sampling for efficient collision avoidance.
+    Tubes are generated to represent vascular structures with configurable radius ranges.
+
+    Attributes
+    ----------
+    num_children_blobs : int
+        Number of child blob structures to generate within the parent blob.
+        Must be non-negative. Zero creates a phantom with only parent and tubes.
+    blob_radius_decrease_per_level : float
+        Scaling factor for child blob radii relative to parent radius.
+        Must be in range (0, 1). Values around 0.3-0.5 create realistic hierarchies.
+    num_tubes : int
+        Number of tube structures to generate for vascular representation.
+        Must be non-negative. Tubes are placed to avoid intersections.
+    relative_tube_max_radius : float
+        Maximum tube radius as fraction of parent blob radius.
+        Must be in range (0, 1). Typical values are 0.05-0.15.
+    relative_tube_min_radius : float
+        Minimum tube radius as fraction of parent blob radius.
+        Must be positive and less than max radius. Default is 0.01.
+    tube_max_radius : float
+        Absolute maximum tube radius computed from relative value and parent radius.
+    tube_min_radius : float
+        Absolute minimum tube radius computed from relative value and parent radius.
+    """
     num_children_blobs: int
     blob_radius_decrease_per_level: float
     
@@ -40,6 +123,53 @@ class Tissue(Phantom):
                  blob_radius_decrease_per_level: float, 
                  num_tubes: int, relative_tube_max_radius: float,
                  relative_tube_min_radius: float = 0.01):
+        """
+        Initialize tissue phantom generator with hierarchical structure parameters.
+        
+        Validates all input parameters to ensure geometrically feasible phantom
+        configurations. Computes absolute tube radius bounds from relative values
+        and parent blob radius. Sets up internal parameters for phantom generation.
+
+        Parameters
+        ----------
+        num_children_blobs : int
+            Number of child blobs to generate. Must be non-negative.
+        initial_blob_radius : float
+            Radius of the parent blob structure. Must be positive.
+        initial_blob_center_extent : np.ndarray
+            Dictionary defining spatial bounds for parent blob center placement.
+            Should contain coordinate ranges for each spatial dimension.
+        blob_radius_decrease_per_level : float
+            Scaling factor for child blob radii relative to parent radius.
+            Must be in range (0, 1) to ensure children are smaller than parent.
+        num_tubes : int
+            Number of tube structures to generate. Must be non-negative.
+        relative_tube_max_radius : float
+            Maximum tube radius as fraction of parent blob radius.
+            Must be in range (0, 1) to ensure tubes fit within parent.
+        relative_tube_min_radius : float, optional
+            Minimum tube radius as fraction of parent blob radius.
+            Must be positive and less than max radius. Default is 0.01.
+
+        Raises
+        ------
+        ValueError
+            If any parameter is outside valid range or violates geometric constraints.
+        """
+        
+        # Input validation
+        if num_children_blobs < 0:
+            raise ValueError("num_children_blobs must be non-negative")
+        if initial_blob_radius <= 0:
+            raise ValueError("initial_blob_radius must be positive")
+        if blob_radius_decrease_per_level <= 0 or blob_radius_decrease_per_level >= 1:
+            raise ValueError("blob_radius_decrease_per_level must be in (0, 1)")
+        if num_tubes < 0:
+            raise ValueError("num_tubes must be non-negative")
+        if relative_tube_max_radius <= 0 or relative_tube_max_radius >= 1:
+            raise ValueError("relative_tube_max_radius must be in (0, 1)")
+        if relative_tube_min_radius <= 0 or relative_tube_min_radius >= relative_tube_max_radius:
+            raise ValueError("relative_tube_min_radius must be in (0, relative_tube_max_radius)")
         
         super().__init__(initial_blob_radius, initial_blob_center_extent)
 
@@ -52,9 +182,43 @@ class Tissue(Phantom):
         self.tube_max_radius = self.relative_tube_max_radius*initial_blob_radius
         self.tube_min_radius = self.relative_tube_min_radius*initial_blob_radius
         self.relative_disruption_strength = 0.1
+        
+        # Remove sampler instance variables - they will be created in generate()
 
-    def generate(self, seed: int = None) -> PhantomItem:
+    def generate(self, seed: int = None) -> StructurePhantom:
+        """
+        Generate a complete tissue phantom with hierarchical structure and vasculature.
+        
+        Creates a realistic tissue phantom by generating a parent blob, positioning
+        child blobs within it using progressive sampling, and adding tube structures
+        for vascular representation. All sampling operations use the provided seed
+        for reproducible results. The generation process includes extensive validation
+        and collision detection to ensure geometrically valid configurations.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Random seed for reproducible phantom generation. If None, uses
+            system-generated random seed for non-deterministic results.
+
+        Returns
+        -------
+        StructurePhantom
+            Complete phantom structure containing:
+            - parent: Main Blob structure defining the tissue boundary
+            - children: List of child Blob structures positioned within parent
+            - tubes: List of Tube structures representing vascular network
+
+        Raises
+        ------
+        RuntimeError
+            If geometric constraints cannot be satisfied or sphere packing fails.
+        """
         gen_object = default_rng(seed)
+        
+        # Create stateless samplers
+        blob_sampler = BlobSampler()
+        tube_sampler = TubeSampler()
 
         initial_blob_center = np.array([
             gen_object.uniform(dim[0], dim[1])
@@ -65,160 +229,26 @@ class Tissue(Phantom):
         parent_blob = Blob(initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32-1).item())
 
         logging.info("Generating children blobs.")
-        children_blobs = self._generate_children_blobs(parent_blob=parent_blob, gen_object=gen_object)
+        children_blobs = blob_sampler.sample_children_blobs(
+            parent_blob=parent_blob,
+            num_children=self.num_children_blobs,
+            radius_decrease_factor=self.blob_radius_decrease_per_level,
+            rng=gen_object
+        )
 
         logging.info("Generating tubes.")
         parent_inner_radius = parent_blob.radius*(1+parent_blob.empirical_min_offset)
-        tubes = self._sample_tubes_within_ball(initial_blob_center, parent_inner_radius, self.num_tubes, self.tube_max_radius, self.tube_min_radius, gen_object=gen_object)
+        tubes = tube_sampler.sample_tubes(
+            center=initial_blob_center, 
+            radius=parent_inner_radius, 
+            num_tubes=self.num_tubes, 
+            tube_max_radius=self.tube_max_radius, 
+            tube_min_radius=self.tube_min_radius,
+            rng=gen_object
+        )
 
-        return PhantomItem(
+        return StructurePhantom(
             parent=parent_blob,
             children=children_blobs,
             tubes=tubes
         )
-        
-    def _generate_children_blobs(self, parent_blob: Blob = None, max_iterations: int = 10000000, gen_object: Generator = None) -> list[Blob]:
-        """
-        Generate one hierarchy level.
-        """
-        if parent_blob is None:
-            return [Blob(self.initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32-1).item())]
-
-        if self.num_children_blobs == 0:
-            return []
-        
-        child_radius = parent_blob.radius*self.blob_radius_decrease_per_level
-        zero_center = np.zeros_like(parent_blob.position)
-        blobs = [Blob(zero_center, child_radius, seed=gen_object.integers(0, 2**32-1).item()) for _ in range(self.num_children_blobs)]
-
-        min_offset_children = np.min([blob.empirical_min_offset for blob in blobs])
-        max_offset_children = np.max([blob.empirical_max_offset for blob in blobs])
-        
-        child_radius_with_safe_margin = child_radius*(1+max_offset_children)
-        
-        parent_inner_radius = parent_blob.radius*(1+parent_blob.empirical_min_offset)
-        # enforce additional safety margin to account for mesh sampling differences
-        parent_allowed_radius = parent_inner_radius - child_radius_with_safe_margin
-        safety_margin = 0.02
-        parent_allowed_radius = parent_allowed_radius * (1 - safety_margin)
-        
-        if parent_allowed_radius < 0:
-            raise Exception("Parent blob is too small to fit child blob")
-        
-        if not self._spheres_packable(parent_inner_radius, child_radius_with_safe_margin, num_inner=self.num_children_blobs):
-            raise Exception("Sampled blobs do not fit into parent blob")
-            
-        idx = 0
-        logging.info("Finding suitable points for child blobs. Packing ratio: {:.3f}".format(child_radius_with_safe_margin/parent_inner_radius))
-        while True:
-            points = self._sample_points_within_ball(parent_blob.position, parent_allowed_radius, num_points=self.num_children_blobs, gen_object=gen_object)
-
-            # check if all points are at least child_radius_with_safe_margin away from each other
-            if self._check_points_are_at_least_distance_away(points, 2*child_radius_with_safe_margin):
-                break
-            if idx > max_iterations:
-                raise Exception("Could not find suitable points for child blob")
-            idx += 1
-        
-        # update centers of child blobs
-        for point, blob in zip(points, blobs):
-            blob.position = point
-            
-        return blobs
-    
-    def _spheres_packable(self, radius_outer: float, radius_inner: float, num_inner: int = 1, safety_margin: float = 0.02):
-        " Check if num_inner spheres of radius_inner can be packed into a sphere of radius_outer."
-        radius_inner = radius_inner*(1+safety_margin)
-        if num_inner == 1:
-            return radius_inner <= radius_outer
-        elif num_inner == 2:
-            return radius_inner <= radius_outer/2
-        elif num_inner == 3:
-            return radius_inner/radius_outer <= 2 * np.sqrt(3) - 3 
-        elif num_inner == 4:
-            return radius_inner/radius_outer <= np.sqrt(6) - 2
-        elif num_inner == 5:
-            return radius_inner/radius_outer <= np.sqrt(2) - 1
-        elif num_inner == 6:
-            return radius_inner/radius_outer <= np.sqrt(2) - 1
-        else: 
-            return False
-            
-            
-    def _check_points_are_at_least_distance_away(self, points: np.ndarray, min_distance: float):
-        """
-        Check if points are at least min_distance away from each other.
-        """
-        distances = np.linalg.norm(points[:,None,:] - points[None,:,:], axis=-1)
-        
-        distances = distances + np.eye(len(points))*1e+10
-        
-        min_distances = np.min(distances, axis=0)
-        if np.any(min_distances < min_distance):
-            return False
-        return True
-
-    def _sample_points_within_ball(self, center: np.ndarray, radius: float, num_points: int = 1, gen_object: Generator = None):
-        """
-        Sample multiple points within a ball uniformly.
-        """
-        points = gen_object.normal(size=(num_points, len(center)))
-
-        points = points / np.linalg.norm(points, axis=1)[:,None]
-        points = points * radius* gen_object.uniform(0, 1, size=(num_points,1))**(1/len(center))
-        points = points + center
-        return points
-
-    def _sample_point_within_ball(self, center: np.ndarray, radius: float, gen_object: Generator = None):
-        """
-        Sample a point within a ball.
-        """
-        # Sample a point on the surface of the ball.
-        point = gen_object.normal(size=center.shape)
-        point = radius*point / np.linalg.norm(point)
-        
-        # Sample a point within the ball.
-        point = gen_object.uniform(0, 1) ** (1 / len(center)) * point
-        return point+center
-
-    def _sample_line_within_ball(self, center: np.ndarray, ball_radius: float, tube_radius: float, gen_object: Generator = None) -> Tube:
-        """
-        Sample a line within a ball.
-        """
-        # Sample a point on the surface of the ball.
-        point = self._sample_point_within_ball(center, ball_radius, gen_object=gen_object)
-
-        # Sample a direction that is perpendicular to the radius from the center to the point.
-        direction = gen_object.normal(size=center.shape)
-        direction = direction - np.dot(direction, point - center) / np.linalg.norm(point - center) ** 2 * (point - center)
-        direction = direction / np.linalg.norm(direction)
-        return Tube(point, direction, tube_radius)
-
-
-    def _sample_tubes_within_ball(self, center: np.ndarray, radius: float, num_tubes: int, tube_max_radius: float, tube_min_radius: float = 0.01, gen_object: Generator = None) -> list[Tube]:
-        """
-        Sample tubes within a ball.
-        """
-        # Sample tubes.
-        tubes = []
-        for i in range(num_tubes):
-            while True:
-                # Sample a tube.
-                tube_radius = gen_object.uniform(tube_min_radius, tube_max_radius)
-                tube = self._sample_line_within_ball(center, radius-tube_radius, tube_radius, gen_object=gen_object)
-
-
-                # check if tube completely within the ball.
-                if np.linalg.norm(tube.position - center) + tube.radius >= radius:
-                    continue
-                
-                # Check if the tube intersects with any existing tube.
-                is_intersecting = False
-                for existing_tube in tubes:
-                    if Tube.distance_to_tube(tube, existing_tube) < tube.radius + existing_tube.radius:
-                        is_intersecting = True
-                        break
-                if not is_intersecting:
-                    break
-            tubes.append(tube)
-        return tubes
