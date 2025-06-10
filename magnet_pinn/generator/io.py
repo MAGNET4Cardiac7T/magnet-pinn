@@ -1,10 +1,19 @@
+"""
+NAME
+    io.py
+
+DESCRIPTION
+    This module provides file I/O functionality for mesh phantoms and their properties.
+    It contains writers for exporting mesh data and associated material properties to 
+    standard file formats used in MRI simulation workflows.
+"""
 from pathlib import Path
 from abc import ABC, abstractmethod
 
 import pandas as pd
 from trimesh import Trimesh
 
-from .typing import PhantomItem, PropertyItem
+from .typing import PropertyPhantom, PropertyItem, MeshPhantom
 
 
 PARENT_BLOB_FILE_NAME = "parent_blob.stl"
@@ -14,18 +23,70 @@ MATERIALS_FILE_NAME = "materials.txt"
 
 
 class Writer(ABC):
+    """
+    Abstract base class for writing phantom data to persistent storage.
+    
+    Provides the common interface for all phantom data writers, ensuring consistent
+    output directory management and write operations across different output formats.
+    """
 
     def __init__(self, dir: str | Path = Path("data/raw/tissue_meshes"), *args, **kwargs):
+        """
+        Initialize writer with output directory.
+
+        Parameters
+        ----------
+        dir : str or Path, optional
+            Output directory path for written files. Default is "data/raw/tissue_meshes".
+            Directory will be created if it doesn't exist.
+        *args, **kwargs
+            Additional arguments passed to parent class.
+        """
         self.dir = Path(dir)
         self.dir.mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
-    def write(self, item: PhantomItem):
+    def write(self, item: MeshPhantom):
+        """
+        Write phantom data to persistent storage.
+
+        Parameters
+        ----------
+        item : MeshPhantom
+            The phantom data to write.
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented by concrete subclasses.
+        """
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class MeshWriter(Writer):
-    def write(self, item: PhantomItem, prop: PhantomItem):
+    """
+    Writer for exporting mesh phantoms and their material properties.
+    
+    Exports 3D mesh data as STL files and creates a corresponding materials CSV file
+    containing physical properties for each mesh component. The output follows the
+    standard format expected by MRI simulation software.
+    """
+    def write(self, item: MeshPhantom, prop: PropertyPhantom):
+        """
+        Write mesh phantom and properties to files.
+
+        Parameters
+        ----------
+        item : MeshPhantom
+            The mesh phantom containing parent, children, and tube meshes.
+        prop : PropertyPhantom
+            The corresponding material properties for each mesh component.
+
+        Notes
+        -----
+        Creates STL files for each mesh component and a materials.txt CSV file
+        containing properties mapped to filenames.
+        """
 
         materials_table = []
 
@@ -48,9 +109,24 @@ class MeshWriter(Writer):
 
     def _save_mesh(self, mesh: Trimesh, prop: PropertyItem, filename: str):
         """
-        The method gets a mesh, its properties, a directory and a filename.
-        It saves a mesh as `.stl` file, saves file name in the one dict of properties and return it.
-        P.S. later the general pandas dataframe will be created from these properties.
+        Save a mesh as STL file and return its properties with filename.
+        
+        Exports the mesh to the specified STL file and augments the property
+        dictionary with the filename for later use in the materials dataframe.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            The triangular mesh to export as STL.
+        prop : PropertyItem
+            Material properties for this mesh component.
+        filename : str
+            Name of the STL file to create.
+
+        Returns
+        -------
+        dict
+            Property dictionary with added 'file' key containing the filename.
         """
         file_path = self.dir / filename
         mesh.export(file_path)

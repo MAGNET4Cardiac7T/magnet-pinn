@@ -24,7 +24,23 @@ class PointSampler:
     """
     
     def sample_point(self, center: np.ndarray, radius: float, rng: Generator) -> np.ndarray:
-        """Sample a single point within a ball uniformly."""
+        """
+        Sample a single point uniformly within a ball.
+
+        Parameters
+        ----------
+        center : np.ndarray
+            Center coordinates of the ball as [x, y, z].
+        radius : float
+            Radius of the ball. Must be positive.
+        rng : Generator
+            Random number generator for reproducible sampling.
+
+        Returns
+        -------
+        np.ndarray
+            Randomly sampled point within the ball as [x, y, z] coordinates.
+        """
         # Sample a point on the surface of the ball.
         point = rng.normal(size=center.shape)
         point = radius * point / np.linalg.norm(point)
@@ -34,7 +50,25 @@ class PointSampler:
         return point + center
 
     def sample_points(self, center: np.ndarray, radius: float, num_points: int, rng: Generator) -> np.ndarray:
-        """Sample multiple points within a ball uniformly."""
+        """
+        Sample multiple points uniformly within a ball.
+
+        Parameters
+        ----------
+        center : np.ndarray
+            Center coordinates of the ball as [x, y, z].
+        radius : float
+            Radius of the ball. Must be positive.
+        num_points : int
+            Number of points to sample. Must be positive.
+        rng : Generator
+            Random number generator for reproducible sampling.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (num_points, 3) containing sampled coordinates.
+        """
         points = rng.normal(size=(num_points, len(center)))
         
         points = points / np.linalg.norm(points, axis=1)[:, None]
@@ -43,7 +77,21 @@ class PointSampler:
         return points
 
     def check_points_distance(self, points: np.ndarray, min_distance: float) -> bool:
-        """Check if points are at least min_distance away from each other."""
+        """
+        Check if all points maintain minimum distance constraints.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Array of points with shape (n_points, 3).
+        min_distance : float
+            Minimum required distance between any two points.
+
+        Returns
+        -------
+        bool
+            True if all points are at least min_distance apart, False otherwise.
+        """
         distances = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=-1)
         
         distances = distances + np.eye(len(points)) * 1e+10
