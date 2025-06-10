@@ -61,9 +61,37 @@ class Transform(ABC):
 
     @abstractmethod
     def __call__(self, *args, **kwds):
+        """
+        Apply the transformation to input data.
+        
+        This method defines the core transformation logic that must be implemented
+        by all concrete transform subclasses. It should process the input data
+        and return the transformed result, maintaining the composable interface
+        for pipeline construction.
+
+        Parameters
+        ----------
+        *args
+            Variable positional arguments passed to the transformation.
+        **kwds
+            Variable keyword arguments passed to the transformation.
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented by concrete subclasses.
+        """
         raise NotImplementedError("Subclasses must implement `__call__` method")
     
     def __repr__(self):
+        """
+        Return string representation of the transform.
+
+        Returns
+        -------
+        str
+            Class name formatted as a string for debugging and logging.
+        """
         return f"{self.__class__.__name__}()"
 
 
@@ -77,15 +105,58 @@ class Compose(Transform):
     """
 
     def __init__(self, transforms: list[Transform], *args, **kwargs):
+        """
+        Initialize composite transform with a sequence of transforms.
+        
+        Creates a pipeline that applies each transform in the specified order,
+        passing the output of each transform as input to the next. This enables
+        the construction of complex processing workflows from simple, reusable
+        transformation components.
+
+        Parameters
+        ----------
+        transforms : list[Transform]
+            Ordered list of transforms to apply sequentially. Each transform
+            must implement the Transform interface with a callable method.
+        *args, **kwargs
+            Additional arguments passed to the parent Transform class.
+        """
         super().__init__(*args, **kwargs)
         self.transforms = transforms
 
-    def __call__(self, tissue: PhantomType, *args, **kwds) :
+    def __call__(self, tissue: PhantomType, *args, **kwds):
+        """
+        Apply all transforms in sequence to the input phantom.
+        
+        Executes each transform in the pipeline order, passing the output of
+        each transform as input to the next. This creates a processing chain
+        where complex operations can be built from simple components.
+
+        Parameters
+        ----------
+        tissue : PhantomType
+            The input phantom to transform (StructurePhantom or MeshPhantom).
+        *args, **kwds
+            Additional arguments passed to each transform in the pipeline.
+
+        Returns
+        -------
+        PhantomType
+            The final transformed phantom after applying all pipeline transforms.
+        """
         for transform in self.transforms:
             tissue = transform(tissue, *args, **kwds)
         return tissue
 
     def __repr__(self):
+        """
+        Return string representation of the composite transform.
+
+        Returns
+        -------
+        str
+            String showing the class name and ordered list of component transforms.
+        """
         return f"{self.__class__.__name__}({', '.join([str(t) for t in self.transforms])})"
     
 
@@ -98,10 +169,43 @@ class ToMesh(Transform):
     preparing phantoms for geometric processing operations.
     """
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the structure-to-mesh converter.
+        
+        Sets up the mesh serializer that will be used to convert abstract
+        geometric structures into concrete triangular mesh representations.
+        The serializer handles different structure types and applies appropriate
+        subdivision levels for mesh quality.
+
+        Parameters
+        ----------
+        *args, **kwargs
+            Additional arguments passed to the parent Transform class.
+        """
         super().__init__(*args, **kwargs)
         self.serializer = MeshSerializer()
 
     def __call__(self, tissue: StructurePhantom, *args, **kwds) -> MeshPhantom:
+        """
+        Convert a structure phantom to a mesh phantom.
+        
+        Transforms all geometric structures (parent blob, child blobs, tubes)
+        into triangular mesh representations using the configured mesh serializer.
+        This conversion prepares the phantom for subsequent geometric processing
+        operations such as boolean cutting and mesh refinement.
+
+        Parameters
+        ----------
+        tissue : StructurePhantom
+            The structure phantom containing abstract geometric objects to convert.
+        *args, **kwds
+            Additional arguments (currently unused but maintained for interface consistency).
+
+        Returns
+        -------
+        MeshPhantom
+            Mesh phantom with triangular mesh representations of all components.
+        """
         return MeshPhantom(
             parent=self.serializer.serialize(tissue.parent),
             children=[self.serializer.serialize(c) for c in tissue.children],
@@ -119,6 +223,34 @@ class MeshesCutout(Transform):
     """
 
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
+        """
+        Apply boolean cutting operations to create anatomical cavities.
+        
+        Performs comprehensive boolean subtraction operations to create realistic
+        anatomical relationships between phantom components. Child blobs and tubes
+        are cut out of the parent blob, and tubes are cut out of child blobs,
+        resulting in proper geometric containment and void spaces that represent
+        internal structures.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing parent, children, and tube meshes to process.
+        *args, **kwds
+            Additional arguments (currently unused but maintained for interface consistency).
+
+        Returns
+        -------
+        MeshPhantom
+            Processed mesh phantom with boolean cutting operations applied.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean operations fail due to invalid mesh geometry or engine errors.
+        ValueError
+            If input meshes are invalid or have zero volume.
+        """
         try:
             return MeshPhantom(
                 parent=self._cut_parent(tissue),
@@ -249,6 +381,27 @@ class MeshesCleaning(Transform):
     to ensure mesh quality for subsequent processing.
     """
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
+        """
+        Clean and repair all mesh components in the phantom.
+        
+        Applies comprehensive mesh cleaning operations to all phantom components
+        to ensure high-quality geometry suitable for downstream processing. The
+        cleaning process removes degenerate faces, fills holes, merges duplicate
+        vertices, fixes normal orientations, and removes unreferenced vertices
+        to create robust mesh representations.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing components to clean and repair.
+        *args, **kwds
+            Additional arguments (currently unused but maintained for interface consistency).
+
+        Returns
+        -------
+        MeshPhantom
+            Cleaned mesh phantom with improved geometry quality for all components.
+        """
         return MeshPhantom(
             parent=self._clean_mesh(tissue.parent),
             children=[self._clean_mesh(c) for c in tissue.children],
@@ -256,6 +409,24 @@ class MeshesCleaning(Transform):
         )
     
     def _clean_mesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Apply comprehensive cleaning operations to a single mesh.
+        
+        Performs a sequence of mesh repair operations including degenerate face
+        removal, duplicate face elimination, hole filling, vertex merging, normal
+        fixing, and unreferenced vertex removal. These operations ensure the mesh
+        is suitable for boolean operations and simulation workflows.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            The mesh to clean and repair.
+
+        Returns
+        -------
+        Trimesh
+            Cleaned mesh with improved geometric quality and consistency.
+        """
         mesh = mesh.copy()
         mesh.update_faces(mesh.nondegenerate_faces())
         mesh.update_faces(mesh.unique_faces())
@@ -277,10 +448,47 @@ class MeshesRemesh(Transform):
     """
 
     def __init__(self, max_len: float = 8.0, *args, **kwargs):
+        """
+        Initialize the adaptive mesh refinement transform.
+        
+        Sets up the remeshing parameters for subdividing mesh elements to achieve
+        uniform edge lengths. The maximum edge length threshold controls the level
+        of mesh refinement and affects the trade-off between geometric accuracy
+        and computational complexity.
+
+        Parameters
+        ----------
+        max_len : float, optional
+            Maximum edge length threshold for remeshing. Default is 8.0.
+            Smaller values create finer meshes with more elements.
+        *args, **kwargs
+            Additional arguments passed to the parent Transform class.
+        """
         super().__init__(*args, **kwargs)
         self.max_len = max_len
 
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
+        """
+        Apply adaptive mesh refinement to all phantom components.
+        
+        Subdivides mesh elements in all phantom components to ensure edge lengths
+        are below the specified threshold. This creates more uniform mesh quality
+        suitable for numerical simulations while maintaining geometric fidelity.
+        The operation may result in non-watertight meshes due to subdivision
+        algorithm limitations.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing components to remesh.
+        *args, **kwds
+            Additional arguments (currently unused but maintained for interface consistency).
+
+        Returns
+        -------
+        MeshPhantom
+            Remeshed phantom with refined mesh quality for all components.
+        """
         return MeshPhantom(
             parent=self._remesh(tissue.parent),
             children=[self._remesh(c) for c in tissue.children],
@@ -288,6 +496,24 @@ class MeshesRemesh(Transform):
         )
     
     def _remesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Apply subdivision remeshing to achieve uniform edge lengths.
+        
+        Subdivides mesh elements iteratively until all edges are below the
+        maximum length threshold. This creates more uniform element sizes
+        for improved numerical accuracy in simulations, though it may increase
+        mesh complexity significantly.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            The mesh to subdivide and refine.
+
+        Returns
+        -------
+        Trimesh
+            Remeshed geometry with edges below the maximum length threshold.
+        """
         v, f = trimesh.remesh.subdivide_to_size(
             mesh.vertices, 
             mesh.faces, 

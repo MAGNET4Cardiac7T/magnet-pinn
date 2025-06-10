@@ -16,7 +16,11 @@ def spheres_packable(radius_outer: float, radius_inner: float, num_inner: int = 
     
     Determines whether a given number of inner spheres with specified radius
     can fit within an outer sphere without overlapping, using known geometric
-    packing solutions for small numbers of spheres.
+    packing solutions for small numbers of spheres. The function applies analytical
+    solutions for sphere packing up to 6 spheres, returning False for more than
+    6 spheres as no general solution is implemented. The safety margin is applied
+    to account for numerical precision and provides additional clearance between
+    packed spheres.
 
     Parameters
     ----------
@@ -26,18 +30,16 @@ def spheres_packable(radius_outer: float, radius_inner: float, num_inner: int = 
         Radius of each inner sphere to be packed. Must be positive.
     num_inner : int, optional
         Number of inner spheres to pack. Default is 1. Must be positive.
+        Supports packing up to 6 spheres using optimal configurations.
     safety_margin : float, optional
         Additional safety margin as fraction of inner radius. Default is 0.02.
+        Applied to inner radius to ensure clearance between spheres.
 
     Returns
     -------
     bool
-        True if the spheres can be packed, False otherwise.
-
-    Notes
-    -----
-    Uses analytical solutions for sphere packing up to 6 spheres.
-    For more than 6 spheres, returns False as no general solution is implemented.
+        True if the spheres can be packed without overlap, False otherwise.
+        Returns False for more than 6 spheres or invalid parameters.
     """
     radius_inner = radius_inner * (1 + safety_margin)
     if num_inner == 1:

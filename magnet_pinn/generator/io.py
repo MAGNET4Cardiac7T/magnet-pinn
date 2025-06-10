@@ -74,6 +74,12 @@ class MeshWriter(Writer):
     def write(self, item: MeshPhantom, prop: PropertyPhantom):
         """
         Write mesh phantom and properties to files.
+        
+        Exports all mesh components as individual STL files and creates a
+        corresponding materials.txt CSV file that maps each mesh file to its
+        material properties. The output follows the standard format expected
+        by MRI simulation software, with systematic naming conventions for
+        parent blobs, child blobs, and tubes.
 
         Parameters
         ----------
@@ -81,11 +87,6 @@ class MeshWriter(Writer):
             The mesh phantom containing parent, children, and tube meshes.
         prop : PropertyPhantom
             The corresponding material properties for each mesh component.
-
-        Notes
-        -----
-        Creates STL files for each mesh component and a materials.txt CSV file
-        containing properties mapped to filenames.
         """
 
         materials_table = []
@@ -135,7 +136,3 @@ class MeshWriter(Writer):
         prop["file"] = filename
         
         return prop
-
-
-
-
