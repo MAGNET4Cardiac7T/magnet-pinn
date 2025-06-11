@@ -6,7 +6,9 @@ DESCRIPTION
     This module provides high-level phantom generation classes for MRI simulation.
     Contains complex generative objects that combine multiple geometric structures
     to create realistic tissue phantoms with anatomical features like blood vessels
-    and hierarchical blob structures.
+    and hierarchical blob structures. Configuration parameters for structure generation
+    are passed to the appropriate sampler constructors during phantom initialization,
+    while runtime parameters are provided during the generation process.
 """
 import logging
 from abc import ABC
@@ -93,42 +95,33 @@ class Tissue(Phantom):
     num_children_blobs : int
         Number of child blob structures to generate within the parent blob.
         Must be non-negative. Zero creates a phantom with only parent and tubes.
-    blob_radius_decrease_per_level : float
-        Scaling factor for child blob radii relative to parent radius.
-        Must be in range (0, 1). Values around 0.3-0.5 create realistic hierarchies.
     num_tubes : int
         Number of tube structures to generate for vascular representation.
         Must be non-negative. Tubes are placed to avoid intersections.
-    relative_tube_max_radius : float
-        Maximum tube radius as fraction of parent blob radius.
-        Must be in range (0, 1). Typical values are 0.05-0.15.
-    relative_tube_min_radius : float
-        Minimum tube radius as fraction of parent blob radius.
-        Must be positive and less than max radius. Default is 0.01.
-    tube_max_radius : float
-        Absolute maximum tube radius computed from relative value and parent radius.
-    tube_min_radius : float
-        Absolute minimum tube radius computed from relative value and parent radius.
+    blob_sampler : BlobSampler
+        Sampler instance configured with blob generation parameters.
+    tube_sampler : TubeSampler
+        Sampler instance configured with tube generation parameters.
     """
     num_children_blobs: int
-    blob_radius_decrease_per_level: float
-    
     num_tubes: int
-    tube_max_radius: float
+    blob_sampler: BlobSampler
+    tube_sampler: TubeSampler
     
     def __init__(self, 
                  num_children_blobs: int, 
                  initial_blob_radius: float, 
                  initial_blob_center_extent: np.ndarray,
                  blob_radius_decrease_per_level: float, 
-                 num_tubes: int, relative_tube_max_radius: float,
+                 num_tubes: int, 
+                 relative_tube_max_radius: float,
                  relative_tube_min_radius: float = 0.01):
         """
         Initialize tissue phantom generator with hierarchical structure parameters.
         
         Validates all input parameters to ensure geometrically feasible phantom
-        configurations. Computes absolute tube radius bounds from relative values
-        and parent blob radius. Sets up internal parameters for phantom generation.
+        configurations. Creates configured sampler instances for blob and tube
+        generation. Sets up internal parameters for phantom generation.
 
         Parameters
         ----------
@@ -157,13 +150,10 @@ class Tissue(Phantom):
             If any parameter is outside valid range or violates geometric constraints.
         """
         
-        # Input validation
         if num_children_blobs < 0:
             raise ValueError("num_children_blobs must be non-negative")
         if initial_blob_radius <= 0:
             raise ValueError("initial_blob_radius must be positive")
-        if blob_radius_decrease_per_level <= 0 or blob_radius_decrease_per_level >= 1:
-            raise ValueError("blob_radius_decrease_per_level must be in (0, 1)")
         if num_tubes < 0:
             raise ValueError("num_tubes must be non-negative")
         if relative_tube_max_radius <= 0 or relative_tube_max_radius >= 1:
@@ -174,16 +164,13 @@ class Tissue(Phantom):
         super().__init__(initial_blob_radius, initial_blob_center_extent)
 
         self.num_children_blobs = num_children_blobs
-        
-        self.blob_radius_decrease_per_level = blob_radius_decrease_per_level
         self.num_tubes = num_tubes
-        self.relative_tube_max_radius = relative_tube_max_radius
-        self.relative_tube_min_radius = relative_tube_min_radius
-        self.tube_max_radius = self.relative_tube_max_radius*initial_blob_radius
-        self.tube_min_radius = self.relative_tube_min_radius*initial_blob_radius
-        self.relative_disruption_strength = 0.1
         
-        # Remove sampler instance variables - they will be created in generate()
+        self.blob_sampler = BlobSampler(blob_radius_decrease_per_level)
+        
+        tube_max_radius = relative_tube_max_radius * initial_blob_radius
+        tube_min_radius = relative_tube_min_radius * initial_blob_radius
+        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius)
 
     def generate(self, seed: int = None) -> StructurePhantom:
         """
@@ -215,10 +202,6 @@ class Tissue(Phantom):
             If geometric constraints cannot be satisfied or sphere packing fails.
         """
         gen_object = default_rng(seed)
-        
-        # Create stateless samplers
-        blob_sampler = BlobSampler()
-        tube_sampler = TubeSampler()
 
         initial_blob_center = np.array([
             gen_object.uniform(dim[0], dim[1])
@@ -229,21 +212,18 @@ class Tissue(Phantom):
         parent_blob = Blob(initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32-1).item())
 
         logging.info("Generating children blobs.")
-        children_blobs = blob_sampler.sample_children_blobs(
+        children_blobs = self.blob_sampler.sample_children_blobs(
             parent_blob=parent_blob,
             num_children=self.num_children_blobs,
-            radius_decrease_factor=self.blob_radius_decrease_per_level,
             rng=gen_object
         )
 
         logging.info("Generating tubes.")
         parent_inner_radius = parent_blob.radius*(1+parent_blob.empirical_min_offset)
-        tubes = tube_sampler.sample_tubes(
+        tubes = self.tube_sampler.sample_tubes(
             center=initial_blob_center, 
             radius=parent_inner_radius, 
-            num_tubes=self.num_tubes, 
-            tube_max_radius=self.tube_max_radius, 
-            tube_min_radius=self.tube_min_radius,
+            num_tubes=self.num_tubes,
             rng=gen_object
         )
 

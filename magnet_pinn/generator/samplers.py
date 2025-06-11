@@ -5,7 +5,9 @@ NAME
 DESCRIPTION
     This module provides geometric sampling strategies for phantom generation.
     Contains samplers for placing points, lines, and tubular structures within spherical
-    regions while ensuring proper spatial distribution and collision avoidance.
+    regions while ensuring proper spatial distribution and collision avoidance. Samplers
+    are configured with their operational parameters during construction and receive
+    runtime parameters (RNG, iteration limits) during sampling method calls.
 """
 import numpy as np
 from numpy.random import Generator
@@ -19,8 +21,7 @@ class PointSampler:
     Uniform random sampler for points within spherical regions.
     
     Provides methods for sampling single or multiple points uniformly distributed
-    within 3D balls, with utilities for checking minimum distance constraints
-    between sampled points. Stateless sampler that receives RNG as parameter.
+    within 3D balls. Stateless sampler that receives RNG as parameter.
     """
     
     def sample_point(self, center: np.ndarray, radius: float, rng: Generator) -> np.ndarray:
@@ -41,11 +42,9 @@ class PointSampler:
         np.ndarray
             Randomly sampled point within the ball as [x, y, z] coordinates.
         """
-        # Sample a point on the surface of the ball.
         point = rng.normal(size=center.shape)
         point = radius * point / np.linalg.norm(point)
         
-        # Sample a point within the ball.
         point = rng.uniform(0, 1) ** (1 / len(center)) * point
         return point + center
 
@@ -76,6 +75,49 @@ class PointSampler:
         points = points + center
         return points
 
+
+class BlobSampler:
+    """
+    Sampler for positioning blob structures within spherical regions.
+    
+    Handles all blob-related sampling including hierarchical child blob placement,
+    geometric constraint validation, and progressive sampling for efficient
+    non-overlapping positioning. Uses sphere packing algorithms to ensure valid
+    configurations and applies safety margins for surface deformation effects.
+    Stateless sampler that receives RNG as parameter to sampling methods.
+
+    Attributes
+    ----------
+    radius_decrease_factor : float
+        Scaling factor for child blob radii relative to parent radius.
+        Must be in range (0, 1) to ensure children are smaller than parent.
+    """
+    
+    def __init__(self, radius_decrease_factor: float):
+        """
+        Initialize blob sampler with configuration parameters.
+        
+        Creates a stateless sampler that requires RNG to be passed to sampling methods.
+        This design allows for proper seed control and makes the sampler reusable
+        across different generation contexts.
+
+        Parameters
+        ----------
+        radius_decrease_factor : float
+            Scaling factor for child blob radii relative to parent radius.
+            Must be in range (0, 1) to ensure children are smaller than parent.
+
+        Raises
+        ------
+        ValueError
+            If radius_decrease_factor is not in range (0, 1).
+        """
+        if radius_decrease_factor <= 0 or radius_decrease_factor >= 1:
+            raise ValueError("radius_decrease_factor must be in (0, 1)")
+        
+        self.radius_decrease_factor = radius_decrease_factor
+        self.point_sampler = PointSampler()
+
     def check_points_distance(self, points: np.ndarray, min_distance: float) -> bool:
         """
         Check if all points maintain minimum distance constraints.
@@ -101,31 +143,8 @@ class PointSampler:
             return False
         return True
 
-
-class BlobSampler:
-    """
-    Sampler for positioning blob structures within spherical regions.
-    
-    Handles all blob-related sampling including hierarchical child blob placement,
-    geometric constraint validation, and progressive sampling for efficient
-    non-overlapping positioning. Uses sphere packing algorithms to ensure valid
-    configurations and applies safety margins for surface deformation effects.
-    Stateless sampler that receives RNG as parameter to sampling methods.
-    """
-    
-    def __init__(self):
-        """
-        Initialize blob sampler.
-        
-        Creates a stateless sampler that requires RNG to be passed to sampling methods.
-        This design allows for proper seed control and makes the sampler reusable
-        across different generation contexts.
-        """
-        self.point_sampler = PointSampler()
-
     def sample_children_blobs(self, parent_blob: Blob, num_children: int, 
-                            radius_decrease_factor: float, rng: Generator, 
-                            max_iterations: int = 1000000) -> list[Blob]:
+                            rng: Generator, max_iterations: int = 1000000) -> list[Blob]:
         """
         Sample child blobs within a parent blob using progressive positioning.
         
@@ -142,9 +161,6 @@ class BlobSampler:
         num_children : int
             Number of child blobs to generate. Must be non-negative.
             Returns empty list if zero.
-        radius_decrease_factor : float
-            Scaling factor for child blob radii relative to parent radius.
-            Must be in range (0, 1) to ensure children are smaller than parent.
         rng : Generator
             Random number generator for reproducible blob positioning and creation.
         max_iterations : int, optional
@@ -166,20 +182,16 @@ class BlobSampler:
         if num_children == 0:
             return []
         
-        # Calculate child blob parameters
-        child_radius = parent_blob.radius * radius_decrease_factor
+        child_radius = parent_blob.radius * self.radius_decrease_factor
         zero_center = np.zeros_like(parent_blob.position)
         blobs = [Blob(zero_center, child_radius, seed=rng.integers(0, 2**32-1).item()) 
                 for _ in range(num_children)]
 
-        # Calculate geometric constraints with safety margins
         child_radius_with_margin = self._calculate_safe_child_radius(blobs, child_radius)
         parent_allowed_radius = self._calculate_parent_sampling_radius(parent_blob, child_radius_with_margin)
         
-        # Validate sphere packing constraints
         self._validate_packing_constraints(parent_blob, child_radius_with_margin, num_children)
         
-        # Find valid positions using progressive sampling
         positions = self._find_valid_positions_progressive(
             target_positions=num_children,
             center=parent_blob.position,
@@ -189,7 +201,6 @@ class BlobSampler:
             max_iterations=max_iterations
         )
         
-        # Assign positions to child blobs
         for position, blob in zip(positions, blobs):
             blob.position = position
             
@@ -327,23 +338,19 @@ class BlobSampler:
             number of iterations. This typically indicates overcrowded
             configuration or insufficient sampling radius.
         """
-        # Progressive batch sizes for improved efficiency
         batch_sizes = [target_positions, target_positions * 2, target_positions * 5]
         total_attempts = 0
         
         for batch_size in batch_sizes:
-            # Distribute iterations across batch sizes
             attempts_with_batch = min(max_iterations // 3, 100000)
             
             for attempt in range(attempts_with_batch):
-                # Sample batch of candidate positions
                 candidate_positions = self.point_sampler.sample_points(
                     center, sampling_radius, num_points=batch_size, rng=rng
                 )
                 
-                # Check if first target_positions satisfy distance constraints
                 positions_subset = candidate_positions[:target_positions]
-                if self.point_sampler.check_points_distance(positions_subset, min_distance):
+                if self.check_points_distance(positions_subset, min_distance):
                     return positions_subset
                 
                 total_attempts += 1
@@ -368,44 +375,84 @@ class TubeSampler:
     iteratively placing tubes with random radii and checking for collisions
     with previously placed structures. Stateless sampler that receives RNG
     as parameter to sampling methods.
+
+    Attributes
+    ----------
+    tube_max_radius : float
+        Maximum radius for generated tubes. Must be positive.
+    tube_min_radius : float
+        Minimum radius for generated tubes. Must be positive and less than max_radius.
     """
     
-    def __init__(self):
+    def __init__(self, tube_max_radius: float, tube_min_radius: float):
         """
-        Initialize tube sampler.
+        Initialize tube sampler with configuration parameters.
         
         Creates a stateless sampler that requires RNG to be passed to sampling methods.
         This design allows for proper seed control and makes the sampler reusable
         across different generation contexts.
+
+        Parameters
+        ----------
+        tube_max_radius : float
+            Maximum radius for generated tubes. Must be positive.
+        tube_min_radius : float
+            Minimum radius for generated tubes. Must be positive and less than max_radius.
+
+        Raises
+        ------
+        ValueError
+            If tube radii are not positive or if min_radius >= max_radius.
         """
+        if tube_max_radius <= 0:
+            raise ValueError("tube_max_radius must be positive")
+        if tube_min_radius <= 0:
+            raise ValueError("tube_min_radius must be positive")
+        if tube_min_radius >= tube_max_radius:
+            raise ValueError("tube_min_radius must be less than tube_max_radius")
+        
+        self.tube_max_radius = tube_max_radius
+        self.tube_min_radius = tube_min_radius
         self.point_sampler = PointSampler()
 
     def _sample_line(self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator) -> Tube:
         """Sample a tube line within a ball (formerly LineSampler functionality)."""
-        # Sample a point on the surface of the ball.
         point = self.point_sampler.sample_point(center, ball_radius, rng)
 
-        # Sample a direction that is perpendicular to the radius from the center to the point.
         direction = rng.normal(size=center.shape)
         direction = direction - np.dot(direction, point - center) / np.linalg.norm(point - center) ** 2 * (point - center)
         direction = direction / np.linalg.norm(direction)
         return Tube(point, direction, tube_radius)
 
-    def sample_tubes(self, center: np.ndarray, radius: float, num_tubes: int, 
-                     tube_max_radius: float, tube_min_radius: float, rng: Generator) -> list[Tube]:
-        """Sample tubes within a ball with collision detection."""
+    def sample_tubes(self, center: np.ndarray, radius: float, num_tubes: int, rng: Generator) -> list[Tube]:
+        """
+        Sample tubes within a ball with collision detection.
+
+        Parameters
+        ----------
+        center : np.ndarray
+            Center of the ball for tube placement.
+        radius : float
+            Radius of the ball for tube placement.
+        num_tubes : int
+            Number of tubes to generate.
+        rng : Generator
+            Random number generator for reproducible tube generation.
+
+        Returns
+        -------
+        list[Tube]
+            List of non-intersecting tubes within the specified ball.
+        """
         tubes = []
         for i in range(num_tubes):
             while True:
-                # Sample a tube.
-                tube_radius = rng.uniform(tube_min_radius, tube_max_radius)
+                tube_radius = rng.uniform(self.tube_min_radius, self.tube_max_radius)
                 tube = self._sample_line(center, radius - tube_radius, tube_radius, rng)
 
-                # check if tube completely within the ball.
                 if np.linalg.norm(tube.position - center) + tube.radius >= radius:
                     continue
                 
-                # Check if the tube intersects with any existing tube.
                 is_intersecting = False
                 for existing_tube in tubes:
                     if Tube.distance_to_tube(tube, existing_tube) < tube.radius + existing_tube.radius:
