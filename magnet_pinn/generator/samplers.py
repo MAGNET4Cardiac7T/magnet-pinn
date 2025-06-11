@@ -9,11 +9,85 @@ DESCRIPTION
     are configured with their operational parameters during construction and receive
     runtime parameters (RNG, iteration limits) during sampling method calls.
 """
-import numpy as np
+from typing import List, Union
 from numpy.random import Generator
+import numpy as np
 
 from .structures import Tube, Blob
 from .utils import spheres_packable
+from .typing import PropertyItem, PropertyPhantom, MeshPhantom, StructurePhantom
+
+
+class PropertySampler:
+    """
+    Sampler for generating physical properties of phantom components.
+    
+    Randomly samples material properties from configured distributions for each
+    component of a phantom structure, enabling realistic material property
+    assignment for electromagnetic simulations. Stateless sampler that receives
+    RNG as parameter to sampling methods.
+    """
+    def __init__(self, properties_cfg):
+        """
+        Initialize the property sampler with configuration parameters.
+
+        Parameters
+        ----------
+        properties_cfg : dict
+            Configuration dictionary specifying property ranges.
+            Each key should be a property name (e.g., 'conductivity') with 
+            a value dict containing 'min' and 'max' keys for range bounds.
+        """
+        self.properties_cfg = properties_cfg
+
+    def sample_like(self, item: Union[StructurePhantom, MeshPhantom], rng: Generator, properties_list: List = None) -> PropertyPhantom:
+        """
+        Sample material properties for all components of a phantom structure.
+
+        Parameters
+        ----------
+        item : Union[StructurePhantom, MeshPhantom]
+            The phantom structure to sample properties for. Must have parent,
+            children, and tubes attributes.
+        rng : Generator
+            Random number generator for reproducible property sampling.
+        properties_list : List, optional
+            List of property names to sample. If None, samples all configured properties.
+
+        Returns
+        -------
+        PropertyPhantom
+            A phantom with sampled material properties for all components.
+        """
+        return PropertyPhantom(
+            parent=self._sample(rng, properties_list),
+            children=[self._sample(rng, properties_list) for _ in item.children],
+            tubes=[self._sample(rng, properties_list) for _ in item.tubes]
+        )
+
+    def _sample(self, rng: Generator, properties_list: List = None):
+        """
+        Sample a single set of material properties.
+
+        Parameters
+        ----------
+        rng : Generator
+            Random number generator for reproducible property sampling.
+        properties_list : List, optional
+            List of property names to sample. If None, samples all configured properties.
+
+        Returns
+        -------
+        PropertyItem
+            A single property item with randomly sampled values.
+        """
+        if properties_list is None:
+            properties_list = list(self.properties_cfg.keys())
+        return PropertyItem(**{
+            key: rng.uniform(min(dim["min"], dim["max"]), max(dim["min"], dim["max"])) 
+            for key, dim in self.properties_cfg.items() 
+            if key in properties_list
+        })
 
 
 class PointSampler:
@@ -29,7 +103,7 @@ class PointSampler:
     center : np.ndarray
         Center coordinates of the ball as [x, y, z].
     radius : float
-        Radius of the ball. Must be positive.
+        Radius of the ball. Can be any numeric value including zero or negative.
     """
     
     def __init__(self, center: np.ndarray, radius: float):
@@ -41,7 +115,7 @@ class PointSampler:
         center : np.ndarray
             Center coordinates of the ball as [x, y, z].
         radius : float
-            Radius of the ball. Must be positive.
+            Radius of the ball. Can be any numeric value including zero or negative.
         """
         self.center = np.array(center)
         self.radius = float(radius)
@@ -435,11 +509,17 @@ class TubeSampler:
         point = point_sampler.sample_point(rng)
 
         direction = rng.normal(size=center.shape)
-        direction = direction - np.dot(direction, point - center) / np.linalg.norm(point - center) ** 2 * (point - center)
+        
+        center_to_point = point - center
+        center_to_point_norm = np.linalg.norm(center_to_point)
+        
+        if center_to_point_norm > 1e-10:
+            direction = direction - np.dot(direction, center_to_point) / (center_to_point_norm ** 2) * center_to_point
+        
         direction = direction / np.linalg.norm(direction)
         return Tube(point, direction, tube_radius)
 
-    def sample_tubes(self, center: np.ndarray, radius: float, num_tubes: int, rng: Generator) -> list[Tube]:
+    def sample_tubes(self, center: np.ndarray, radius: float, num_tubes: int, rng: Generator, max_iterations: int = 10000) -> list[Tube]:
         """
         Sample tubes within a ball with collision detection.
 
@@ -453,19 +533,26 @@ class TubeSampler:
             Number of tubes to generate.
         rng : Generator
             Random number generator for reproducible tube generation.
+        max_iterations : int, optional
+            Maximum number of attempts per tube. Default is 10,000.
 
         Returns
         -------
         list[Tube]
             List of non-intersecting tubes within the specified ball.
+            May contain fewer tubes than requested if placement becomes impossible.
         """
         tubes = []
         for i in range(num_tubes):
-            while True:
+            attempts = 0
+            tube_placed = False
+            
+            while attempts < max_iterations and not tube_placed:
                 tube_radius = rng.uniform(self.tube_min_radius, self.tube_max_radius)
                 tube = self._sample_line(center, radius - tube_radius, tube_radius, rng)
 
                 if np.linalg.norm(tube.position - center) + tube.radius >= radius:
+                    attempts += 1
                     continue
                 
                 is_intersecting = False
@@ -473,7 +560,14 @@ class TubeSampler:
                     if Tube.distance_to_tube(tube, existing_tube) < tube.radius + existing_tube.radius:
                         is_intersecting = True
                         break
+                
                 if not is_intersecting:
-                    break
-            tubes.append(tube)
+                    tubes.append(tube)
+                    tube_placed = True
+                else:
+                    attempts += 1
+            
+            if not tube_placed:
+                break
+                
         return tubes
