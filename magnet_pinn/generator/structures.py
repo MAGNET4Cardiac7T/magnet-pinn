@@ -206,7 +206,6 @@ class Blob(Structure3D):
             inward displacement from the base surface.
         """
         offsets = np.array([self.noise(list(point)) for point in vertices])
-        # Scale by disruption strength and normalize by Perlin noise standard amplitude
         offsets = offsets * self.relative_disruption_strength / self.perlin_scale
         offsets = offsets.reshape(-1, 1)
         return offsets

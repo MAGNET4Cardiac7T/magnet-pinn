@@ -15,7 +15,6 @@ from trimesh import Trimesh
 
 from .structures import Structure3D
 
-# Type aliases for polyhedron module
 Point3D = Tuple[float, float, float]
 FaceIndices = Tuple[int, ...]
 MeshGrid = List[List[Tuple[float, float, float]]]
@@ -53,5 +52,4 @@ class PropertyPhantom:
     tubes: List[PropertyItem]
 
 
-# Legacy alias for backward compatibility - deprecated, use specific types
 PhantomItem = Union[StructurePhantom, MeshPhantom, PropertyPhantom]

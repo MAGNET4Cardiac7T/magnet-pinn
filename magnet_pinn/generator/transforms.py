@@ -18,7 +18,6 @@ from trimesh import Trimesh
 from .serializers import MeshSerializer
 from .typing import MeshPhantom, StructurePhantom
 
-# Type alias for backward compatibility
 PhantomType = Union[StructurePhantom, MeshPhantom]
 
 
@@ -259,7 +258,6 @@ class MeshesCutout(Transform):
             )
         except (RuntimeError, ValueError) as e:
             logging.error(f"MeshesCutout failed: {e}")
-            # Re-raise to allow calling code to handle appropriately
             raise
 
     def _cut_parent(self, tissue: MeshPhantom) -> Trimesh:
@@ -270,14 +268,11 @@ class MeshesCutout(Transform):
         try:
             logging.debug("Attempting parent cutting with manifold engine")
             
-            # Validate input meshes
             _validate_input_meshes([tissue.parent] + cutters, "parent cutting")
             
-            # Create union of all cutters
             union_cutters = trimesh.boolean.union(cutters, engine='manifold')
             _validate_mesh(union_cutters, "union operation")
             
-            # Cut parent with union of cutters
             result = trimesh.boolean.difference([tissue.parent, union_cutters], engine='manifold')
             _validate_mesh(result, "parent difference operation")
             
@@ -301,14 +296,11 @@ class MeshesCutout(Transform):
         try:
             logging.debug("Attempting children cutting with manifold engine")
             
-            # Validate input meshes
             _validate_input_meshes(tissue.children + tissue.tubes, "children cutting")
             
-            # Create union of all tubes
             tubes_union = trimesh.boolean.union(tissue.tubes, engine='manifold')
             _validate_mesh(tubes_union, "tubes union")
             
-            # Cut each child with tubes union
             result_children = []
             for i, child in enumerate(tissue.children):
                 try:
@@ -325,7 +317,6 @@ class MeshesCutout(Transform):
             return result_children
             
         except RuntimeError:
-            # Re-raise our custom exception
             raise
         except Exception as e:
             raise RuntimeError(
@@ -339,10 +330,8 @@ class MeshesCutout(Transform):
         try:
             logging.debug("Attempting tube cutting with manifold engine")
             
-            # Validate input meshes
             _validate_input_meshes([tissue.parent] + tissue.tubes, "tube cutting")
             
-            # Intersect each tube with parent
             result_tubes = []
             for i, tube in enumerate(tissue.tubes):
                 try:
@@ -359,7 +348,6 @@ class MeshesCutout(Transform):
             return result_tubes
             
         except RuntimeError:
-            # Re-raise our custom exception
             raise
         except Exception as e:
             raise RuntimeError(
