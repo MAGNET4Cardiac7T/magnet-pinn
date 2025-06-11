@@ -18,15 +18,23 @@ from .utils import spheres_packable
 
 class PointSampler:
     """
-    Uniform random sampler for points within spherical regions.
+    Uniform random sampler for points within a specific spherical region.
     
     Provides methods for sampling single or multiple points uniformly distributed
-    within 3D balls. Stateless sampler that receives RNG as parameter.
+    within a configured 3D ball. The sampler is bound to specific geometric 
+    parameters (center and radius) at initialization.
+    
+    Attributes
+    ----------
+    center : np.ndarray
+        Center coordinates of the ball as [x, y, z].
+    radius : float
+        Radius of the ball. Must be positive.
     """
     
-    def sample_point(self, center: np.ndarray, radius: float, rng: Generator) -> np.ndarray:
+    def __init__(self, center: np.ndarray, radius: float):
         """
-        Sample a single point uniformly within a ball.
+        Initialize point sampler for a specific spherical region.
 
         Parameters
         ----------
@@ -34,6 +42,16 @@ class PointSampler:
             Center coordinates of the ball as [x, y, z].
         radius : float
             Radius of the ball. Must be positive.
+        """
+        self.center = np.array(center)
+        self.radius = float(radius)
+    
+    def sample_point(self, rng: Generator) -> np.ndarray:
+        """
+        Sample a single point uniformly within the configured ball.
+
+        Parameters
+        ----------
         rng : Generator
             Random number generator for reproducible sampling.
 
@@ -42,22 +60,18 @@ class PointSampler:
         np.ndarray
             Randomly sampled point within the ball as [x, y, z] coordinates.
         """
-        point = rng.normal(size=center.shape)
-        point = radius * point / np.linalg.norm(point)
+        point = rng.normal(size=self.center.shape)
+        point = self.radius * point / np.linalg.norm(point)
         
-        point = rng.uniform(0, 1) ** (1 / len(center)) * point
-        return point + center
+        point = rng.uniform(0, 1) ** (1 / len(self.center)) * point
+        return point + self.center
 
-    def sample_points(self, center: np.ndarray, radius: float, num_points: int, rng: Generator) -> np.ndarray:
+    def sample_points(self, num_points: int, rng: Generator) -> np.ndarray:
         """
-        Sample multiple points uniformly within a ball.
+        Sample multiple points uniformly within the configured ball.
 
         Parameters
         ----------
-        center : np.ndarray
-            Center coordinates of the ball as [x, y, z].
-        radius : float
-            Radius of the ball. Must be positive.
         num_points : int
             Number of points to sample. Must be positive.
         rng : Generator
@@ -68,11 +82,11 @@ class PointSampler:
         np.ndarray
             Array of shape (num_points, 3) containing sampled coordinates.
         """
-        points = rng.normal(size=(num_points, len(center)))
+        points = rng.normal(size=(num_points, len(self.center)))
         
         points = points / np.linalg.norm(points, axis=1)[:, None]
-        points = points * radius * rng.uniform(0, 1, size=(num_points, 1)) ** (1/len(center))
-        points = points + center
+        points = points * self.radius * rng.uniform(0, 1, size=(num_points, 1)) ** (1/len(self.center))
+        points = points + self.center
         return points
 
 
@@ -116,7 +130,6 @@ class BlobSampler:
             raise ValueError("radius_decrease_factor must be in (0, 1)")
         
         self.radius_decrease_factor = radius_decrease_factor
-        self.point_sampler = PointSampler()
 
     def check_points_distance(self, points: np.ndarray, min_distance: float) -> bool:
         """
@@ -341,12 +354,14 @@ class BlobSampler:
         batch_sizes = [target_positions, target_positions * 2, target_positions * 5]
         total_attempts = 0
         
+        point_sampler = PointSampler(center, sampling_radius)
+        
         for batch_size in batch_sizes:
             attempts_with_batch = min(max_iterations // 3, 100000)
             
             for attempt in range(attempts_with_batch):
-                candidate_positions = self.point_sampler.sample_points(
-                    center, sampling_radius, num_points=batch_size, rng=rng
+                candidate_positions = point_sampler.sample_points(
+                    num_points=batch_size, rng=rng
                 )
                 
                 positions_subset = candidate_positions[:target_positions]
@@ -413,11 +428,11 @@ class TubeSampler:
         
         self.tube_max_radius = tube_max_radius
         self.tube_min_radius = tube_min_radius
-        self.point_sampler = PointSampler()
 
     def _sample_line(self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator) -> Tube:
         """Sample a tube line within a ball (formerly LineSampler functionality)."""
-        point = self.point_sampler.sample_point(center, ball_radius, rng)
+        point_sampler = PointSampler(center, ball_radius)
+        point = point_sampler.sample_point(rng)
 
         direction = rng.normal(size=center.shape)
         direction = direction - np.dot(direction, point - center) / np.linalg.norm(point - center) ** 2 * (point - center)
