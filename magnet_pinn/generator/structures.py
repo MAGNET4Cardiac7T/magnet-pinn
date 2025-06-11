@@ -131,6 +131,9 @@ class Blob(Structure3D):
         """
         super().__init__(position=position, radius=radius)
         self.relative_disruption_strength = relative_disruption_strength
+        
+        if perlin_scale == 0:
+            raise ValueError("perlin_scale cannot be zero as it causes division by zero in offset calculations.")
         self.perlin_scale = perlin_scale
 
         self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
@@ -166,7 +169,7 @@ class Blob(Structure3D):
             Each row represents [x, y, z] coordinates of a point on the unit sphere.
         """
         if num_points is None:
-            num_points = self.num_knot_points
+            num_points = 10000
         
         points = []
         phi = np.pi * (np.sqrt(5.) - 1.)
@@ -290,5 +293,8 @@ class Tube(Structure3D):
         """
         normal = np.cross(tube_1.direction, tube_2.direction)
         if np.linalg.norm(normal) == 0:
-            return np.linalg.norm(tube_1.position - tube_2.position)
+            position_diff = tube_2.position - tube_1.position
+            parallel_component = np.dot(position_diff, tube_1.direction) * tube_1.direction
+            perpendicular_component = position_diff - parallel_component
+            return np.linalg.norm(perpendicular_component)
         return abs(np.dot(normal, tube_1.position - tube_2.position)) / np.linalg.norm(normal)
