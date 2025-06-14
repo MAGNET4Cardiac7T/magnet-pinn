@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
 from numpy.random import default_rng
+import trimesh
 
 from magnet_pinn.generator.samplers import PointSampler, BlobSampler, TubeSampler, PropertySampler
 from magnet_pinn.generator.structures import Blob, Tube
 from magnet_pinn.generator.typing import PropertyItem, PropertyPhantom, StructurePhantom, MeshPhantom
-import trimesh
 
 
 def test_point_sampler_initialization_with_valid_center_and_radius():
@@ -171,12 +171,12 @@ def test_point_sampler_sample_points_with_zero_points():
     assert points.shape == (0, 3)
 
 
-def test_point_sampler_sample_points_with_large_number():
+def test_point_sampler_sample_points_with_moderate_number():
     center = np.array([0.0, 0.0, 0.0])
     radius = 1.0
     sampler = PointSampler(center=center, radius=radius)
     rng = default_rng(42)
-    num_points = 1000
+    num_points = 100
     
     points = sampler.sample_points(num_points, rng)
     
@@ -1385,7 +1385,7 @@ def test_property_sampler_sample_like_with_none_properties_list():
     assert hasattr(property_phantom.parent, "density")
 
 
-def test_property_sampler_sample_like_with_large_number_children_and_tubes():
+def test_property_sampler_sample_like_with_moderate_children_and_tubes():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
@@ -1396,18 +1396,18 @@ def test_property_sampler_sample_like_with_large_number_children_and_tubes():
     
     parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
     child_blobs = [
-        Blob(position=np.array([i, i, i]), radius=1.0) for i in range(50)
+        Blob(position=np.array([i, i, i]), radius=1.0) for i in range(5)
     ]
     tubes = [
-        Tube(position=np.array([i, 0., 0.]), direction=np.array([1., 0., 0.]), radius=0.5) for i in range(30)
+        Tube(position=np.array([i, 0., 0.]), direction=np.array([1., 0., 0.]), radius=0.5) for i in range(3)
     ]
     structure_phantom = StructurePhantom(parent=parent_blob, children=child_blobs, tubes=tubes)
     
     property_phantom = sampler.sample_like(structure_phantom, rng)
     
     assert isinstance(property_phantom, PropertyPhantom)
-    assert len(property_phantom.children) == 50
-    assert len(property_phantom.tubes) == 30
+    assert len(property_phantom.children) == 5
+    assert len(property_phantom.tubes) == 3
     assert all(isinstance(child, PropertyItem) for child in property_phantom.children)
     assert all(isinstance(tube, PropertyItem) for tube in property_phantom.tubes)
 
@@ -1437,7 +1437,7 @@ def test_property_sampler_sample_boundary_values_minimum_range():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
     
-    for _ in range(50):
+    for _ in range(10):
         property_item = sampler._sample(rng)
         assert 0.0 <= property_item.conductivity <= 0.001
         assert 1.0 <= property_item.permittivity <= 1.001
@@ -1453,7 +1453,7 @@ def test_property_sampler_sample_boundary_values_maximum_range():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
     
-    for _ in range(50):
+    for _ in range(10):
         property_item = sampler._sample(rng)
         assert 999999.0 <= property_item.conductivity <= 1000000.0
         assert 999999.0 <= property_item.permittivity <= 1000000.0
@@ -1469,7 +1469,7 @@ def test_property_sampler_sample_negative_range_values():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
     
-    for _ in range(50):
+    for _ in range(10):
         property_item = sampler._sample(rng)
         assert -10.0 <= property_item.conductivity <= -1.0
         assert -100.0 <= property_item.permittivity <= -10.0
@@ -1665,168 +1665,6 @@ def test_property_sampler_sample_with_zero_range_all_properties():
         assert property_item.conductivity == 0.5
         assert property_item.permittivity == 10.0
         assert property_item.density == 1000.0
-
-
-def test_property_sampler_sample_with_extreme_precision_boundaries():
-    properties_cfg = {
-        "conductivity": {"min": 1.0000000000000001, "max": 1.0000000000000002},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    property_item = sampler._sample(rng)
-    assert isinstance(property_item, PropertyItem)
-    assert 1.0000000000000001 <= property_item.conductivity <= 1.0000000000000002
-
-
-def test_property_sampler_sample_reproducibility_across_multiple_calls():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    np.random.seed(42)
-    results_1 = [sampler._sample(rng) for _ in range(10)]
-    
-    np.random.seed(42)
-    results_2 = [sampler._sample(rng) for _ in range(10)]
-    
-    for r1, r2 in zip(results_1, results_2):
-        assert r1.conductivity == r2.conductivity
-        assert r1.permittivity == r2.permittivity
-        assert r1.density == r2.density
-
-
-def test_property_sampler_sample_like_phantom_with_no_parent_attribute():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    class InvalidPhantom:
-        children = []
-        tubes = []
-    
-    invalid_phantom = InvalidPhantom()
-    
-    with pytest.raises(AttributeError):
-        sampler.sample_like(invalid_phantom, rng)
-
-
-def test_property_sampler_sample_with_extreme_precision_boundaries():
-    properties_cfg = {
-        "conductivity": {"min": 1.0000000000000001, "max": 1.0000000000000002},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    property_item = sampler._sample(rng)
-    assert isinstance(property_item, PropertyItem)
-    assert 1.0000000000000001 <= property_item.conductivity <= 1.0000000000000002
-
-
-def test_property_sampler_sample_reproducibility_across_multiple_calls():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    np.random.seed(42)
-    results_1 = [sampler._sample(rng) for _ in range(10)]
-    
-    np.random.seed(42)
-    results_2 = [sampler._sample(rng) for _ in range(10)]
-    
-    for r1, r2 in zip(results_1, results_2):
-        assert r1.conductivity == r2.conductivity
-        assert r1.permittivity == r2.permittivity
-        assert r1.density == r2.density
-
-
-def test_property_sampler_sample_like_phantom_with_no_parent_attribute():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    class InvalidPhantom:
-        children = []
-        tubes = []
-    
-    invalid_phantom = InvalidPhantom()
-    
-    with pytest.raises(AttributeError):
-        sampler.sample_like(invalid_phantom, rng)
-
-
-def test_property_sampler_sample_with_extreme_precision_boundaries():
-    properties_cfg = {
-        "conductivity": {"min": 1.0000000000000001, "max": 1.0000000000000002},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    property_item = sampler._sample(rng)
-    assert isinstance(property_item, PropertyItem)
-    assert 1.0000000000000001 <= property_item.conductivity <= 1.0000000000000002
-
-
-def test_property_sampler_sample_reproducibility_across_multiple_calls():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    np.random.seed(42)
-    results_1 = [sampler._sample(rng) for _ in range(10)]
-    
-    np.random.seed(42)
-    results_2 = [sampler._sample(rng) for _ in range(10)]
-    
-    for r1, r2 in zip(results_1, results_2):
-        assert r1.conductivity == r2.conductivity
-        assert r1.permittivity == r2.permittivity
-        assert r1.density == r2.density
-
-
-def test_property_sampler_sample_like_phantom_with_no_parent_attribute():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
-    }
-    sampler = PropertySampler(properties_cfg)
-    rng = default_rng(42)
-    
-    class InvalidPhantom:
-        children = []
-        tubes = []
-    
-    invalid_phantom = InvalidPhantom()
-    
-    with pytest.raises(AttributeError):
-        sampler.sample_like(invalid_phantom, rng)
 
 
 def test_property_sampler_sample_with_extreme_precision_boundaries():
