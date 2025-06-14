@@ -654,9 +654,6 @@ def test_blob_calculate_offsets_with_inf_vertices():
         blob.calculate_offsets(vertices)
 
 
-
-
-
 def test_tube_distance_calculation_with_identical_position_and_direction():
     position = np.array([0.0, 0.0, 0.0])
     direction = np.array([1.0, 0.0, 0.0])
