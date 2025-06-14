@@ -326,3 +326,23 @@ def test_mesh_serializer_private_method_tube():
     assert isinstance(mesh, Trimesh)
     assert len(mesh.vertices) > 0
     assert len(mesh.faces) > 0
+
+
+def test_mesh_serializer_tube_default_height_parameter():
+    position = np.array([0.0, 0.0, 0.0])
+    direction = np.array([0.0, 0.0, 1.0])
+    radius = 1.0
+    tube = Tube(position=position, direction=direction, radius=radius)  # No height specified, should default to 10000
+    
+    serializer = MeshSerializer()
+    
+    with patch('trimesh.creation.cylinder') as mock_cylinder:
+        mock_cylinder.return_value = Mock()
+        
+        with patch('trimesh.transformations.translation_matrix'):
+            with patch('trimesh.geometry.align_vectors'):
+                serializer._serialize_tube(tube, subdivisions=3)
+                
+                call_args = mock_cylinder.call_args
+                expected_height = 10000 * radius  # Default height * radius
+                assert call_args[1]['height'] == expected_height
