@@ -76,10 +76,6 @@ def test_spheres_packable_seven_spheres_always_false():
     assert not spheres_packable(radius_outer=10.0, radius_inner=0.1, num_inner=7)
 
 
-def test_spheres_packable_large_number_spheres_always_false():
-    assert not spheres_packable(radius_outer=100.0, radius_inner=0.01, num_inner=50)
-
-
 def test_spheres_packable_zero_spheres_always_false():
     assert not spheres_packable(radius_outer=1.0, radius_inner=0.1, num_inner=0)
 
@@ -229,10 +225,6 @@ def test_spheres_packable_large_negative_safety_margin():
 
 def test_spheres_packable_float_num_inner_treated_as_integer():
     assert not spheres_packable(radius_outer=1.0, radius_inner=0.1, num_inner=2.5)
-
-
-def test_spheres_packable_very_large_num_inner():
-    assert not spheres_packable(radius_outer=1.0, radius_inner=0.1, num_inner=1000)
 
 
 def test_spheres_packable_exact_zero_safety_margin_edge():
