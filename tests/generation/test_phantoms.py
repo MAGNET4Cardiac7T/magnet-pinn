@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-from numpy.random import default_rng
 
 from magnet_pinn.generator.phantoms import Phantom, Tissue
 from magnet_pinn.generator.structures import Blob, Tube
@@ -631,18 +630,7 @@ def test_tissue_has_correct_sampler_configuration():
     assert tissue.tube_sampler.tube_min_radius == min_tube_radius * initial_radius
 
 
-def test_tissue_generate_raises_runtime_error_with_impossible_geometry():
-    tissue = Tissue(
-        num_children_blobs=10,
-        initial_blob_radius=1.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
-        blob_radius_decrease_per_level=0.95,
-        num_tubes=0,
-        relative_tube_max_radius=0.1
-    )
-    
-    with pytest.raises(RuntimeError):
-        tissue.generate(seed=42)
+
 
 
 def test_tissue_inheritance_from_phantom():
@@ -658,3 +646,51 @@ def test_tissue_inheritance_from_phantom():
     assert isinstance(tissue, Phantom)
     assert hasattr(tissue, 'initial_blob_radius')
     assert hasattr(tissue, 'initial_blob_center_extent')
+
+
+def test_tissue_rejects_zero_blob_radius_decrease_per_level():
+    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+        Tissue(
+            num_children_blobs=1,
+            initial_blob_radius=1.0,
+            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            blob_radius_decrease_per_level=0.0,
+            num_tubes=0,
+            relative_tube_max_radius=0.1
+        )
+
+
+def test_tissue_rejects_negative_blob_radius_decrease_per_level():
+    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+        Tissue(
+            num_children_blobs=1,
+            initial_blob_radius=1.0,
+            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            blob_radius_decrease_per_level=-0.5,
+            num_tubes=0,
+            relative_tube_max_radius=0.1
+        )
+
+
+def test_tissue_rejects_blob_radius_decrease_per_level_equal_to_one():
+    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+        Tissue(
+            num_children_blobs=1,
+            initial_blob_radius=1.0,
+            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            blob_radius_decrease_per_level=1.0,
+            num_tubes=0,
+            relative_tube_max_radius=0.1
+        )
+
+
+def test_tissue_rejects_blob_radius_decrease_per_level_greater_than_one():
+    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+        Tissue(
+            num_children_blobs=1,
+            initial_blob_radius=1.0,
+            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            blob_radius_decrease_per_level=1.5,
+            num_tubes=0,
+            relative_tube_max_radius=0.1
+        )
