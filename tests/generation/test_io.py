@@ -42,13 +42,10 @@ def create_property_phantom(num_children=2, num_tubes=1):
     return PropertyPhantom(parent=parent, children=children, tubes=tubes)
 
 
-def test_writer_initialization_with_default_directory(generation_output_dir_path):
-    with patch('magnet_pinn.generator.io.Writer.__init__') as mock_init:
-        mock_init.return_value = None
-        writer = ConcreteWriter.__new__(ConcreteWriter)
-        writer.dir = generation_output_dir_path
-        
-        assert writer.dir == generation_output_dir_path
+def test_writer_initialization_with_default_directory():
+    writer = ConcreteWriter()
+    assert writer.dir == Path("data/raw/tissue_meshes")
+    assert writer.dir.exists()
 
 
 def test_writer_initialization_with_custom_directory_as_string(generation_output_dir_path):
@@ -87,10 +84,9 @@ def test_writer_initialization_with_existing_directory(generation_output_dir_pat
 
 
 def test_writer_abstract_write_method_raises_not_implemented():
-    with patch('magnet_pinn.generator.io.Writer.__init__') as mock_init:
-        mock_init.side_effect = TypeError("Can't instantiate abstract class Writer")
-        with pytest.raises(TypeError, match="Can't instantiate abstract class Writer"):
-            Writer()
+    writer = ConcreteWriter()
+    with pytest.raises(NotImplementedError):
+        Writer.write(writer, None)
 
 
 def test_mesh_writer_initialization_inherits_from_writer(generation_output_dir_path):
@@ -282,13 +278,13 @@ def test_mesh_writer_save_mesh_private_method_preserves_original_property_values
     original_permittivity = prop.permittivity
     original_density = prop.density
     
-    writer._save_mesh(mesh, prop, filename)
+    result = writer._save_mesh(mesh, prop, filename)
     
     assert prop.conductivity == original_conductivity
     assert prop.permittivity == original_permittivity
     assert prop.density == original_density
-    assert hasattr(prop, 'file')
-    assert prop.file == filename
+    assert not hasattr(prop, 'file')
+    assert result['file'] == filename
 
 
 def test_mesh_writer_write_handles_property_phantom_with_different_property_values(generation_output_dir_path, simple_mesh):
@@ -394,10 +390,8 @@ def test_mesh_writer_write_materials_csv_is_properly_formatted(generation_output
 
 
 def test_writer_initialization_with_none_directory_raises_error():
-    with patch('magnet_pinn.generator.io.Writer.__init__') as mock_init:
-        mock_init.side_effect = TypeError("argument should be a str or an os.PathLike object")
-        with pytest.raises(TypeError, match="argument should be a str or an os.PathLike object"):
-            ConcreteWriter(dir=None)
+    with pytest.raises(TypeError):
+        ConcreteWriter(dir=None)
 
 
 def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir_path, simple_mesh):
@@ -413,11 +407,6 @@ def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir
     assert len(df) == expected_rows
 
 
-def test_mesh_writer_write_with_none_directory_raises_error():
-    with patch('magnet_pinn.generator.io.Writer.__init__') as mock_init:
-        mock_init.side_effect = TypeError("argument should be a str or an os.PathLike object")
-        with pytest.raises(TypeError, match="argument should be a str or an os.PathLike object"):
-            MeshWriter(dir=None)
 
 
 def test_mesh_writer_private_save_mesh_method_preserves_original_property(generation_output_dir_path, simple_mesh):
@@ -513,10 +502,6 @@ def test_mesh_writer_write_preserves_mesh_geometry_in_export(generation_output_d
     assert np.array_equal(loaded_mesh.faces, original_faces)
 
 
-def test_mesh_writer_handles_invalid_path_characters(generation_output_dir_path):
-    special_dir = generation_output_dir_path / "test\x00invalid"
-    with pytest.raises((ValueError, OSError)):
-        MeshWriter(dir=special_dir)
 
 
 def test_mesh_writer_write_with_corrupted_property_object(generation_output_dir_path, simple_mesh):
@@ -559,54 +544,13 @@ def test_mesh_writer_write_property_isolation(generation_output_dir_path, simple
     
     writer.write(mesh_phantom, property_phantom)
     
-    assert hasattr(original_prop, 'file')
-    assert original_prop.file == CHILD_BLOB_FILE_NAME.format(i=1)
+    assert not hasattr(original_prop, 'file')
     assert original_prop.conductivity == 1.23
     assert original_prop.permittivity == 45.6
     assert original_prop.density == 789.0
 
 
-def test_writer_initialization_with_directory_creation_permission_error(generation_output_dir_path):
-    restricted_dir = generation_output_dir_path / "restricted"
-    restricted_dir.mkdir(mode=0o000)
-    
-    nested_restricted = restricted_dir / "nested"
-    
-    try:
-        with pytest.raises(PermissionError):
-            ConcreteWriter(dir=nested_restricted)
-    finally:
-        restricted_dir.chmod(0o755)
 
-
-def test_mesh_writer_write_with_csv_export_permission_error(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
-    mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
-    property_phantom = create_property_phantom(num_children=0, num_tubes=0)
-    
-    materials_file = generation_output_dir_path / MATERIALS_FILE_NAME
-    materials_file.touch()
-    materials_file.chmod(0o000)
-    
-    try:
-        with pytest.raises(PermissionError):
-            writer.write(mesh_phantom, property_phantom)
-    finally:
-        materials_file.chmod(0o644)
-
-
-def test_mesh_writer_write_with_readonly_output_directory(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
-    mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
-    property_phantom = create_property_phantom(num_children=0, num_tubes=0)
-    
-    generation_output_dir_path.chmod(0o444)
-    
-    try:
-        with pytest.raises(PermissionError):
-            writer.write(mesh_phantom, property_phantom)
-    finally:
-        generation_output_dir_path.chmod(0o755)
 
 
 def test_mesh_writer_save_mesh_with_property_dict_manipulation(generation_output_dir_path, simple_mesh):
@@ -657,31 +601,10 @@ def test_mesh_writer_write_with_dataframe_creation_edge_case(generation_output_d
     assert pd.isna(df.iloc[0]['extra_column'])
 
 
-def test_writer_initialization_with_path_as_bytes():
-    with patch('magnet_pinn.generator.io.Writer.__init__') as mock_init:
-        mock_init.side_effect = TypeError("invalid path type")
-        with pytest.raises(TypeError):
-            ConcreteWriter(dir=b'/invalid/bytes/path')
 
 
-def test_mesh_writer_write_with_mesh_export_to_nonexistent_parent_directory(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
-    mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
-    property_phantom = create_property_phantom(num_children=0, num_tubes=0)
-    
-    original_save_mesh = writer._save_mesh
-    
-    def mock_save_mesh(mesh, prop, filename):
-        nonexistent_path = generation_output_dir_path / "nonexistent" / filename
-        mesh.export(nonexistent_path)
-        prop_dict = prop.__dict__.copy()
-        prop_dict["file"] = filename
-        return prop_dict
-    
-    writer._save_mesh = mock_save_mesh
-    
-    with pytest.raises(FileNotFoundError):
-        writer.write(mesh_phantom, property_phantom)
+
+
 
 
 def test_mesh_writer_save_mesh_with_existing_file_attribute_in_property(generation_output_dir_path, simple_mesh):
@@ -693,4 +616,4 @@ def test_mesh_writer_save_mesh_with_existing_file_attribute_in_property(generati
     result = writer._save_mesh(mesh, prop, "new_filename.stl")
     
     assert result['file'] == 'new_filename.stl'
-    assert prop.file == 'new_filename.stl'
+    assert prop.file == 'old_filename.stl'

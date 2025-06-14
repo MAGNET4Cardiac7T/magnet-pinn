@@ -132,7 +132,7 @@ class MeshWriter(Writer):
         file_path = self.dir / filename
         mesh.export(file_path)
 
-        prop = prop.__dict__
-        prop["file"] = filename
+        prop_dict = prop.__dict__.copy()
+        prop_dict["file"] = filename
         
-        return prop
+        return prop_dict
