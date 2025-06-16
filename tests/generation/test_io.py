@@ -50,7 +50,7 @@ def test_writer_initialization_with_default_directory():
 
 def test_writer_initialization_with_custom_directory_as_string(generation_output_dir_path):
     custom_dir = str(generation_output_dir_path / "custom_output")
-    writer = ConcreteWriter(dir=custom_dir)
+    writer = ConcreteWriter(output_dir=custom_dir)
     
     assert writer.dir == Path(custom_dir)
     assert writer.dir.exists()
@@ -58,7 +58,7 @@ def test_writer_initialization_with_custom_directory_as_string(generation_output
 
 def test_writer_initialization_with_custom_directory_as_path(generation_output_dir_path):
     custom_dir = generation_output_dir_path / "custom_output"
-    writer = ConcreteWriter(dir=custom_dir)
+    writer = ConcreteWriter(output_dir=custom_dir)
     
     assert writer.dir == custom_dir
     assert writer.dir.exists()
@@ -66,7 +66,7 @@ def test_writer_initialization_with_custom_directory_as_path(generation_output_d
 
 def test_writer_initialization_creates_nested_directories(generation_output_dir_path):
     nested_dir = generation_output_dir_path / "level1" / "level2" / "level3"
-    writer = ConcreteWriter(dir=nested_dir)
+    writer = ConcreteWriter(output_dir=nested_dir)
     
     assert writer.dir == nested_dir
     assert writer.dir.exists()
@@ -77,7 +77,7 @@ def test_writer_initialization_with_existing_directory(generation_output_dir_pat
     existing_dir = generation_output_dir_path / "existing"
     existing_dir.mkdir()
     
-    writer = ConcreteWriter(dir=existing_dir)
+    writer = ConcreteWriter(output_dir=existing_dir)
     
     assert writer.dir == existing_dir
     assert writer.dir.exists()
@@ -90,7 +90,7 @@ def test_writer_abstract_write_method_raises_not_implemented():
 
 
 def test_mesh_writer_initialization_inherits_from_writer(generation_output_dir_path):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     
     assert isinstance(writer, Writer)
     assert writer.dir == generation_output_dir_path
@@ -98,7 +98,7 @@ def test_mesh_writer_initialization_inherits_from_writer(generation_output_dir_p
 
 
 def test_mesh_writer_write_creates_parent_stl_file(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     property_phantom = create_property_phantom(num_children=0, num_tubes=0)
     
@@ -111,7 +111,7 @@ def test_mesh_writer_write_creates_parent_stl_file(generation_output_dir_path, s
 
 def test_mesh_writer_write_creates_children_stl_files(generation_output_dir_path, simple_mesh):
     num_children = 3
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=num_children, num_tubes=0)
     property_phantom = create_property_phantom(num_children=num_children, num_tubes=0)
     
@@ -125,7 +125,7 @@ def test_mesh_writer_write_creates_children_stl_files(generation_output_dir_path
 
 def test_mesh_writer_write_creates_tubes_stl_files(generation_output_dir_path, simple_mesh):
     num_tubes = 2
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=num_tubes)
     property_phantom = create_property_phantom(num_children=0, num_tubes=num_tubes)
     
@@ -138,7 +138,7 @@ def test_mesh_writer_write_creates_tubes_stl_files(generation_output_dir_path, s
 
 
 def test_mesh_writer_write_creates_materials_csv_file(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=1)
     property_phantom = create_property_phantom(num_children=1, num_tubes=1)
     
@@ -150,7 +150,7 @@ def test_mesh_writer_write_creates_materials_csv_file(generation_output_dir_path
 
 
 def test_mesh_writer_write_materials_csv_contains_correct_columns(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=1)
     property_phantom = create_property_phantom(num_children=1, num_tubes=1)
     
@@ -164,7 +164,7 @@ def test_mesh_writer_write_materials_csv_contains_correct_columns(generation_out
 def test_mesh_writer_write_materials_csv_contains_correct_number_of_rows(generation_output_dir_path, simple_mesh):
     num_children = 2
     num_tubes = 3
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=num_children, num_tubes=num_tubes)
     property_phantom = create_property_phantom(num_children=num_children, num_tubes=num_tubes)
     
@@ -176,7 +176,7 @@ def test_mesh_writer_write_materials_csv_contains_correct_number_of_rows(generat
 
 
 def test_mesh_writer_write_materials_csv_contains_correct_filenames(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=2, num_tubes=1)
     property_phantom = create_property_phantom(num_children=2, num_tubes=1)
     
@@ -194,7 +194,7 @@ def test_mesh_writer_write_materials_csv_contains_correct_filenames(generation_o
 
 
 def test_mesh_writer_write_materials_csv_contains_correct_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     property_phantom = create_property_phantom(num_children=1, num_tubes=0)
     
@@ -214,7 +214,7 @@ def test_mesh_writer_write_materials_csv_contains_correct_property_values(genera
 
 
 def test_mesh_writer_write_with_empty_children_and_tubes(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     property_phantom = create_property_phantom(num_children=0, num_tubes=0)
     
@@ -234,7 +234,7 @@ def test_mesh_writer_write_with_empty_children_and_tubes(generation_output_dir_p
 def test_mesh_writer_write_with_large_number_of_components(generation_output_dir_path, simple_mesh):
     num_children = 3
     num_tubes = 2
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=num_children, num_tubes=num_tubes)
     property_phantom = create_property_phantom(num_children=num_children, num_tubes=num_tubes)
     
@@ -251,7 +251,7 @@ def test_mesh_writer_write_with_large_number_of_components(generation_output_dir
 
 
 def test_mesh_writer_save_mesh_private_method_exports_stl_file(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     prop = create_property_item()
     filename = "test_mesh.stl"
@@ -269,7 +269,7 @@ def test_mesh_writer_save_mesh_private_method_exports_stl_file(generation_output
 
 
 def test_mesh_writer_save_mesh_private_method_preserves_original_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     prop = create_property_item(conductivity=0.123, permittivity=45.67, density=890.0)
     filename = "test_mesh.stl"
@@ -288,7 +288,7 @@ def test_mesh_writer_save_mesh_private_method_preserves_original_property_values
 
 
 def test_mesh_writer_write_handles_property_phantom_with_different_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=2, num_tubes=1)
     
     parent_prop = PropertyItem(conductivity=0.1, permittivity=10.0, density=100.0)
@@ -318,7 +318,7 @@ def test_mesh_writer_write_handles_property_phantom_with_different_property_valu
 
 
 def test_mesh_writer_write_overwrites_existing_files(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     property_phantom = create_property_phantom(num_children=1, num_tubes=0)
     
@@ -341,7 +341,7 @@ def test_mesh_writer_write_overwrites_existing_files(generation_output_dir_path,
 
 
 def test_mesh_writer_write_handles_trimesh_export_error(generation_output_dir_path):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     
     invalid_mesh = Mock(spec=trimesh.Trimesh)
     invalid_mesh.export.side_effect = Exception("Export failed")
@@ -354,7 +354,7 @@ def test_mesh_writer_write_handles_trimesh_export_error(generation_output_dir_pa
 
 
 def test_mesh_writer_write_creates_readable_stl_files(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     property_phantom = create_property_phantom(num_children=1, num_tubes=0)
     
@@ -372,7 +372,7 @@ def test_mesh_writer_write_creates_readable_stl_files(generation_output_dir_path
 
 
 def test_mesh_writer_write_materials_csv_is_properly_formatted(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=1)
     property_phantom = create_property_phantom(num_children=1, num_tubes=1)
     
@@ -391,14 +391,14 @@ def test_mesh_writer_write_materials_csv_is_properly_formatted(generation_output
 
 def test_writer_initialization_with_none_directory_raises_error():
     with pytest.raises(TypeError):
-        ConcreteWriter(dir=None)
+        ConcreteWriter(output_dir=None)
 
 
 def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir_path, simple_mesh):
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=2, num_tubes=1)
     property_phantom = create_property_phantom(num_children=1, num_tubes=2)
     
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     
     writer.write(mesh_phantom, property_phantom)
     
@@ -410,7 +410,7 @@ def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir
 
 
 def test_mesh_writer_private_save_mesh_method_preserves_original_property(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     original_prop = create_property_item(conductivity=1.23, permittivity=45.6, density=789.0)
     
@@ -425,7 +425,7 @@ def test_mesh_writer_private_save_mesh_method_preserves_original_property(genera
 
 
 def test_mesh_writer_write_with_zero_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     
     zero_prop = PropertyItem(conductivity=0.0, permittivity=0.0, density=0.0)
@@ -440,7 +440,7 @@ def test_mesh_writer_write_with_zero_property_values(generation_output_dir_path,
 
 
 def test_mesh_writer_write_with_negative_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     
     negative_prop = PropertyItem(conductivity=-1.0, permittivity=-2.0, density=-3.0)
@@ -455,7 +455,7 @@ def test_mesh_writer_write_with_negative_property_values(generation_output_dir_p
 
 
 def test_mesh_writer_write_with_very_large_property_values(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     
     large_prop = PropertyItem(conductivity=1e10, permittivity=1e15, density=1e20)
@@ -480,14 +480,14 @@ def test_mesh_writer_filename_formatting_correctness():
 
 def test_writer_directory_path_handling_with_special_characters(generation_output_dir_path):
     special_dir = generation_output_dir_path / "special-dir_with.dots"
-    writer = ConcreteWriter(dir=special_dir)
+    writer = ConcreteWriter(output_dir=special_dir)
     
     assert writer.dir == special_dir
     assert writer.dir.exists()
 
 
 def test_mesh_writer_write_preserves_mesh_geometry_in_export(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     original_mesh = simple_mesh
     original_vertices = original_mesh.vertices.copy()
     original_faces = original_mesh.faces.copy()
@@ -505,7 +505,7 @@ def test_mesh_writer_write_preserves_mesh_geometry_in_export(generation_output_d
 
 
 def test_mesh_writer_write_with_corrupted_property_object(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     
     corrupted_prop = PropertyItem(conductivity=0.1, permittivity=10.0, density=100.0)
@@ -520,7 +520,7 @@ def test_mesh_writer_write_with_corrupted_property_object(generation_output_dir_
 
 
 def test_mesh_writer_write_validates_mesh_export_success(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     property_phantom = create_property_phantom(num_children=1, num_tubes=0)
     
@@ -536,7 +536,7 @@ def test_mesh_writer_write_validates_mesh_export_success(generation_output_dir_p
 
 
 def test_mesh_writer_write_property_isolation(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     
     original_prop = PropertyItem(conductivity=1.23, permittivity=45.6, density=789.0)
@@ -554,7 +554,7 @@ def test_mesh_writer_write_property_isolation(generation_output_dir_path, simple
 
 
 def test_mesh_writer_save_mesh_with_property_dict_manipulation(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     prop = create_property_item()
     
@@ -567,7 +567,7 @@ def test_mesh_writer_save_mesh_with_property_dict_manipulation(generation_output
 
 
 def test_mesh_writer_write_with_property_item_without_standard_attributes(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=0, num_tubes=0)
     
     minimal_prop = PropertyItem(conductivity=1.0, permittivity=2.0, density=3.0)
@@ -584,7 +584,7 @@ def test_mesh_writer_write_with_property_item_without_standard_attributes(genera
 
 
 def test_mesh_writer_write_with_dataframe_creation_edge_case(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=1, num_tubes=0)
     
     parent_prop = PropertyItem(conductivity=1.0, permittivity=2.0, density=3.0)
@@ -608,7 +608,7 @@ def test_mesh_writer_write_with_dataframe_creation_edge_case(generation_output_d
 
 
 def test_mesh_writer_save_mesh_with_existing_file_attribute_in_property(generation_output_dir_path, simple_mesh):
-    writer = MeshWriter(dir=generation_output_dir_path)
+    writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     prop = create_property_item()
     prop.__dict__['file'] = 'old_filename.stl'
