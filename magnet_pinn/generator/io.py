@@ -30,19 +30,19 @@ class Writer(ABC):
     output directory management and write operations across different output formats.
     """
 
-    def __init__(self, dir: str | Path = Path("data/raw/tissue_meshes"), *args, **kwargs):
+    def __init__(self, output_dir: str | Path = Path("data/raw/tissue_meshes"), *args, **kwargs):
         """
         Initialize writer with output directory.
 
         Parameters
         ----------
-        dir : str or Path, optional
+        output_dir : str or Path, optional
             Output directory path for written files. Default is "data/raw/tissue_meshes".
             Directory will be created if it doesn't exist.
         *args, **kwargs
             Additional arguments passed to parent class.
         """
-        self.dir = Path(dir)
+        self.dir = Path(output_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
