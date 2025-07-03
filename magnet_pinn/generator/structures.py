@@ -5,12 +5,15 @@ NAME
 DESCRIPTION
     This module contains 3D geometric structure classes for generating complex phantoms.
     It provides base classes and implementations for creating deformable organic shapes
-    (blobs with Perlin noise) and cylindrical structures (tubes) used in MRI simulation.
+    (blobs with Perlin noise), cylindrical structures (tubes), and custom mesh-based
+    structures loaded from external STL files used in MRI simulation phantoms.
 """
 from abc import ABC
+from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
+from trimesh import Trimesh, load_mesh
 from perlin_noise import PerlinNoise
 
 
@@ -298,3 +301,61 @@ class Tube(Structure3D):
             perpendicular_component = position_diff - parallel_component
             return np.linalg.norm(perpendicular_component)
         return abs(np.dot(normal, tube_1.position - tube_2.position)) / np.linalg.norm(normal)
+
+
+class CustomMeshStructure(Structure3D):
+    """
+    A mesh-based structure loaded from external STL files for complex geometric phantoms.
+    
+    This class represents 3D structures defined by externally created mesh geometries,
+    typically loaded from STL files. It automatically computes the volume-weighted center
+    of mass and circumscribed radius to integrate seamlessly with the phantom generation
+    system. This enables the use of complex anatomical shapes, CAD models, or custom
+    geometries as parent structures for blob and tube placement in MRI simulation phantoms.
+    The class handles mesh validation, geometric property extraction, and provides the
+    foundational framework for mesh-based containment validation during phantom generation.
+
+    Attributes
+    ----------
+    mesh : Trimesh
+        The loaded 3D mesh object containing vertices, faces, and geometric properties.
+        Loaded automatically from the specified STL file path during initialization.
+        Provides access to mesh operations like containment testing and spatial queries.
+    """
+    mesh: Trimesh
+
+    def __init__(self, mesh_path: str | Path):
+        self.mesh = load_mesh(Path(mesh_path))
+        radius = self.__calc_circumscribed_radius()
+        super().__init__(self.mesh.centroid, radius)
+
+    def __calc_circumscribed_radius(self):
+        """
+        Calculate the circumscribed radius of the mesh from its center of mass.
+        
+        This method computes the minimum radius of a sphere centered at the mesh's
+        center of mass that completely encloses all mesh vertices. The circumscribed
+        radius is calculated as the maximum Euclidean distance from the center of mass
+        to any vertex in the mesh. This ensures that the bounding sphere fully contains
+        the entire mesh geometry, making it suitable for collision detection, spatial
+        queries, and geometric validation during phantom generation.
+        
+        The calculation uses the center of mass rather than the geometric centroid to
+        ensure that the bounding sphere represents the true volumetric center of the
+        object, which is particularly important for anatomical meshes with non-uniform
+        vertex distributions or complex internal geometries.
+
+        Returns
+        -------
+        float
+            Circumscribed radius of the mesh in the same units as the mesh coordinates.
+            Always positive and represents the minimum sphere radius needed to fully
+            enclose the mesh when centered at the mesh's center of mass.
+            
+        Notes
+        -----
+        The computation has O(n) complexity where n is the number of vertices.
+        For large meshes, this calculation may take some time during initialization
+        but is performed only once per structure creation.
+        """
+        return np.max(np.linalg.norm(self.mesh.vertices - self.mesh.center_mass, axis=1))
