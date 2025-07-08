@@ -215,12 +215,6 @@ def test_blob_calls_fibonacci_points_generation_during_initialization():
     assert hasattr(blob, 'empirical_min_offset')
     assert isinstance(blob.empirical_max_offset, float)
     assert isinstance(blob.empirical_min_offset, float)
-    
-    # Test that the fibonacci method works directly
-    points = blob._generate_fibonacci_points_on_sphere(num_points=100)
-    assert isinstance(points, np.ndarray)
-    assert points.shape == (100, 3)
-    assert np.allclose(np.linalg.norm(points, axis=1), 1.0, atol=1e-10)
 
 
 def test_blob_calculates_empirical_offsets_during_initialization():
@@ -232,58 +226,6 @@ def test_blob_calculates_empirical_offsets_during_initialization():
     assert isinstance(blob.empirical_max_offset, (float, np.floating))
     assert isinstance(blob.empirical_min_offset, (float, np.floating))
     assert blob.empirical_max_offset >= blob.empirical_min_offset
-
-
-def test_blob_fibonacci_points_generation_with_default_count():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=100)
-    
-    assert points.shape == (100, 3)
-    norms = np.linalg.norm(points, axis=1)
-    assert np.allclose(norms, 1.0, rtol=1e-10)
-
-
-def test_blob_fibonacci_points_generation_with_custom_count():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=50)
-    
-    assert points.shape == (50, 3)
-    norms = np.linalg.norm(points, axis=1)
-    assert np.allclose(norms, 1.0, rtol=1e-10)
-
-
-def test_blob_fibonacci_points_generation_fails_with_single_point():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    with pytest.raises(ZeroDivisionError):
-        blob._generate_fibonacci_points_on_sphere(num_points=1)
-
-
-def test_blob_fibonacci_points_have_uniform_distribution():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=1000)
-    
-    x_positive = np.sum(points[:, 0] > 0)
-    x_negative = np.sum(points[:, 0] < 0)
-    y_positive = np.sum(points[:, 1] > 0)
-    y_negative = np.sum(points[:, 1] < 0)
-    z_positive = np.sum(points[:, 2] > 0)
-    z_negative = np.sum(points[:, 2] < 0)
-    
-    assert abs(x_positive - x_negative) < 200
-    assert abs(y_positive - y_negative) < 200
-    assert abs(z_positive - z_negative) < 200
 
 
 def test_blob_calculate_offsets_for_single_vertex():
@@ -590,46 +532,6 @@ def test_tube_initialization_with_zero_direction_vector_produces_nan():
     with pytest.warns(RuntimeWarning, match="invalid value encountered in divide"):
         tube = Tube(position=position, direction=direction, radius=radius)
         assert np.isnan(tube.direction).all()
-
-
-def test_blob_fibonacci_points_generation_with_none_parameter():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=None)
-    
-    assert isinstance(points, np.ndarray)
-    assert points.shape[1] == 3
-    assert points.shape[0] == 10000
-    assert np.allclose(np.linalg.norm(points, axis=1), 1.0, atol=1e-10)
-
-
-def test_blob_fibonacci_points_generation_with_zero_points():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=0)
-    
-    assert isinstance(points, np.ndarray)
-    assert points.shape == (0,)  # Empty array when range(0)
-
-
-def test_blob_fibonacci_points_generation_with_two_points():
-    position = np.array([0.0, 0.0, 0.0])
-    radius = 1.0
-    blob = Blob(position=position, radius=radius)
-    
-    points = blob._generate_fibonacci_points_on_sphere(num_points=2)
-    
-    assert isinstance(points, np.ndarray)
-    assert points.shape == (2, 3)
-    assert np.allclose(np.linalg.norm(points, axis=1), 1.0, atol=1e-10)
-    expected_first_point = np.array([0.0, 1.0, 0.0])
-    expected_second_point = np.array([0.0, -1.0, 0.0])
-    assert np.allclose(points[0], expected_first_point, atol=1e-10)
-    assert np.allclose(points[1], expected_second_point, atol=1e-10)
 
 
 def test_blob_calculate_offsets_with_nan_vertices():

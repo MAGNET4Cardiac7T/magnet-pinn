@@ -16,6 +16,8 @@ import numpy as np
 from trimesh import Trimesh, load_mesh
 from perlin_noise import PerlinNoise
 
+from .utils import generate_fibonacci_points_on_sphere
+
 
 class Structure3D(ABC):
     """
@@ -141,50 +143,12 @@ class Blob(Structure3D):
 
         self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
 
-        points = self._generate_fibonacci_points_on_sphere(num_points=10000)
+        points = generate_fibonacci_points_on_sphere(num_points=10000)
         offsets_at_points = self.calculate_offsets(points)
 
         self.empirical_max_offset = np.max(offsets_at_points)
         self.empirical_min_offset = np.min(offsets_at_points)
 
-    def _generate_fibonacci_points_on_sphere(self, num_points: int = None):
-        """
-        Generate uniformly distributed points on a unit sphere using Fibonacci spiral.
-        
-        This method creates a nearly uniform distribution of points on the sphere surface
-        using the golden angle spiral method. The resulting points are used for empirical
-        sampling of surface offset variations during blob initialization. The Fibonacci
-        spiral method ensures that points are distributed with nearly uniform density
-        across the sphere surface, avoiding clustering at poles that occurs with some
-        other spherical sampling methods. The golden angle (2π * (√5 - 1) / 2) is used
-        to create the spiral pattern.
-
-        Parameters
-        ----------
-        num_points : int, optional
-            Number of points to generate on the sphere. If None, uses a default value.
-            For blob initialization, 10,000 points provide good statistical coverage.
-
-        Returns
-        -------
-        np.ndarray
-            Array of shape (num_points, 3) containing unit sphere coordinates.
-            Each row represents [x, y, z] coordinates of a point on the unit sphere.
-        """
-        if num_points is None:
-            num_points = 10000
-        
-        points = []
-        phi = np.pi * (np.sqrt(5.) - 1.)
-        for i in range(num_points):
-            y = 1 - (i / float(num_points - 1)) * 2
-            radius = np.sqrt(1 - y * y)
-            theta = phi * i
-            x = np.cos(theta) * radius
-            z = np.sin(theta) * radius
-            points.append([x, y, z])
-        return np.array(points)
-    
     def calculate_offsets(self, vertices: np.ndarray) -> np.ndarray:
         """
         Calculate surface offset values for given vertices using Perlin noise.
@@ -327,7 +291,20 @@ class CustomMeshStructure(Structure3D):
     def __init__(self, mesh_path: str | Path):
         self.mesh = load_mesh(Path(mesh_path))
         radius = self.__calc_circumscribed_radius()
-        super().__init__(self.mesh.centroid, radius)
+        super().__init__(position=self.mesh.center_mass, radius=radius)
+
+        sphere_points = generate_fibonacci_points_on_sphere(num_points=100000)
+        sphere_points_scaled = sphere_points * self.radius + self.position
+
+        closest_points, _, _ = self.mesh.nearest.on_surface(sphere_points_scaled)
+        direction_vectors = closest_points - sphere_points_scaled
+        distance_magnitudes = np.linalg.norm(direction_vectors, axis=1)
+
+        signed_distances = -distance_magnitudes
+        relative_offsets = signed_distances / self.radius
+
+        self.empirical_max_offset = 0.0
+        self.empirical_min_offset = np.min(relative_offsets)
 
     def __calc_circumscribed_radius(self):
         """

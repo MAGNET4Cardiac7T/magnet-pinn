@@ -1,7 +1,7 @@
-import pytest
 import numpy as np
+import pytest
 
-from magnet_pinn.generator.utils import spheres_packable
+from magnet_pinn.generator.utils import spheres_packable, generate_fibonacci_points_on_sphere
 
 
 def test_spheres_packable_single_sphere_fits_exactly():
@@ -233,3 +233,62 @@ def test_spheres_packable_exact_zero_safety_margin_edge():
 
 def test_spheres_packable_tiny_over_boundary_two_spheres():
     assert not spheres_packable(radius_outer=1.0, radius_inner=0.5000001, num_inner=2, safety_margin=0.0)
+
+
+# Fibonacci sphere generation tests
+
+def test_generate_fibonacci_points_on_sphere_with_default_count():
+    points = generate_fibonacci_points_on_sphere(num_points=100)
+    
+    assert points.shape == (100, 3)
+    norms = np.linalg.norm(points, axis=1)
+    assert np.allclose(norms, 1.0, rtol=1e-10)
+
+
+def test_generate_fibonacci_points_on_sphere_with_custom_count():
+    points = generate_fibonacci_points_on_sphere(num_points=50)
+    
+    assert points.shape == (50, 3)
+    norms = np.linalg.norm(points, axis=1)
+    assert np.allclose(norms, 1.0, rtol=1e-10)
+
+
+def test_generate_fibonacci_points_on_sphere_fails_with_single_point():
+    with pytest.raises(ZeroDivisionError):
+        generate_fibonacci_points_on_sphere(num_points=1)
+
+
+def test_generate_fibonacci_points_on_sphere_have_uniform_distribution():
+    points = generate_fibonacci_points_on_sphere(num_points=1000)
+    
+    x_positive = np.sum(points[:, 0] > 0)
+    x_negative = np.sum(points[:, 0] < 0)
+    y_positive = np.sum(points[:, 1] > 0)
+    y_negative = np.sum(points[:, 1] < 0)
+    z_positive = np.sum(points[:, 2] > 0)
+    z_negative = np.sum(points[:, 2] < 0)
+    
+    assert abs(x_positive - x_negative) < 200
+    assert abs(y_positive - y_negative) < 200
+    assert abs(z_positive - z_negative) < 200
+
+
+def test_generate_fibonacci_points_on_sphere_with_zero_points():
+    points = generate_fibonacci_points_on_sphere(num_points=0)
+    assert points.shape == (0, 3)
+
+
+def test_generate_fibonacci_points_on_sphere_with_two_points():
+    points = generate_fibonacci_points_on_sphere(num_points=2)
+    assert points.shape == (2, 3)
+    
+    # Verify exact coordinates for 2 points case
+    expected_points = np.array([[0.0, 1.0, 0.0], [0.0, -1.0, 0.0]])
+    assert np.allclose(points, expected_points, atol=1e-10)
+
+
+def test_generate_fibonacci_points_on_sphere_with_default_parameter():
+    points = generate_fibonacci_points_on_sphere()
+    assert points.shape == (10000, 3)
+    norms = np.linalg.norm(points, axis=1)
+    assert np.allclose(norms, 1.0, rtol=1e-10)

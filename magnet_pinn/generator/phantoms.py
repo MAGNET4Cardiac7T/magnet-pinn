@@ -14,12 +14,11 @@ import logging
 from abc import ABC
 
 import numpy as np
-from numpy.random import Generator, default_rng
+from numpy.random import default_rng
 
-from .structures import Blob, Tube
 from .typing import StructurePhantom
 from .samplers import BlobSampler, TubeSampler
-from .utils import spheres_packable
+from .structures import Blob, CustomMeshStructure
 
 
 class Phantom(ABC):
@@ -229,6 +228,48 @@ class Tissue(Phantom):
 
         return StructurePhantom(
             parent=parent_blob,
+            children=children_blobs,
+            tubes=tubes
+        )
+    
+
+class CusytomPhantom:
+    def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
+                 blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
+                 relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01):
+        self.parent_structure = CustomMeshStructure(stl_mesh_path)
+
+        self.num_children_blobs = num_children_blobs
+        self.num_tubes = num_tubes
+        
+        self.blob_sampler = BlobSampler(blob_radius_decrease_per_level)
+        
+        tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
+        tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
+        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius)
+    
+    def _estimate_sampling_radius(self):
+        return 0.7 * self.parent_structure.radius
+
+    def generate(self, seed: int = None) -> StructurePhantom:
+        rng = default_rng(seed)
+        
+        children_blobs = self.blob_sampler.sample_children_blobs(
+            parent_blob=self.parent_structure,
+            num_children=self.num_children_blobs,
+            rng=rng
+        )
+        
+        sampling_radius = self._estimate_sampling_radius()
+        tubes = self.tube_sampler.sample_tubes(
+            center=self.parent_structure.position,
+            radius=sampling_radius,
+            num_tubes=self.num_tubes,
+            rng=rng
+        )
+        
+        return StructurePhantom(
+            parent=self.parent_structure,
             children=children_blobs,
             tubes=tubes
         )
