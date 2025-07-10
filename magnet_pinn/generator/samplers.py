@@ -10,11 +10,13 @@ DESCRIPTION
     runtime parameters (RNG, iteration limits) during sampling method calls.
 """
 from typing import List, Union
-from numpy.random import Generator
-import numpy as np
 
-from .structures import Tube, Blob
+import numpy as np
+from trimesh import Trimesh
+from numpy.random import Generator
+
 from .utils import spheres_packable
+from .structures import Tube, Blob, CustomMeshStructure
 from .typing import PropertyItem, PropertyPhantom, MeshPhantom, StructurePhantom
 
 
@@ -571,3 +573,113 @@ class TubeSampler:
                 break
                 
         return tubes
+    
+
+class MeshBlobSampler:
+    
+    def __init__(self, child_radius: float):
+        if child_radius <= 0:
+            raise ValueError("child_radius must be positive")
+        self.child_radius = child_radius
+    
+    def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
+        for _ in range(max_iter):
+            points = (rng.random((1, 3)) * mesh.extents) + mesh.bounds[0]
+            contained = mesh.contains(points)
+            if points[contained].size > 0:
+                return points[contained][0]
+        raise RuntimeError("Failed to sample a valid position inside the mesh after maximum iterations")
+    
+    def sample_children_blobs(self, parent_mesh_structure: CustomMeshStructure, 
+                            num_children: int, rng: Generator, 
+                            max_iterations: int = 100000) -> list[Blob]:
+        if num_children == 0:
+            return []
+            
+        mesh = parent_mesh_structure.mesh
+        placed_blobs: list[Blob] = []
+        
+        for _ in range(num_children):
+            attempts = 0
+            blob_placed = False
+            
+            while attempts < max_iterations and not blob_placed:
+                position = self._sample_inside_volume(mesh, rng)
+                
+                if self._validates_blob_collision(position, placed_blobs):
+                    blob = Blob(position, self.child_radius, 
+                                  seed=rng.integers(0, 2**32-1).item())
+                    placed_blobs.append(blob)
+                    blob_placed = True
+                
+                attempts += 1
+            
+            if not blob_placed:
+                break
+            
+        return placed_blobs
+    
+    def _validates_blob_collision(self, position: np.ndarray, existing_blobs: list[Blob]) -> bool:
+        # enforce no-overlap by checking pairwise distances
+        min_distance = 2 * self.child_radius  # No overlap
+        # if no existing blobs, always valid
+        if not existing_blobs:
+            return True
+        # collect existing positions plus candidate
+        points = np.vstack([blob.position for blob in existing_blobs] + [position])
+        # compute pairwise distances
+        dists = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=-1)
+        # ignore self-distances
+        dists += np.eye(len(points)) * 1e10
+        # each point's nearest neighbor distance
+        min_dists = dists.min(axis=0)
+        return np.all(min_dists >= min_distance)
+    
+
+class MeshTubeSampler:
+    """Sampler for tubes inside a mesh volume with collision detection and radius variation."""
+    def __init__(self, tube_max_radius: float, tube_min_radius: float):
+        if tube_max_radius <= 0:
+            raise ValueError("tube_max_radius must be positive")
+        if tube_min_radius <= 0:
+            raise ValueError("tube_min_radius must be positive")
+        if tube_min_radius >= tube_max_radius:
+            raise ValueError("tube_min_radius must be less than tube_max_radius")
+        self.tube_max_radius = tube_max_radius
+        self.tube_min_radius = tube_min_radius
+
+    def _sample_inside_position(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
+        """Sample a single start point uniformly from the mesh volume."""
+        for _ in range(max_iter):
+            points = (rng.random((1, 3)) * mesh.extents) + mesh.bounds[0]
+            contained = mesh.contains(points)
+            if points[contained].size > 0:
+                return points[contained][0]
+        raise RuntimeError("Failed to sample a valid position inside the mesh after maximum iterations")
+
+    def sample_tubes(self, parent_mesh_structure: CustomMeshStructure, num_tubes: int, rng: Generator,
+                    max_iterations: int = 10000) -> list[Tube]:
+        mesh = parent_mesh_structure.mesh
+        placed_tubes: list[Tube] = []
+        for i in range(num_tubes):
+            attempts = 0
+            tube_placed = False
+            while attempts < max_iterations and not tube_placed:
+                radius = rng.uniform(self.tube_min_radius, self.tube_max_radius)
+                start = self._sample_inside_position(mesh, rng)
+                direction = rng.normal(size=start.shape)
+                # normalize direction
+                direction = direction / np.linalg.norm(direction)
+                tube = Tube(start, direction, radius)
+                # collision check using Tube.distance_to_tube
+                is_intersecting = any(
+                    Tube.distance_to_tube(tube, other) < tube.radius + other.radius
+                    for other in placed_tubes
+                )
+                if not is_intersecting:
+                    placed_tubes.append(tube)
+                    tube_placed = True
+                attempts += 1
+            if not tube_placed:
+                break
+        return placed_tubes

@@ -293,19 +293,6 @@ class CustomMeshStructure(Structure3D):
         radius = self.__calc_circumscribed_radius()
         super().__init__(position=self.mesh.center_mass, radius=radius)
 
-        sphere_points = generate_fibonacci_points_on_sphere(num_points=100000)
-        sphere_points_scaled = sphere_points * self.radius + self.position
-
-        closest_points, _, _ = self.mesh.nearest.on_surface(sphere_points_scaled)
-        direction_vectors = closest_points - sphere_points_scaled
-        distance_magnitudes = np.linalg.norm(direction_vectors, axis=1)
-
-        signed_distances = -distance_magnitudes
-        relative_offsets = signed_distances / self.radius
-
-        self.empirical_max_offset = 0.0
-        self.empirical_min_offset = np.min(relative_offsets)
-
     def __calc_circumscribed_radius(self):
         """
         Calculate the circumscribed radius of the mesh from its center of mass.

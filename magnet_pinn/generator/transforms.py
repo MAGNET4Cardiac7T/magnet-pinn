@@ -360,6 +360,171 @@ class MeshesCutout(Transform):
             )
     
 
+class MeshesClipping(Transform):
+    """
+    Transform for clipping mesh components to stay within parental boundaries.
+    
+    Ensures that all child blobs and tubes remain within the parental mesh
+    boundaries by performing boolean intersection operations. This prevents
+    child components from extending outside the anatomical container and
+    maintains realistic geometric relationships.
+    """
+
+    def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
+        """
+        Clip all mesh components to stay within parental boundaries.
+        
+        Performs boolean intersection operations to ensure that all child
+        blobs and tubes remain within the confines of the parent mesh.
+        This maintains anatomical realism by preventing components from
+        extending beyond their container boundaries.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing parent, children, and tube meshes to process.
+        *args, **kwds
+            Additional arguments (currently unused but maintained for interface consistency).
+
+        Returns
+        -------
+        MeshPhantom
+            Processed mesh phantom with all components clipped to parent boundaries.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean operations fail due to invalid mesh geometry or engine errors.
+        ValueError
+            If input meshes are invalid or have zero volume.
+        """
+        try:
+            return MeshPhantom(
+                parent=tissue.parent,  # Parent remains unchanged
+                children=self._clip_children(tissue),
+                tubes=self._clip_tubes(tissue)
+            )
+        except (RuntimeError, ValueError) as e:
+            logging.error(f"MeshesClipping failed: {e}")
+            raise
+
+    def _clip_children(self, tissue: MeshPhantom) -> list[Trimesh]:
+        """
+        Clip all child meshes to stay within parent boundaries.
+        
+        Performs boolean intersection between each child mesh and the parent
+        mesh to ensure children remain within anatomical boundaries. Any
+        portions of child meshes extending outside the parent are removed.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing meshes to process.
+
+        Returns
+        -------
+        list[Trimesh]
+            List of child meshes clipped to parent boundaries.
+
+        Raises
+        ------
+        RuntimeError
+            If intersection operations fail for any child mesh.
+        """
+        if not tissue.children:
+            return tissue.children
+        
+        try:
+            logging.debug("Attempting children clipping with manifold engine")
+            
+            _validate_input_meshes([tissue.parent] + tissue.children, "children clipping")
+            
+            clipped_children = []
+            for i, child in enumerate(tissue.children):
+                try:
+                    clipped_child = trimesh.boolean.intersection([child, tissue.parent], engine='manifold')
+                    _validate_mesh(clipped_child, f"child {i} clipping")
+                    clipped_children.append(clipped_child)
+                except Exception as child_error:
+                    raise RuntimeError(
+                        f"Failed to clip child {i} (vertices: {len(child.vertices)}, "
+                        f"faces: {len(child.faces)}, volume: {child.volume:.3f}): {child_error}"
+                    )
+            
+            logging.info("Children clipping successful")
+            return clipped_children
+            
+        except RuntimeError:
+            raise
+        except Exception as e:
+            raise RuntimeError(
+                f"Boolean operation failed for children clipping. "
+                f"Children count: {len(tissue.children)}, "
+                f"Parent vertices: {len(tissue.parent.vertices)}, "
+                f"Parent faces: {len(tissue.parent.faces)}, "
+                f"Parent volume: {tissue.parent.volume:.3f}, "
+                f"Error: {e}"
+            )
+
+    def _clip_tubes(self, tissue: MeshPhantom) -> list[Trimesh]:
+        """
+        Clip all tube meshes to stay within parent boundaries.
+        
+        Performs boolean intersection between each tube mesh and the parent
+        mesh to ensure tubes remain within anatomical boundaries. Any
+        portions of tube meshes extending outside the parent are removed.
+
+        Parameters
+        ----------
+        tissue : MeshPhantom
+            The mesh phantom containing meshes to process.
+
+        Returns
+        -------
+        list[Trimesh]
+            List of tube meshes clipped to parent boundaries.
+
+        Raises
+        ------
+        RuntimeError
+            If intersection operations fail for any tube mesh.
+        """
+        if not tissue.tubes:
+            return tissue.tubes
+        
+        try:
+            logging.debug("Attempting tubes clipping with manifold engine")
+            
+            _validate_input_meshes([tissue.parent] + tissue.tubes, "tubes clipping")
+            
+            clipped_tubes = []
+            for i, tube in enumerate(tissue.tubes):
+                try:
+                    clipped_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='manifold')
+                    _validate_mesh(clipped_tube, f"tube {i} clipping")
+                    clipped_tubes.append(clipped_tube)
+                except Exception as tube_error:
+                    raise RuntimeError(
+                        f"Failed to clip tube {i} (vertices: {len(tube.vertices)}, "
+                        f"faces: {len(tube.faces)}, volume: {tube.volume:.3f}): {tube_error}"
+                    )
+            
+            logging.info("Tubes clipping successful")
+            return clipped_tubes
+            
+        except RuntimeError:
+            raise
+        except Exception as e:
+            raise RuntimeError(
+                f"Boolean operation failed for tubes clipping. "
+                f"Tubes count: {len(tissue.tubes)}, "
+                f"Parent vertices: {len(tissue.parent.vertices)}, "
+                f"Parent faces: {len(tissue.parent.faces)}, "
+                f"Parent volume: {tissue.parent.volume:.3f}, "
+                f"Error: {e}"
+            )
+    
+
 class MeshesCleaning(Transform):
     """
     Transform for cleaning and repairing mesh geometry after boolean operations.

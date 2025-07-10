@@ -17,7 +17,9 @@ import numpy as np
 from numpy.random import default_rng
 
 from .typing import StructurePhantom
-from .samplers import BlobSampler, TubeSampler
+from .samplers import (
+    BlobSampler, TubeSampler, MeshBlobSampler, MeshTubeSampler
+)
 from .structures import Blob, CustomMeshStructure
 
 
@@ -264,6 +266,51 @@ class CusytomPhantom:
         tubes = self.tube_sampler.sample_tubes(
             center=self.parent_structure.position,
             radius=sampling_radius,
+            num_tubes=self.num_tubes,
+            rng=rng
+        )
+        
+        return StructurePhantom(
+            parent=self.parent_structure,
+            children=children_blobs,
+            tubes=tubes
+        )
+    
+
+class CylinderPhantom:
+    def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
+                 blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
+                 relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01):
+        self.parent_structure = CustomMeshStructure(stl_mesh_path)
+
+        child_radius = self.parent_structure.radius * blob_radius_decrease_per_level
+
+        self.num_children_blobs = num_children_blobs
+        self.num_tubes = num_tubes
+        
+        self.child_sampler = MeshBlobSampler(
+            child_radius
+        )
+        
+        tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
+        tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
+        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius)
+    
+    def _estimate_sampling_radius(self):
+        return 0.7 * self.parent_structure.radius
+
+    def generate(self, seed: int = None) -> StructurePhantom:
+        rng = default_rng(seed)
+        
+        children_blobs = self.child_sampler.sample_children_blobs(
+            self.parent_structure,
+            num_children=self.num_children_blobs,
+            rng=rng
+        )
+        
+        sampling_radius = self._estimate_sampling_radius()
+        tubes = self.tube_sampler.sample_tubes(
+            parent_mesh_structure=self.parent_structure,
             num_tubes=self.num_tubes,
             rng=rng
         )
