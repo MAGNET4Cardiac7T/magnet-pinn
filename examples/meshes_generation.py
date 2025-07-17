@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 import trimesh
+import numpy as np
 from numpy.random import default_rng
 
 from magnet_pinn.generator.io import MeshWriter
@@ -20,11 +21,11 @@ from magnet_pinn.generator.transforms import ToMesh, MeshesCutout, MeshesCleanin
 tissue = Tissue(
     num_children_blobs=3,
     initial_blob_radius=100,
-    initial_blob_center_extent={
-        "x": [-5, 5],
-        "y": [-5, 5],
-        "z": [-50, 50],
-    },
+    initial_blob_center_extent=np.array([
+        [-5, 5],
+        [-5, 5],
+        [-50, 50],
+    ]),
     blob_radius_decrease_per_level=0.3,
     num_tubes=10,
     relative_tube_max_radius=0.1,

@@ -18,17 +18,17 @@ class ConcretePhantom(Phantom):
 
 def test_phantom_initialization_with_valid_parameters():
     initial_blob_radius = 5.0
-    initial_blob_center_extent = {"x": [-1.0, 1.0], "y": [-1.0, 1.0], "z": [-1.0, 1.0]}
+    initial_blob_center_extent = np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]])
     
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
     
     assert phantom.initial_blob_radius == initial_blob_radius
-    assert phantom.initial_blob_center_extent == initial_blob_center_extent
+    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
 
 
 def test_phantom_initialization_with_zero_radius():
     initial_blob_radius = 0.0
-    initial_blob_center_extent = {"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]}
+    initial_blob_center_extent = np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
     
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
     
@@ -37,7 +37,7 @@ def test_phantom_initialization_with_zero_radius():
 
 def test_phantom_initialization_with_large_radius():
     initial_blob_radius = 1000.0
-    initial_blob_center_extent = {"x": [-100.0, 100.0], "y": [-100.0, 100.0], "z": [-100.0, 100.0]}
+    initial_blob_center_extent = np.array([[-100.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]])
     
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
     
@@ -46,24 +46,24 @@ def test_phantom_initialization_with_large_radius():
 
 def test_phantom_initialization_with_negative_extent():
     initial_blob_radius = 1.0
-    initial_blob_center_extent = {"x": [-10.0, -5.0], "y": [-10.0, -5.0], "z": [-10.0, -5.0]}
+    initial_blob_center_extent = np.array([[-10.0, -5.0], [-10.0, -5.0], [-10.0, -5.0]])
     
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
     
-    assert phantom.initial_blob_center_extent["x"] == [-10.0, -5.0]
+    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
 
 
 def test_phantom_initialization_with_single_point_extent():
     initial_blob_radius = 1.0
-    initial_blob_center_extent = {"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]}
+    initial_blob_center_extent = np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
     
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
     
-    assert phantom.initial_blob_center_extent["x"] == [0.0, 0.0]
+    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
 
 
 def test_phantom_generate_raises_not_implemented_error():
-    phantom = Phantom(1.0, {"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]})
+    phantom = Phantom(1.0, np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]))
     
     with pytest.raises(NotImplementedError, match="Subclasses should implement this method"):
         phantom.generate()
@@ -72,7 +72,7 @@ def test_phantom_generate_raises_not_implemented_error():
 def test_tissue_initialization_with_valid_parameters():
     num_children_blobs = 3
     initial_blob_radius = 10.0
-    initial_blob_center_extent = {"x": [-5.0, 5.0], "y": [-5.0, 5.0], "z": [-5.0, 5.0]}
+    initial_blob_center_extent = np.array([[-5.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]])
     blob_radius_decrease_per_level = 0.5
     num_tubes = 2
     relative_tube_max_radius = 0.1
@@ -98,7 +98,7 @@ def test_tissue_initialization_with_zero_children():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=1,
         relative_tube_max_radius=0.2
@@ -111,7 +111,7 @@ def test_tissue_initialization_with_zero_tubes():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=0,
         relative_tube_max_radius=0.2
@@ -124,7 +124,7 @@ def test_tissue_initialization_with_minimum_blob_radius_decrease():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=1.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.001,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -137,7 +137,7 @@ def test_tissue_initialization_with_maximum_blob_radius_decrease():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=1.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.999,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -150,7 +150,7 @@ def test_tissue_initialization_with_minimum_tube_radii():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.001,
@@ -165,7 +165,7 @@ def test_tissue_initialization_with_maximum_tube_radii():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.999,
@@ -180,7 +180,7 @@ def test_tissue_initialization_with_default_min_tube_radius():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.2
@@ -194,7 +194,7 @@ def test_tissue_rejects_negative_children_blobs():
         Tissue(
             num_children_blobs=-1,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -206,7 +206,7 @@ def test_tissue_rejects_zero_initial_blob_radius():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=0.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -218,7 +218,7 @@ def test_tissue_rejects_negative_initial_blob_radius():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=-1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -230,7 +230,7 @@ def test_tissue_rejects_negative_num_tubes():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=-1,
             relative_tube_max_radius=0.1
@@ -242,7 +242,7 @@ def test_tissue_rejects_zero_relative_tube_max_radius():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.0
@@ -254,7 +254,7 @@ def test_tissue_rejects_relative_tube_max_radius_equal_to_one():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=1.0
@@ -266,7 +266,7 @@ def test_tissue_rejects_relative_tube_max_radius_greater_than_one():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=1.5
@@ -278,7 +278,7 @@ def test_tissue_rejects_zero_relative_tube_min_radius():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
@@ -291,7 +291,7 @@ def test_tissue_rejects_negative_relative_tube_min_radius():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
@@ -304,7 +304,7 @@ def test_tissue_rejects_relative_tube_min_radius_equal_to_max():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
@@ -317,7 +317,7 @@ def test_tissue_rejects_relative_tube_min_radius_greater_than_max():
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
@@ -329,7 +329,7 @@ def test_tissue_generate_with_zero_children_and_tubes():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
         relative_tube_max_radius=0.2
@@ -347,7 +347,7 @@ def test_tissue_generate_with_children_only():
     tissue = Tissue(
         num_children_blobs=2,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [-1.0, 1.0], "y": [-1.0, 1.0], "z": [-1.0, 1.0]},
+        initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -366,7 +366,7 @@ def test_tissue_generate_with_tubes_only():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [-1.0, 1.0], "y": [-1.0, 1.0], "z": [-1.0, 1.0]},
+        initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=2,
         relative_tube_max_radius=0.1
@@ -385,7 +385,7 @@ def test_tissue_generate_with_children_and_tubes():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [-2.0, 2.0], "y": [-2.0, 2.0], "z": [-2.0, 2.0]},
+        initial_blob_center_extent=np.array([[-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=1,
         relative_tube_max_radius=0.15
@@ -402,7 +402,7 @@ def test_tissue_generate_with_children_and_tubes():
 
 
 def test_tissue_generate_parent_blob_within_extent():
-    extent = {"x": [-5.0, 5.0], "y": [-3.0, 3.0], "z": [-1.0, 1.0]}
+    extent = np.array([[-5.0, 5.0], [-3.0, 3.0], [-1.0, 1.0]])
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=2.0,
@@ -415,9 +415,9 @@ def test_tissue_generate_parent_blob_within_extent():
     phantom = tissue.generate(seed=42)
     
     parent_pos = phantom.parent.position
-    assert extent["x"][0] <= parent_pos[0] <= extent["x"][1]
-    assert extent["y"][0] <= parent_pos[1] <= extent["y"][1]
-    assert extent["z"][0] <= parent_pos[2] <= extent["z"][1]
+    assert extent[0, 0] <= parent_pos[0] <= extent[0, 1]
+    assert extent[1, 0] <= parent_pos[1] <= extent[1, 1]
+    assert extent[2, 0] <= parent_pos[2] <= extent[2, 1]
 
 
 def test_tissue_generate_parent_blob_correct_radius():
@@ -425,7 +425,7 @@ def test_tissue_generate_parent_blob_correct_radius():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=initial_blob_radius,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -442,7 +442,7 @@ def test_tissue_generate_child_blobs_correct_radius():
     tissue = Tissue(
         num_children_blobs=2,
         initial_blob_radius=initial_blob_radius,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=radius_decrease,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -462,7 +462,7 @@ def test_tissue_generate_tube_radii_within_range():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=initial_blob_radius,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=3,
         relative_tube_max_radius=max_relative,
@@ -481,7 +481,7 @@ def test_tissue_generate_reproducible_with_same_seed():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [-1.0, 1.0], "y": [-1.0, 1.0], "z": [-1.0, 1.0]},
+        initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=1,
         relative_tube_max_radius=0.2
@@ -500,7 +500,7 @@ def test_tissue_generate_different_results_with_different_seeds():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [-2.0, 2.0], "y": [-2.0, 2.0], "z": [-2.0, 2.0]},
+        initial_blob_center_extent=np.array([[-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=0,
         relative_tube_max_radius=0.2
@@ -516,7 +516,7 @@ def test_tissue_generate_without_seed():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=5.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=0,
         relative_tube_max_radius=0.2
@@ -535,7 +535,7 @@ def test_tissue_generate_tube_direction_vectors_normalized():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=3,
         relative_tube_max_radius=0.1
@@ -552,7 +552,7 @@ def test_tissue_generate_uses_parent_inner_radius_for_tubes():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.1
@@ -572,7 +572,7 @@ def test_tissue_generate_with_single_child_blob():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.2,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -593,7 +593,7 @@ def test_tissue_generate_with_single_tube():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=10.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.15
@@ -618,7 +618,7 @@ def test_tissue_has_correct_sampler_configuration():
     tissue = Tissue(
         num_children_blobs=1,
         initial_blob_radius=initial_radius,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=blob_decrease,
         num_tubes=1,
         relative_tube_max_radius=max_tube_radius,
@@ -637,7 +637,7 @@ def test_tissue_inheritance_from_phantom():
     tissue = Tissue(
         num_children_blobs=0,
         initial_blob_radius=1.0,
-        initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
         relative_tube_max_radius=0.1
@@ -653,7 +653,7 @@ def test_tissue_rejects_zero_blob_radius_decrease_per_level():
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.0,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -665,7 +665,7 @@ def test_tissue_rejects_negative_blob_radius_decrease_per_level():
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=-0.5,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -677,7 +677,7 @@ def test_tissue_rejects_blob_radius_decrease_per_level_equal_to_one():
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=1.0,
             num_tubes=0,
             relative_tube_max_radius=0.1
@@ -689,7 +689,7 @@ def test_tissue_rejects_blob_radius_decrease_per_level_greater_than_one():
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
-            initial_blob_center_extent={"x": [0.0, 0.0], "y": [0.0, 0.0], "z": [0.0, 0.0]},
+            initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=1.5,
             num_tubes=0,
             relative_tube_max_radius=0.1

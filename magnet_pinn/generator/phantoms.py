@@ -38,8 +38,9 @@ class Phantom(ABC):
         Base radius for the primary blob structure in the phantom.
         Must be a positive value representing the characteristic size scale.
     initial_blob_center_extent : np.ndarray
-        Dictionary-like structure defining the spatial bounds for phantom placement.
+        Array-like structure defining the spatial bounds for phantom placement.
         Contains coordinate ranges for initial blob center positioning.
+        First X, then Y, then Z dimensions.
     """
     initial_blob_radius: float
     initial_blob_center_extent: np.ndarray
@@ -53,7 +54,8 @@ class Phantom(ABC):
         initial_blob_radius : float
             Base radius for the primary blob structure. Must be positive.
         initial_blob_center_extent : np.ndarray
-            Spatial bounds dictionary for phantom center placement.
+            Spatial bounds array for phantom center placement.
+            First X, then Y, then Z dimensions.
         """
         self.initial_blob_radius = initial_blob_radius
         self.initial_blob_center_extent = initial_blob_center_extent
@@ -131,7 +133,8 @@ class Tissue(Phantom):
         initial_blob_radius : float
             Radius of the parent blob structure. Must be positive.
         initial_blob_center_extent : np.ndarray
-            Dictionary defining spatial bounds for parent blob center placement.
+            Array defining spatial bounds for parent blob center placement. 
+            First X, then Y, then Z.
             Should contain coordinate ranges for each spatial dimension.
         blob_radius_decrease_per_level : float
             Scaling factor for child blob radii relative to parent radius.
@@ -161,6 +164,8 @@ class Tissue(Phantom):
             raise ValueError("relative_tube_max_radius must be in (0, 1)")
         if relative_tube_min_radius <= 0 or relative_tube_min_radius >= relative_tube_max_radius:
             raise ValueError("relative_tube_min_radius must be in (0, relative_tube_max_radius)")
+        if initial_blob_center_extent is None or (isinstance(initial_blob_center_extent, list) and all(isinstance(elem, list) for elem in initial_blob_center_extent)):
+            raise ValueError("initial_blob_center_extent must be a 2d array-like structure with coordinate ranges, first X, then Y, then Z dimensions")
         
         super().__init__(initial_blob_radius, initial_blob_center_extent)
 
@@ -206,7 +211,7 @@ class Tissue(Phantom):
 
         initial_blob_center = np.array([
             gen_object.uniform(dim[0], dim[1])
-            for _, dim in self.initial_blob_center_extent.items()
+            for dim in self.initial_blob_center_extent
         ])
 
         logging.info("Generating parent blob.")
@@ -235,11 +240,16 @@ class Tissue(Phantom):
         )
 
 
-class CustomPhantom:
+class CustomPhantom(Phantom):
+    """
+    Generator for custom phantoms based on STL mesh structures.
+    """
     def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
                  blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
                  relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01):
         self.parent_structure = CustomMeshStructure(stl_mesh_path)
+
+        super().__init__(None, None)
 
         child_radius = self.parent_structure.radius * blob_radius_decrease_per_level
 
@@ -253,9 +263,6 @@ class CustomPhantom:
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
         self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius)
-    
-    def _estimate_sampling_radius(self):
-        return 0.7 * self.parent_structure.radius
 
     def generate(self, seed: int = None) -> StructurePhantom:
         rng = default_rng(seed)
@@ -265,8 +272,7 @@ class CustomPhantom:
             num_children=self.num_children_blobs,
             rng=rng
         )
-        
-        sampling_radius = self._estimate_sampling_radius()
+
         tubes = self.tube_sampler.sample_tubes(
             parent_mesh_structure=self.parent_structure,
             num_tubes=self.num_tubes,
