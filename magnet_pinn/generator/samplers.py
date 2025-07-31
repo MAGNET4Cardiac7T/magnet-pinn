@@ -605,11 +605,11 @@ class MeshBlobSampler:
             
             while attempts < max_iterations and not blob_placed:
                 position = self._sample_inside_volume(mesh, rng)
-                
-                if self._validates_blob_collision(position, placed_blobs):
-                    blob = Blob(position, self.child_radius, 
+                child_blob = Blob(position, self.child_radius, 
                                   seed=rng.integers(0, 2**32-1).item())
-                    placed_blobs.append(blob)
+
+                if self._is_blob_inside_the_parental_mesh(mesh, child_blob) and self._validates_blob_collision(position, placed_blobs):
+                    placed_blobs.append(child_blob)
                     blob_placed = True
                 
                 attempts += 1
@@ -618,7 +618,12 @@ class MeshBlobSampler:
                 break
             
         return placed_blobs
-    
+
+    def _is_blob_inside_the_parental_mesh(self, parent_mesh: Trimesh, child_blob: Blob) -> bool:
+        effective_radius = child_blob.radius * (1 + child_blob.empirical_max_offset)
+        distance_to_surface = parent_mesh.nearest.signed_distance([child_blob.position])[0]
+        return distance_to_surface > effective_radius
+
     def _validates_blob_collision(self, position: np.ndarray, existing_blobs: list[Blob]) -> bool:
         # enforce no-overlap by checking pairwise distances
         min_distance = 2 * self.child_radius  # No overlap
