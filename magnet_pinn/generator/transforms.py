@@ -435,44 +435,6 @@ class MeshesClipping(Transform):
             )
         
 
-class MeshesChildrenClipping(Transform):
-    def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
-        try:
-            logging.debug("Attempting children clipping with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + tissue.children, "children clipping")
-            
-            clipped_children = []
-            for i, child in enumerate(tissue.children):
-                clipped_child = trimesh.boolean.intersection([child, tissue.parent], engine='blender')
-                clipped_child.remove_degenerate_faces()
-                # collapse duplicate or nearly‑duplicate faces/edges
-                clipped_child.remove_duplicate_faces()
-                clipped_child.remove_unreferenced_vertices()
-                # stitch small holes
-                clipped_child.fill_holes()
-                # make normals consistent
-                trimesh.repair.fix_normals(clipped_child)
-                _validate_mesh(clipped_child, f"child {i} clipping")
-                clipped_children.append(clipped_child)
-            
-            logging.info("Children clipping successful")
-            return MeshPhantom(
-                parent=None,
-                children=clipped_children,
-                tubes=None
-            )
-        except RuntimeError as e:
-            raise RuntimeError(
-                f"Boolean operation failed for children clipping. "
-                f"Children count: {len(tissue.children)}, "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
-                f"Error: {e}"
-            )
-        
-
 class MeshesTubesClipping(Transform):
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
         try:
@@ -482,7 +444,7 @@ class MeshesTubesClipping(Transform):
             
             clipped_tubes = []
             for i, tube in enumerate(tissue.tubes):
-                clipped_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='blender')
+                clipped_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='manifold')
                 clipped_tube.remove_degenerate_faces()
                 # collapse duplicate or nearly‑duplicate faces/edges
                 clipped_tube.remove_duplicate_faces()
@@ -520,7 +482,7 @@ class MeshesChildrenCutout(Transform):
 
             cutouts = []
             for i, child in enumerate(phantom.children):
-                cutout = trimesh.boolean.difference([child, *phantom.tubes], engine='blender')
+                cutout = trimesh.boolean.difference([child, *phantom.tubes], engine='manifold')
                 cutout.remove_degenerate_faces()
                 # collapse duplicate or nearly‑duplicate faces/edges
                 cutout.remove_duplicate_faces()
@@ -558,7 +520,7 @@ class MeshesParentCutout(Transform):
 
             parent = trimesh.boolean.difference(
                 [phantom.parent, *phantom.children, *phantom.tubes],
-                engine='blender'
+                engine='manifold'
             )
 
             parent.remove_degenerate_faces()
