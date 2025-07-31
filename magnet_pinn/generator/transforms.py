@@ -9,7 +9,7 @@ DESCRIPTION
     cleaning, and remeshing to produce simulation-ready outputs.
 """
 import logging
-from typing import Union
+from typing import Union, List
 from abc import ABC, abstractmethod
 
 import trimesh
@@ -160,62 +160,17 @@ class Compose(Transform):
         return f"{self.__class__.__name__}({', '.join([str(t) for t in self.transforms])})"
 
 
-class MeshesApplyInParallel(Transform):
-    def __init__(self, transforms: list[Transform], *args, **kwargs):
+class MeshesSequentialOperations(Transform):
+    def __init__(self, transforms: List[Transform], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.transforms = transforms
 
-    def __call__(self, tissue: MeshPhantom, *args, **kwargs) -> MeshPhantom:
-        results = []
-        for transform in self.transforms:
-            transform_result = transform(tissue, *args, **kwargs)
-            results.append(transform_result)
+    def __call__(self, phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+        result = self.transforms[0](phantom, phantom, *args, **kwargs)
+        for transform in self.transforms[1:]:
+            result = transform(result, phantom, *args, **kwargs)
+        return result
 
-        return self._merge_results(results)
-
-    def _merge_results(self, results) -> MeshPhantom:
-        parents = []
-        children = []
-        tubes = []
-        for result in results:
-            if result.parent is not None:
-                parents.append(result.parent)
-
-            if result.children is not None:
-                subchildren_list = [
-                    child for child in result.children
-                ]
-                children.append(subchildren_list)
-            if result.tubes is not None:
-                subtubes_list = [
-                    tube for tube in result.tubes
-                ]
-                tubes.append(subtubes_list)
-
-        children = np.array(children)
-        children = [
-            trimesh.boolean.intersection(children[:, i].tolist(), engine='manifold')
-            for i in range(children.shape[1])
-        ]
-
-        tubes = np.array(tubes)
-        tubes = [
-            trimesh.boolean.intersection(tubes[:, i].tolist(), engine='manifold')
-            for i in range(tubes.shape[1])
-        ]
-
-        return MeshPhantom(
-            parent=trimesh.boolean.intersection(parents, engine='manifold'),
-            children=children,
-            tubes=tubes
-        )
-
-class MeshProc(Transform):
-
-    def __call__(self, original_tissue, processed_tissue, *args, **kwds):
-        return super().__call__(*args, **kwds)
-
-    
 
 class ToMesh(Transform):
     """
@@ -268,183 +223,19 @@ class ToMesh(Transform):
             children=[self.serializer.serialize(c) for c in tissue.children],
             tubes=[self.serializer.serialize(t) for t in tissue.tubes]
         )
-    
 
-class MeshesClipping(Transform):
-    """
-    Transform for clipping mesh components to stay within parental boundaries.
-    
-    Ensures that all child blobs and tubes remain within the parental mesh
-    boundaries by performing boolean intersection operations. This prevents
-    child components from extending outside the anatomical container and
-    maintains realistic geometric relationships.
-    """
-
-    def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
-        """
-        Clip all mesh components to stay within parental boundaries.
-        
-        Performs boolean intersection operations to ensure that all child
-        blobs and tubes remain within the confines of the parent mesh.
-        This maintains anatomical realism by preventing components from
-        extending beyond their container boundaries.
-
-        Parameters
-        ----------
-        tissue : MeshPhantom
-            The mesh phantom containing parent, children, and tube meshes to process.
-        *args, **kwds
-            Additional arguments (currently unused but maintained for interface consistency).
-
-        Returns
-        -------
-        MeshPhantom
-            Processed mesh phantom with all components clipped to parent boundaries.
-
-        Raises
-        ------
-        RuntimeError
-            If boolean operations fail due to invalid mesh geometry or engine errors.
-        ValueError
-            If input meshes are invalid or have zero volume.
-        """
-        try:
-            return MeshPhantom(
-                parent=tissue.parent,  # Parent remains unchanged
-                children=self._clip_children(tissue),
-                tubes=self._clip_tubes(tissue)
-            )
-        except (RuntimeError, ValueError) as e:
-            logging.error(f"MeshesClipping failed: {e}")
-            raise
-
-    def _clip_children(self, tissue: MeshPhantom) -> list[Trimesh]:
-        """
-        Clip all child meshes to stay within parent boundaries.
-        
-        Performs boolean intersection between each child mesh and the parent
-        mesh to ensure children remain within anatomical boundaries. Any
-        portions of child meshes extending outside the parent are removed.
-
-        Parameters
-        ----------
-        tissue : MeshPhantom
-            The mesh phantom containing meshes to process.
-
-        Returns
-        -------
-        list[Trimesh]
-            List of child meshes clipped to parent boundaries.
-
-        Raises
-        ------
-        RuntimeError
-            If intersection operations fail for any child mesh.
-        """
-        if not tissue.children:
-            return tissue.children
-        
-        try:
-            logging.debug("Attempting children clipping with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + tissue.children, "children clipping")
-            
-            clipped_children = []
-            for i, child in enumerate(tissue.children):
-                try:
-                    clipped_child = trimesh.boolean.intersection([child, tissue.parent], engine='manifold')
-                    _validate_mesh(clipped_child, f"child {i} clipping")
-                    clipped_children.append(clipped_child)
-                except Exception as child_error:
-                    raise RuntimeError(
-                        f"Failed to clip child {i} (vertices: {len(child.vertices)}, "
-                        f"faces: {len(child.faces)}, volume: {child.volume:.3f}): {child_error}"
-                    )
-            
-            logging.info("Children clipping successful")
-            return clipped_children
-            
-        except RuntimeError:
-            raise
-        except Exception as e:
-            raise RuntimeError(
-                f"Boolean operation failed for children clipping. "
-                f"Children count: {len(tissue.children)}, "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
-                f"Error: {e}"
-            )
-
-    def _clip_tubes(self, tissue: MeshPhantom) -> list[Trimesh]:
-        """
-        Clip all tube meshes to stay within parent boundaries.
-        
-        Performs boolean intersection between each tube mesh and the parent
-        mesh to ensure tubes remain within anatomical boundaries. Any
-        portions of tube meshes extending outside the parent are removed.
-
-        Parameters
-        ----------
-        tissue : MeshPhantom
-            The mesh phantom containing meshes to process.
-
-        Returns
-        -------
-        list[Trimesh]
-            List of tube meshes clipped to parent boundaries.
-
-        Raises
-        ------
-        RuntimeError
-            If intersection operations fail for any tube mesh.
-        """
-        if not tissue.tubes:
-            return tissue.tubes
-        
-        try:
-            logging.debug("Attempting tubes clipping with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + tissue.tubes, "tubes clipping")
-            
-            clipped_tubes = []
-            for i, tube in enumerate(tissue.tubes):
-                try:
-                    clipped_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='manifold')
-                    _validate_mesh(clipped_tube, f"tube {i} clipping")
-                    clipped_tubes.append(clipped_tube)
-                except Exception as tube_error:
-                    raise RuntimeError(
-                        f"Failed to clip tube {i} (vertices: {len(tube.vertices)}, "
-                        f"faces: {len(tube.faces)}, volume: {tube.volume:.3f}): {tube_error}"
-                    )
-            
-            logging.info("Tubes clipping successful")
-            return clipped_tubes
-            
-        except RuntimeError:
-            raise
-        except Exception as e:
-            raise RuntimeError(
-                f"Boolean operation failed for tubes clipping. "
-                f"Tubes count: {len(tissue.tubes)}, "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
-                f"Error: {e}"
-            )
-        
 
 class MeshesTubesClipping(Transform):
-    def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
+    def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwds) -> MeshPhantom:
         try:
             logging.debug("Attempting tubes clipping with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + tissue.tubes, "tubes clipping")
-            
+
+            _validate_input_meshes([original_phantom.parent] + original_phantom.tubes, "tubes clipping")
+            _validate_input_meshes([target_phantom.parent] + target_phantom.tubes, "tubes clipping")
+
             clipped_tubes = []
-            for i, tube in enumerate(tissue.tubes):
-                clipped_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='manifold')
+            for i, tube in enumerate(original_phantom.tubes):
+                clipped_tube = trimesh.boolean.intersection([tube, original_phantom.parent], engine='manifold')
                 clipped_tube.remove_degenerate_faces()
                 # collapse duplicate or nearly‑duplicate faces/edges
                 clipped_tube.remove_duplicate_faces()
@@ -458,31 +249,32 @@ class MeshesTubesClipping(Transform):
             
             logging.info("Tubes clipping successful")
             return MeshPhantom(
-                parent=None,
-                children=None,
+                parent=target_phantom.parent,
+                children=target_phantom.children,
                 tubes=clipped_tubes
             )
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for tubes clipping. "
-                f"Tubes count: {len(tissue.tubes)}, "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
+                f"Tubes count: {len(target_phantom.tubes)}, "
+                f"Parent vertices: {len(original_phantom.parent.vertices)}, "
+                f"Parent faces: {len(original_phantom.parent.faces)}, "
+                f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
         
 
 class MeshesChildrenCutout(Transform):
-    def __call__(self, phantom: MeshPhantom, *args, **kwds):
+    def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwds):
         try:
             logging.debug("Attempting children cutout with manifold engine")
 
-            _validate_input_meshes([phantom.parent] + phantom.children + phantom.tubes, "children cutout")
+            _validate_input_meshes(original_phantom.children + original_phantom.tubes, "children cutout")
+            _validate_input_meshes(target_phantom.children + target_phantom.tubes, "children cutout")
 
             cutouts = []
-            for i, child in enumerate(phantom.children):
-                cutout = trimesh.boolean.difference([child, *phantom.tubes], engine='manifold')
+            for i, child in enumerate(target_phantom.children):
+                cutout = trimesh.boolean.difference([child, *original_phantom.tubes], engine='manifold')
                 cutout.remove_degenerate_faces()
                 # collapse duplicate or nearly‑duplicate faces/edges
                 cutout.remove_duplicate_faces()
@@ -496,30 +288,31 @@ class MeshesChildrenCutout(Transform):
 
             logging.info("Children cutout successful")
             return MeshPhantom(
-                parent=None,
+                parent=target_phantom.parent,
                 children=cutouts,
-                tubes=None
+                tubes=target_phantom.tubes
             )
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for children cutout. "
-                f"Children count: {len(phantom.children)}, "
-                f"Parent vertices: {len(phantom.parent.vertices)}, "
-                f"Parent faces: {len(phantom.parent.faces)}, "
-                f"Parent volume: {phantom.parent.volume:.3f}, "
+                f"Children count: {len(target_phantom.children)}, "
+                f"Parent vertices: {len(original_phantom.parent.vertices)}, "
+                f"Parent faces: {len(original_phantom.parent.faces)}, "
+                f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
 
-class MeshesParentCutout(Transform):
 
-    def __call__(self, phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+class MeshesParentCutout(Transform):
+    def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
         try:
             logging.debug("Attempting parent cutout with manifold engine")
 
-            _validate_input_meshes([phantom.parent] + phantom.children + phantom.tubes, "parent cutout")
+            _validate_input_meshes([original_phantom.parent] + original_phantom.children + original_phantom.tubes, "parent cutout")
+            _validate_input_meshes([target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout")
 
             parent = trimesh.boolean.difference(
-                [phantom.parent, *phantom.children, *phantom.tubes],
+                [target_phantom.parent, *original_phantom.children, *original_phantom.tubes],
                 engine='manifold'
             )
 
@@ -536,170 +329,60 @@ class MeshesParentCutout(Transform):
 
             return MeshPhantom(
                 parent=parent,
-                children=None,
-                tubes=None
+                children=target_phantom.children,
+                tubes=target_phantom.tubes
             )
         
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for parent cutout. "
-                f"Parent vertices: {len(phantom.parent.vertices)}, "
-                f"Parent faces: {len(phantom.parent.faces)}, "
-                f"Parent volume: {phantom.parent.volume:.3f}, "
-                f"Children count: {len(phantom.children)}, "
-                f"Tubes count: {len(phantom.tubes)}, "
+                f"Parent vertices: {len(target_phantom.parent.vertices)}, "
+                f"Parent faces: {len(target_phantom.parent.faces)}, "
+                f"Parent volume: {target_phantom.parent.volume:.3f}, "
+                f"Children count: {len(original_phantom.children)}, "
+                f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
-        
-
-
-class MeshesCutout(Transform):
-    """
-    Transform for applying boolean cutting operations between phantom components.
     
-    Performs boolean subtraction to cut child blobs and tubes out of the parent
-    blob and tubes out of child blobs, creating realistic anatomical cavities
-    and ensuring proper geometric relationships between components.
-    """
 
-    def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
-        """
-        Apply boolean cutting operations to create anatomical cavities.
-        
-        Performs comprehensive boolean subtraction operations to create realistic
-        anatomical relationships between phantom components. Child blobs and tubes
-        are cut out of the parent blob, and tubes are cut out of child blobs,
-        resulting in proper geometric containment and void spaces that represent
-        internal structures.
-
-        Parameters
-        ----------
-        tissue : MeshPhantom
-            The mesh phantom containing parent, children, and tube meshes to process.
-        *args, **kwds
-            Additional arguments (currently unused but maintained for interface consistency).
-
-        Returns
-        -------
-        MeshPhantom
-            Processed mesh phantom with boolean cutting operations applied.
-
-        Raises
-        ------
-        RuntimeError
-            If boolean operations fail due to invalid mesh geometry or engine errors.
-        ValueError
-            If input meshes are invalid or have zero volume.
-        """
+class MeshesChildrenClipping(Transform):
+    def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
         try:
+            logging.debug("Attempting children clipping with manifold engine")
+
+            _validate_input_meshes([original_phantom.parent] + original_phantom.children, "children clipping")
+            _validate_input_meshes([target_phantom.parent] + target_phantom.children, "children clipping")
+
+            clipped_children = []
+            for i, child in enumerate(target_phantom.children):
+                clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine='blender')
+                clipped_child.remove_degenerate_faces()
+                # collapse duplicate or nearly‑duplicate faces/edges
+                clipped_child.remove_duplicate_faces()
+                clipped_child.remove_unreferenced_vertices()
+                # stitch small holes
+                clipped_child.fill_holes()
+                # make normals consistent
+                trimesh.repair.fix_normals(clipped_child)
+                _validate_mesh(clipped_child, f"child {i} clipping")
+                clipped_children.append(clipped_child)
+            
+            logging.info("Children clipping successful")
             return MeshPhantom(
-                parent=self._cut_parent(tissue),
-                children=self._cut_children(tissue),
-                tubes=self._cut_tubes(tissue)
+                parent=target_phantom.parent,
+                children=clipped_children,
+                tubes=target_phantom.tubes
             )
-        except (RuntimeError, ValueError) as e:
-            logging.error(f"MeshesCutout failed: {e}")
-            raise
-
-    def _cut_parent(self, tissue: MeshPhantom) -> Trimesh:
-        cutters = tissue.children + tissue.tubes
-        if not cutters:
-            return tissue.parent
-        
-        try:
-            logging.debug("Attempting parent cutting with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + cutters, "parent cutting")
-            
-            union_cutters = trimesh.boolean.union(cutters, engine='manifold')
-            _validate_mesh(union_cutters, "union operation")
-            
-            result = trimesh.boolean.difference([tissue.parent, union_cutters], engine='manifold')
-            _validate_mesh(result, "parent difference operation")
-            
-            logging.info("Parent cutting successful")
-            return result
-            
-        except Exception as e:
+        except RuntimeError as e:
             raise RuntimeError(
-                f"Boolean operation failed for parent cutting. "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
-                f"Cutters count: {len(cutters)}, "
+                f"Boolean operation failed for children clipping. "
+                f"Children count: {len(target_phantom.children)}, "
+                f"Parent vertices: {len(original_phantom.parent.vertices)}, "
+                f"Parent faces: {len(original_phantom.parent.faces)}, "
+                f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
 
-    def _cut_children(self, tissue: MeshPhantom) -> list[Trimesh]:
-        if not tissue.tubes:
-            return tissue.children
-        
-        try:
-            logging.debug("Attempting children cutting with manifold engine")
-            
-            _validate_input_meshes(tissue.children + tissue.tubes, "children cutting")
-            
-            tubes_union = trimesh.boolean.union(tissue.tubes, engine='manifold')
-            _validate_mesh(tubes_union, "tubes union")
-            
-            result_children = []
-            for i, child in enumerate(tissue.children):
-                try:
-                    cut_child = trimesh.boolean.difference([child, tubes_union], engine='manifold')
-                    _validate_mesh(cut_child, f"child {i} cutting")
-                    result_children.append(cut_child)
-                except Exception as child_error:
-                    raise RuntimeError(
-                        f"Failed to cut child {i} (vertices: {len(child.vertices)}, "
-                        f"faces: {len(child.faces)}, volume: {child.volume:.3f}): {child_error}"
-                    )
-            
-            logging.info("Children cutting successful")
-            return result_children
-            
-        except RuntimeError:
-            raise
-        except Exception as e:
-            raise RuntimeError(
-                f"Boolean operation failed for children cutting. "
-                f"Children count: {len(tissue.children)}, "
-                f"Tubes count: {len(tissue.tubes)}, "
-                f"Error: {e}"
-            )
-    
-    def _cut_tubes(self, tissue: MeshPhantom) -> list[Trimesh]:
-        try:
-            logging.debug("Attempting tube cutting with manifold engine")
-            
-            _validate_input_meshes([tissue.parent] + tissue.tubes, "tube cutting")
-            
-            result_tubes = []
-            for i, tube in enumerate(tissue.tubes):
-                try:
-                    cut_tube = trimesh.boolean.intersection([tube, tissue.parent], engine='manifold')
-                    _validate_mesh(cut_tube, f"tube {i} intersection")
-                    result_tubes.append(cut_tube)
-                except Exception as tube_error:
-                    raise RuntimeError(
-                        f"Failed to cut tube {i} (vertices: {len(tube.vertices)}, "
-                        f"faces: {len(tube.faces)}, volume: {tube.volume:.3f}): {tube_error}"
-                    )
-            
-            logging.info("Tube cutting successful")
-            return result_tubes
-            
-        except RuntimeError:
-            raise
-        except Exception as e:
-            raise RuntimeError(
-                f"Boolean operation failed for tube cutting. "
-                f"Tubes count: {len(tissue.tubes)}, "
-                f"Parent vertices: {len(tissue.parent.vertices)}, "
-                f"Parent faces: {len(tissue.parent.faces)}, "
-                f"Parent volume: {tissue.parent.volume:.3f}, "
-                f"Error: {e}"
-            )
-    
 
 class MeshesCleaning(Transform):
     """
