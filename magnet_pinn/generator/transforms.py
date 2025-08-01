@@ -301,18 +301,18 @@ class MeshesChildrenCutout(Transform):
                 f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
+        
 
-
-class MeshesParentCutout(Transform):
+class MeshesParentCutoutWithChildren(Transform):
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
         try:
-            logging.debug("Attempting parent cutout with manifold engine")
+            logging.debug("Attempting parent cutout with children using manifold engine")
 
-            _validate_input_meshes([original_phantom.parent] + original_phantom.children + original_phantom.tubes, "parent cutout")
-            _validate_input_meshes([target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout")
+            _validate_input_meshes([original_phantom.parent] + original_phantom.children + original_phantom.tubes, "parent cutout with children")
+            _validate_input_meshes([target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout with children")
 
             parent = trimesh.boolean.difference(
-                [target_phantom.parent, *original_phantom.children, *original_phantom.tubes],
+                [target_phantom.parent, *original_phantom.children],
                 engine='manifold'
             )
 
@@ -325,7 +325,7 @@ class MeshesParentCutout(Transform):
             # make normals consistent
             trimesh.repair.fix_normals(parent)
 
-            _validate_mesh(parent, f"parent cutout result")
+            _validate_mesh(parent, f"parent cutout with children result")
 
             return MeshPhantom(
                 parent=parent,
@@ -335,11 +335,52 @@ class MeshesParentCutout(Transform):
         
         except RuntimeError as e:
             raise RuntimeError(
-                f"Boolean operation failed for parent cutout. "
+                f"Boolean operation failed for parent cutout with children. "
                 f"Parent vertices: {len(target_phantom.parent.vertices)}, "
                 f"Parent faces: {len(target_phantom.parent.faces)}, "
                 f"Parent volume: {target_phantom.parent.volume:.3f}, "
                 f"Children count: {len(original_phantom.children)}, "
+                f"Tubes count: {len(original_phantom.tubes)}, "
+                f"Error: {e}"
+            )
+        
+
+class MeshesParentCutoutWithTubes(Transform):
+    def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+        try:
+            logging.debug("Attempting parent cutout with tubes using manifold engine")
+
+            _validate_input_meshes([original_phantom.parent] + original_phantom.tubes, "parent cutout with tubes")
+            _validate_input_meshes([target_phantom.parent] + target_phantom.tubes, "parent cutout with tubes")
+
+            parent = trimesh.boolean.difference(
+                [target_phantom.parent, *original_phantom.tubes],
+                engine='manifold'
+            )
+
+            parent.remove_degenerate_faces()
+            # collapse duplicate or nearly‑duplicate faces/edges
+            parent.remove_duplicate_faces()
+            parent.remove_unreferenced_vertices()
+            # stitch small holes
+            parent.fill_holes()
+            # make normals consistent
+            trimesh.repair.fix_normals(parent)
+
+            _validate_mesh(parent, f"parent cutout with tubes result")
+
+            return MeshPhantom(
+                parent=parent,
+                children=target_phantom.children,
+                tubes=target_phantom.tubes
+            )
+        
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"Boolean operation failed for parent cutout with tubes. "
+                f"Parent vertices: {len(target_phantom.parent.vertices)}, "
+                f"Parent faces: {len(target_phantom.parent.faces)}, "
+                f"Parent volume: {target_phantom.parent.volume:.3f}, "
                 f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
