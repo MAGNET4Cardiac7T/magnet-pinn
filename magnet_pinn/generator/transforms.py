@@ -124,7 +124,7 @@ class Compose(Transform):
         super().__init__(*args, **kwargs)
         self.transforms = transforms
 
-    def __call__(self, tissue: PhantomType, *args, **kwargs):
+    def __call__(self, original_phantom: PhantomType, *args, **kwargs):
         """
         Apply all transforms in sequence to the input phantom.
         
@@ -144,9 +144,10 @@ class Compose(Transform):
         PhantomType
             The final transformed phantom after applying all pipeline transforms.
         """
+        target_phantom = original_phantom
         for transform in self.transforms:
-            tissue = transform(tissue, *args, **kwargs)
-        return tissue
+            target_phantom = transform(target_phantom, original_phantom, *args, **kwargs)
+        return target_phantom
 
     def __repr__(self):
         """
@@ -172,7 +173,7 @@ class MeshesSequentialOperations(Transform):
         return result
 
 
-class ToMesh(Transform):
+class ToMesh:
     """
     Transform for converting structure phantoms to mesh phantoms.
     
@@ -180,7 +181,7 @@ class ToMesh(Transform):
     triangular mesh representations using the configured mesh serializer,
     preparing phantoms for geometric processing operations.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         """
         Initialize the structure-to-mesh converter.
         
@@ -194,10 +195,9 @@ class ToMesh(Transform):
         *args, **kwargs
             Additional arguments passed to the parent Transform class.
         """
-        super().__init__(*args, **kwargs)
         self.serializer = MeshSerializer()
 
-    def __call__(self, tissue: StructurePhantom, *args, **kwds) -> MeshPhantom:
+    def __call__(self, tissue: StructurePhantom) -> MeshPhantom:
         """
         Convert a structure phantom to a mesh phantom.
         
