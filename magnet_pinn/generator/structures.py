@@ -148,6 +148,7 @@ class Blob(Structure3D):
 
         self.empirical_max_offset = np.max(offsets_at_points)
         self.empirical_min_offset = np.min(offsets_at_points)
+        self.effective_radius = self.radius * (1 + self.empirical_max_offset)
 
     def calculate_offsets(self, vertices: np.ndarray) -> np.ndarray:
         """

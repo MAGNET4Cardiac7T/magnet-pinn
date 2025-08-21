@@ -14,6 +14,7 @@ from typing import List, Union
 import numpy as np
 from trimesh import Trimesh
 from numpy.random import Generator
+from numpy.lib.stride_tricks import sliding_window_view
 
 try:
     from igl import fast_winding_number
@@ -603,33 +604,44 @@ class MeshBlobSampler:
         
     def sample_children_blobs(self, parent_mesh_structure: CustomMeshStructure, 
                             num_children: int, rng: Generator, 
-                            max_iterations: int = 100000) -> list[Blob]:
+                            batch_size: int = 10000000) -> list[Blob]:
         if num_children == 0:
             return []
             
         mesh = parent_mesh_structure.mesh
-        placed_blobs: list[Blob] = []
-        
-        for _ in range(num_children):
-            attempts = 0
-            blob_placed = False
-            
-            while attempts < max_iterations and not blob_placed:
-                position = self._sample_inside_volume(mesh, rng)[0]
-                child_blob = Blob(position, self.child_radius, 
-                                  seed=rng.integers(0, 2**32-1).item())
+        placed_blobs = [
+            Blob(np.zeros(3), self.child_radius, seed=rng.integers(0, 2**32-1).item())
+            for _ in range(num_children)
+        ]
+        potential_centers = self._sample_inside_volume(mesh, rng, batch_size=batch_size, points_to_return=num_children)
+        w = sliding_window_view(potential_centers, window_shape=num_children, axis=0)
+        w = np.swapaxes(w, 1, 2)
+        s = np.einsum('...ik,...ik->...i', w, w)
+        G = np.einsum('...ik,...jk->...ij', w, w)
+        D = np.sqrt(np.maximum(s[..., :, None] + s[..., None, :] - 2*G, 0))
+        D = np.triu(D, k=0)
 
-                inside_ok = (not self.sample_chld_only_inside) or self._is_blob_inside_the_parental_mesh(mesh, child_blob)
-                if inside_ok and self._validates_blob_collision(position, placed_blobs):
-                    placed_blobs.append(child_blob)
-                    blob_placed = True
-                
-                attempts += 1
-            
-            if not blob_placed:
-                break
-            
-        return placed_blobs
+        print(D)
+
+        effective_radii = np.array([
+            blob.effective_radius for blob in placed_blobs
+        ])
+        centers_distances = effective_radii[:, None] + effective_radii[None, :]
+        centers_distances = np.triu(centers_distances, k=0)
+
+        print(centers_distances)
+
+        indices = (D >= centers_distances).all(axis=(1,2))
+
+        if np.sum(indices) == 0:
+            raise RuntimeError("No valid blob placements found")
+
+        result = []
+        for point, blob in zip(w[indices], placed_blobs):
+            blob.position = point
+            result.append(blob)
+
+        return result
 
     def _is_blob_inside_the_parental_mesh(self, parent_mesh: Trimesh, child_blob: Blob) -> bool:
         effective_radius = child_blob.radius * (1 + child_blob.empirical_max_offset)
