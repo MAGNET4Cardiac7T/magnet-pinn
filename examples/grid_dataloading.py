@@ -6,6 +6,7 @@ from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose, DefaultTransform
 import tqdm
 
+BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
 
 augmentation = Compose(
     [
@@ -14,14 +15,10 @@ augmentation = Compose(
     ]
 )
 
-#augmentation = Crop(crop_size=(100, 100, 100))
-
-
-
 iterator = MagnetGridIterator(
-    "/home/andi/coding/data/magnet/processed/train/grid_voxel_size_4_data_type_float32",
+    BASE_DIR,
     transforms=augmentation,
-    num_samples=1
+    num_samples=100
 )
 
 

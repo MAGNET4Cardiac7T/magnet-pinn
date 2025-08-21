@@ -5,10 +5,21 @@
 from magnet_pinn.data.grid import MagnetGridIterator
 import numpy as np
 import matplotlib.pyplot as plt
+from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose, DefaultTransform
+
+BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
+
+augmentation = Compose(
+    [
+        Crop(crop_size=(100, 100, 100)),
+        GridPhaseShift(num_coils=8)
+    ]
+)
 
 iterator = MagnetGridIterator(
-    "data/processed/train/grid_voxel_size_4_data_type_float32",
-    phase_samples_per_simulation=100,
+    BASE_DIR,
+    transforms=augmentation,
+    num_samples=100
 )
 
 item = next(iter(iterator))
