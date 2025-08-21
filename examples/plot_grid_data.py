@@ -1,3 +1,7 @@
+#########################################
+# Example Script for plotting grid data #
+#########################################
+
 from magnet_pinn.data.grid import MagnetGridIterator
 import numpy as np
 import matplotlib.pyplot as plt

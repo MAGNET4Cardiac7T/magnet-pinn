@@ -104,7 +104,7 @@ iterator = MagnetGridIterator(
     num_samples=1
 ```
 
-### Example: Training a PINN
+### Example: Training a ML model
 Once the data is preprocessed and ready, you can use it to train a ML model.
 In the following the already instantiated iterator from [Example: Preprocessing and Loading Grid Data](#example-preprocessing-and-loading-grid-data) is used.
 The full example can also be found in the `examples/` directory.

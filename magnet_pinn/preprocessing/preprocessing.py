@@ -72,6 +72,19 @@ class Preprocessing(ABC):
     data which will be used for the whole batch. The main method `process_simulations` 
     make some calculations and save processed data to the output directory.
 
+    Parameters
+    ----------
+    batches_dir_paths : str | Path | List[str] | List[Path]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory
+    output_dir_path : str
+        Path to the output directory. All processed data will be saved here.
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
+
     Attributes
     ----------
     all_sim_paths : List[Path]
@@ -701,6 +714,21 @@ class GridPreprocessing(Preprocessing):
 
     The class is responsible for reading and processing antennas and subjects data in a voxel grid manner.
 
+    Parameters
+    ----------
+    simulations_dir_path : str | List[str]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory.
+    output_dir_path : str
+        Path to the output directory
+    voxel_size : int
+        The size of the voxel for creating a grid
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
+
     Attributes
     ----------
     voxel_size : int
@@ -960,6 +988,19 @@ class PointPreprocessing(Preprocessing):
     Class for preprocessing data for point cloud-based models.
 
     The class is responsible for reading and processing antennas and subjects data in a point cloud manner.
+
+    Parameters
+    ----------
+    batches_dir_paths : str | Path | List[str] | List[Path]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory
+    output_dir_path : str
+        Path to the output directory. All processed data will be saved here.
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
 
     Attributes
     ----------

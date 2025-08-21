@@ -1,3 +1,6 @@
+#########################################
+# Example Script for Point Data Loading #
+#########################################
 from magnet_pinn.data.point import MagnetPointIterator
 from magnet_pinn.data.transforms import PointSampling, PointPhaseShift, Compose, PointFeatureRearrange
 import tqdm

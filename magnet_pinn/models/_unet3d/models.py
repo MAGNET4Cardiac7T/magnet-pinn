@@ -98,6 +98,28 @@ class UNet3D(AbstractUNet):
         <https://arxiv.org/pdf/1606.06650.pdf>`.
 
     Uses `DoubleConv` as a basic_module and nearest neighbor upsampling in the decoder
+
+    Parameters:
+        in_channels (int):
+            number of input channels
+        out_channels (int):
+            number of output channels
+        f_maps (int, tuple):
+            number of feature maps
+        layer_order (str): 
+            determines the order of layers in `SingleConv` module.
+        num_groups (int):
+            number of groups for the GroupNorm
+        num_levels (int):
+            number of levels in the encoder/decoder path (applied only if f_maps is an int)
+        conv_padding (int or tuple):
+            padding added to all sides of the input
+        conv_upscale (int):
+            number of the convolution to upscale in encoder if DoubleConv, default: 2
+        upsample (str):
+            algorithm used for decoder upsampling
+        dropout_prob (float or tuple):
+            dropout probability, default: 0.1
     """
 
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',

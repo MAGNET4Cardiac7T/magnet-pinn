@@ -1,3 +1,13 @@
+#############################################
+# Example Script for Training a 3D UNet Model
+#
+# Prerequisites:
+# - Ensure you have the necessary libraries installed: torch, einops, magnet_pinn, AND pytorch_lightning.
+# - The dataset should be preprocessed and stored in the specified BASE_DIR.
+# - (optionally run the normalization script first to create normalization files)
+#
+#############################################
+
 from magnet_pinn.models import UNet3D
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift

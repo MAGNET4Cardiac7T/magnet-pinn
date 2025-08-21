@@ -24,6 +24,7 @@ class MagnetPointIterator(MagnetBaseIterator):
         """
         Main method to implement for the children of the `MagnetBaseIterator` class.
         It loads the data from the simulation file and return the `DataItem` object.
+        
         Parameters
         ----------
         index : int

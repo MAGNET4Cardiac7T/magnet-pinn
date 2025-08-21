@@ -1,9 +1,12 @@
+#########################################
+# Example Script for Grid Preprocessing #
+#########################################
+
 from magnet_pinn.preprocessing.preprocessing import GridPreprocessing
 import numpy as np
 
 preprocessor = GridPreprocessing(
-    ["data/raw/batches/batch_1", 
-     "data/raw/batches/batch_2"],
+    ["data/raw/batches/batch_6"],
     "data/raw/antenna",
     "data/processed/train",
     field_dtype=np.float32,

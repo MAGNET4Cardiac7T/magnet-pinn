@@ -31,7 +31,9 @@ exclude_patterns = []
 
 autodoc_default_options = {
     'members': True,
-    'undoc-members': True,
+    "undoc-members": False,
+    'private-members': False,
+    "inherited-members": False,
     'show-inheritance': True,
     'special-members': False,
 }

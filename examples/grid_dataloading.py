@@ -1,3 +1,7 @@
+#########################################
+# Example Script for Grid Preprocessing #
+#########################################
+
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose, DefaultTransform
 import tqdm

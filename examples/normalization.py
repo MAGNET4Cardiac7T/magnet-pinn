@@ -1,3 +1,7 @@
+####################################
+# Example Script for Normalization #
+####################################
+
 from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
@@ -14,9 +18,6 @@ class Iterator:
                 GridPhaseShift(num_coils=8)
             ]
         )
-
-
-
         self.iterator = MagnetGridIterator(
             path,
             transforms=augmentation,
