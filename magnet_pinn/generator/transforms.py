@@ -384,7 +384,7 @@ class MeshesChildrenClipping(Transform):
 
             clipped_children = []
             for i, child in enumerate(target_phantom.children):
-                clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine='blender')
+                clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine='manifold')
                 clipped_child.remove_degenerate_faces()
                 # collapse duplicate or nearly‑duplicate faces/edges
                 clipped_child.remove_duplicate_faces()
