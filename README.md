@@ -149,7 +149,7 @@ for epoch in range(10):
         print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss.item()}")
 ```
 
-## How to contribute to *magnet-pinn*
+## 🤝 How to contribute to *magnet-pinn*
 This guide has been largely adapted from [the findiff contribution guide](https://github.com/maroba/findiff/blob/master/CONTRIBUTING.md)
 
 
@@ -187,5 +187,5 @@ Thank you for your support! :heart:
 The *magnet-pinn* Team
 
 
-## License
+## 📄 License
 The content of this project itself, including the data and pretrained models, is licensed under the [Creative Commons Attribution-ShareAlike 4.0 International Public License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/). The underlying source code used to generate the data and train the models is licensed under the [MIT license](LICENSE).
