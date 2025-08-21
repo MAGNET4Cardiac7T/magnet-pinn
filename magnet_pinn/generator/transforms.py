@@ -221,6 +221,9 @@ class MeshesTubesClipping(Transform):
             _validate_input_meshes([original_phantom.parent] + original_phantom.tubes, "tubes clipping")
             _validate_input_meshes([target_phantom.parent] + target_phantom.tubes, "tubes clipping")
 
+            if len(target_phantom.tubes) == 0:
+                return target_phantom
+
             clipped_tubes = []
             for i, tube in enumerate(original_phantom.tubes):
                 clipped_tube = trimesh.boolean.intersection([tube, original_phantom.parent], engine='manifold')
@@ -260,6 +263,9 @@ class MeshesChildrenCutout(Transform):
             _validate_input_meshes(original_phantom.children + original_phantom.tubes, "children cutout")
             _validate_input_meshes(target_phantom.children + target_phantom.tubes, "children cutout")
 
+            if len(target_phantom.tubes) == 0 or len(target_phantom.children) == 0:
+                return target_phantom
+
             cutouts = []
             for i, child in enumerate(target_phantom.children):
                 cutout = trimesh.boolean.difference([child, *original_phantom.tubes], engine='manifold')
@@ -298,6 +304,9 @@ class MeshesParentCutoutWithChildren(Transform):
 
             _validate_input_meshes([original_phantom.parent] + original_phantom.children + original_phantom.tubes, "parent cutout with children")
             _validate_input_meshes([target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout with children")
+
+            if len(target_phantom.children) == 0:
+                return target_phantom
 
             parent = trimesh.boolean.difference(
                 [target_phantom.parent, *original_phantom.children],
@@ -341,6 +350,9 @@ class MeshesParentCutoutWithTubes(Transform):
             _validate_input_meshes([original_phantom.parent] + original_phantom.tubes, "parent cutout with tubes")
             _validate_input_meshes([target_phantom.parent] + target_phantom.tubes, "parent cutout with tubes")
 
+            if len(target_phantom.tubes) == 0:
+                return target_phantom
+
             parent = trimesh.boolean.difference(
                 [target_phantom.parent, *original_phantom.tubes],
                 engine='manifold'
@@ -381,6 +393,9 @@ class MeshesChildrenClipping(Transform):
 
             _validate_input_meshes([original_phantom.parent] + original_phantom.children, "children clipping")
             _validate_input_meshes([target_phantom.parent] + target_phantom.children, "children clipping")
+
+            if len(target_phantom.children) == 0:
+                return target_phantom
 
             clipped_children = []
             for i, child in enumerate(target_phantom.children):
