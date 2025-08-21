@@ -613,23 +613,19 @@ class MeshBlobSampler:
             Blob(np.zeros(3), self.child_radius, seed=rng.integers(0, 2**32-1).item())
             for _ in range(num_children)
         ]
-        potential_centers = self._sample_inside_volume(mesh, rng, batch_size=batch_size, points_to_return=num_children)
+        potential_centers = self._sample_inside_volume(mesh, rng, batch_size=batch_size, points_to_return=batch_size)
         w = sliding_window_view(potential_centers, window_shape=num_children, axis=0)
         w = np.swapaxes(w, 1, 2)
         s = np.einsum('...ik,...ik->...i', w, w)
         G = np.einsum('...ik,...jk->...ij', w, w)
         D = np.sqrt(np.maximum(s[..., :, None] + s[..., None, :] - 2*G, 0))
-        D = np.triu(D, k=0)
-
-        print(D)
+        D = np.triu(D, k=1)
 
         effective_radii = np.array([
             blob.effective_radius for blob in placed_blobs
         ])
         centers_distances = effective_radii[:, None] + effective_radii[None, :]
-        centers_distances = np.triu(centers_distances, k=0)
-
-        print(centers_distances)
+        centers_distances = np.triu(centers_distances, k=1)
 
         indices = (D >= centers_distances).all(axis=(1,2))
 
@@ -637,7 +633,7 @@ class MeshBlobSampler:
             raise RuntimeError("No valid blob placements found")
 
         result = []
-        for point, blob in zip(w[indices], placed_blobs):
+        for point, blob in zip(w[indices][0], placed_blobs):
             blob.position = point
             result.append(blob)
 
