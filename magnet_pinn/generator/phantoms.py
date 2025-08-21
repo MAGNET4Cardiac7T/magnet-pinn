@@ -246,7 +246,8 @@ class CustomPhantom(Phantom):
     """
     def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
                  blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
-                 relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01):
+                 relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01,
+                 sample_children_only_inside: bool = False):
         self.parent_structure = CustomMeshStructure(stl_mesh_path)
 
         super().__init__(None, None)
@@ -257,7 +258,8 @@ class CustomPhantom(Phantom):
         self.num_tubes = num_tubes
         
         self.child_sampler = MeshBlobSampler(
-            child_radius
+            child_radius,
+            sample_children_only_inside=sample_children_only_inside
         )
         
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius

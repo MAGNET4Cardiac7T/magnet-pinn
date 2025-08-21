@@ -161,18 +161,6 @@ class Compose(Transform):
         return f"{self.__class__.__name__}({', '.join([str(t) for t in self.transforms])})"
 
 
-class MeshesSequentialOperations(Transform):
-    def __init__(self, transforms: List[Transform], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.transforms = transforms
-
-    def __call__(self, phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
-        result = self.transforms[0](phantom, phantom, *args, **kwargs)
-        for transform in self.transforms[1:]:
-            result = transform(result, phantom, *args, **kwargs)
-        return result
-
-
 class ToMesh:
     """
     Transform for converting structure phantoms to mesh phantoms.

@@ -15,6 +15,11 @@ import numpy as np
 from trimesh import Trimesh
 from numpy.random import Generator
 
+try:
+    from igl import fast_winding_number
+except ImportError:
+    from igl import fast_winding_number_for_meshes as fast_winding_number
+
 from .utils import spheres_packable
 from .structures import Tube, Blob, CustomMeshStructure
 from .typing import PropertyItem, PropertyPhantom, MeshPhantom, StructurePhantom
@@ -577,19 +582,25 @@ class TubeSampler:
 
 class MeshBlobSampler:
     
-    def __init__(self, child_radius: float):
+    def __init__(self, child_radius: float, sample_children_only_inside: bool = False):
         if child_radius <= 0:
             raise ValueError("child_radius must be positive")
         self.child_radius = child_radius
-    
-    def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
-        for _ in range(max_iter):
-            points = (rng.random((1, 3)) * mesh.extents) + mesh.bounds[0]
-            contained = mesh.contains(points)
+        self.sample_chld_only_inside = sample_children_only_inside
+
+    def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, batch_size: int = 50000, points_to_return: int = 1) -> np.ndarray:
+            points = (rng.random((batch_size, 3)) * mesh.extents) + mesh.bounds[0]
+            winding_number = fast_winding_number(
+                mesh.vertices,
+                mesh.faces,
+                points
+            )
+            contained = np.logical_and(~ np.isclose(winding_number, 0.5), winding_number > 0.5)
             if points[contained].size > 0:
-                return points[contained][0]
-        raise RuntimeError("Failed to sample a valid position inside the mesh after maximum iterations")
-    
+                return points[contained][:points_to_return]
+            
+            raise RuntimeError("Failed to sample a valid position inside the mesh")
+        
     def sample_children_blobs(self, parent_mesh_structure: CustomMeshStructure, 
                             num_children: int, rng: Generator, 
                             max_iterations: int = 100000) -> list[Blob]:
@@ -604,11 +615,12 @@ class MeshBlobSampler:
             blob_placed = False
             
             while attempts < max_iterations and not blob_placed:
-                position = self._sample_inside_volume(mesh, rng)
+                position = self._sample_inside_volume(mesh, rng)[0]
                 child_blob = Blob(position, self.child_radius, 
                                   seed=rng.integers(0, 2**32-1).item())
 
-                if self._is_blob_inside_the_parental_mesh(mesh, child_blob) and self._validates_blob_collision(position, placed_blobs):
+                inside_ok = (not self.sample_chld_only_inside) or self._is_blob_inside_the_parental_mesh(mesh, child_blob)
+                if inside_ok and self._validates_blob_collision(position, placed_blobs):
                     placed_blobs.append(child_blob)
                     blob_placed = True
                 

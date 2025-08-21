@@ -4,7 +4,7 @@ import trimesh
 from unittest.mock import Mock, patch, MagicMock
 
 from magnet_pinn.generator.transforms import (
-    Transform, Compose, ToMesh, MeshesCutout, MeshesCleaning, 
+    Transform, Compose, ToMesh, MeshesCleaning, 
     _validate_mesh, _validate_input_meshes
 )
 from magnet_pinn.generator.typing import StructurePhantom, MeshPhantom
@@ -98,9 +98,9 @@ def test_compose_call_applies_transforms_sequentially(structure_phantom):
     compose = Compose([mock1, mock2, mock3])
     result = compose(structure_phantom)
     
-    mock1.assert_called_once_with(structure_phantom)
-    mock2.assert_called_once_with("result1")
-    mock3.assert_called_once_with("result2")
+    mock1.assert_called_once_with(structure_phantom, structure_phantom)
+    mock2.assert_called_once_with("result1", structure_phantom)
+    mock3.assert_called_once_with("result2", structure_phantom)
     assert result == "result3"
 
 
@@ -117,7 +117,7 @@ def test_compose_call_passes_additional_arguments(structure_phantom):
     compose = Compose([mock_transform])
     compose(structure_phantom, "extra_arg", keyword="extra_kwarg")
     
-    mock_transform.assert_called_once_with(structure_phantom, "extra_arg", keyword="extra_kwarg")
+    mock_transform.assert_called_once_with(structure_phantom, structure_phantom, "extra_arg", keyword="extra_kwarg")
 
 
 def test_compose_repr_shows_component_transforms():
@@ -214,153 +214,6 @@ def test_validate_input_meshes_rejects_empty_faces():
         _validate_input_meshes([mesh1, mesh2], "test_operation")
 
 
-def test_meshes_cutout_call_returns_mesh_phantom(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch.object(cutout, '_cut_parent') as mock_cut_parent, \
-         patch.object(cutout, '_cut_children') as mock_cut_children, \
-         patch.object(cutout, '_cut_tubes') as mock_cut_tubes:
-        
-        mock_cut_parent.return_value = Mock(spec=trimesh.Trimesh)
-        mock_cut_children.return_value = [Mock(spec=trimesh.Trimesh)]
-        mock_cut_tubes.return_value = [Mock(spec=trimesh.Trimesh)]
-        
-        result = cutout(complex_mesh_phantom)
-        
-        assert isinstance(result, MeshPhantom)
-        mock_cut_parent.assert_called_once_with(complex_mesh_phantom)
-        mock_cut_children.assert_called_once_with(complex_mesh_phantom)
-        mock_cut_tubes.assert_called_once_with(complex_mesh_phantom)
-
-
-def test_meshes_cutout_call_handles_runtime_error(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch.object(cutout, '_cut_parent', side_effect=RuntimeError("Boolean operation failed")):
-        with pytest.raises(RuntimeError):
-            cutout(complex_mesh_phantom)
-
-
-def test_meshes_cutout_call_handles_value_error(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch.object(cutout, '_cut_parent', side_effect=ValueError("Invalid mesh")):
-        with pytest.raises(ValueError):
-            cutout(complex_mesh_phantom)
-
-
-def test_meshes_cutout_cut_parent_with_no_cutters(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    phantom_no_cutters = MeshPhantom(
-        parent=complex_mesh_phantom.parent,
-        children=[],
-        tubes=[]
-    )
-    
-    result = cutout._cut_parent(phantom_no_cutters)
-    assert result is phantom_no_cutters.parent
-
-
-def test_meshes_cutout_cut_parent_with_cutters(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union') as mock_union, \
-         patch('trimesh.boolean.difference') as mock_difference, \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'), \
-         patch('magnet_pinn.generator.transforms._validate_mesh'):
-        
-        mock_union_result = Mock(spec=trimesh.Trimesh)
-        mock_union.return_value = mock_union_result
-        mock_difference_result = Mock(spec=trimesh.Trimesh)
-        mock_difference.return_value = mock_difference_result
-        
-        result = cutout._cut_parent(complex_mesh_phantom)
-        
-        mock_union.assert_called_once()
-        mock_difference.assert_called_once()
-        assert result is mock_difference_result
-
-
-def test_meshes_cutout_cut_parent_raises_runtime_error_on_failure(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union', side_effect=Exception("Boolean failed")):
-        with pytest.raises(RuntimeError, match="Boolean operation failed for parent cutting"):
-            cutout._cut_parent(complex_mesh_phantom)
-
-
-def test_meshes_cutout_cut_children_with_no_tubes(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    phantom_no_tubes = MeshPhantom(
-        parent=complex_mesh_phantom.parent,
-        children=complex_mesh_phantom.children,
-        tubes=[]
-    )
-    
-    result = cutout._cut_children(phantom_no_tubes)
-    assert result == phantom_no_tubes.children
-
-
-def test_meshes_cutout_cut_children_with_tubes(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union') as mock_union, \
-         patch('trimesh.boolean.difference') as mock_difference, \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'), \
-         patch('magnet_pinn.generator.transforms._validate_mesh'):
-        
-        mock_union_result = Mock(spec=trimesh.Trimesh)
-        mock_union.return_value = mock_union_result
-        mock_difference_result = Mock(spec=trimesh.Trimesh)
-        mock_difference.return_value = mock_difference_result
-        
-        result = cutout._cut_children(complex_mesh_phantom)
-        
-        mock_union.assert_called_once()
-        assert mock_difference.call_count == len(complex_mesh_phantom.children)
-        assert len(result) == len(complex_mesh_phantom.children)
-
-
-def test_meshes_cutout_cut_children_handles_child_failure(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union') as mock_union, \
-         patch('trimesh.boolean.difference', side_effect=Exception("Child cutting failed")), \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'), \
-         patch('magnet_pinn.generator.transforms._validate_mesh'):
-        
-        mock_union.return_value = Mock(spec=trimesh.Trimesh)
-        
-        with pytest.raises(RuntimeError, match="Failed to cut child 0"):
-            cutout._cut_children(complex_mesh_phantom)
-
-
-def test_meshes_cutout_cut_tubes(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.intersection') as mock_intersection, \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'), \
-         patch('magnet_pinn.generator.transforms._validate_mesh'):
-        
-        mock_intersection_result = Mock(spec=trimesh.Trimesh)
-        mock_intersection.return_value = mock_intersection_result
-        
-        result = cutout._cut_tubes(complex_mesh_phantom)
-        
-        assert mock_intersection.call_count == len(complex_mesh_phantom.tubes)
-        assert len(result) == len(complex_mesh_phantom.tubes)
-
-
-def test_meshes_cutout_cut_tubes_handles_tube_failure(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.intersection', side_effect=Exception("Tube cutting failed")), \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-        
-        with pytest.raises(RuntimeError, match="Failed to cut tube 0"):
-            cutout._cut_tubes(complex_mesh_phantom)
-
-
 def test_meshes_cleaning_call_returns_mesh_phantom(complex_mesh_phantom):
     cleaning = MeshesCleaning()
     
@@ -410,79 +263,6 @@ def test_meshes_cleaning_handles_empty_children_and_tubes():
     assert len(result.tubes) == 0
 
 
-def test_compose_with_complete_pipeline(structure_phantom):
-    tomesh = ToMesh()
-    cutout = MeshesCutout() 
-    cleaning = MeshesCleaning()
-    
-    pipeline = Compose([tomesh, cutout, cleaning])
-    
-    with patch.object(tomesh.serializer, 'serialize') as mock_serialize, \
-         patch.object(cutout, '_cut_parent') as mock_cut_parent, \
-         patch.object(cutout, '_cut_children') as mock_cut_children, \
-         patch.object(cutout, '_cut_tubes') as mock_cut_tubes, \
-         patch.object(cleaning, '_clean_mesh') as mock_clean:
-        
-        mock_mesh = Mock(spec=trimesh.Trimesh)
-        mock_serialize.return_value = mock_mesh
-        mock_cut_parent.return_value = mock_mesh
-        mock_cut_children.return_value = [mock_mesh]
-        mock_cut_tubes.return_value = [mock_mesh]
-        mock_clean.return_value = mock_mesh
-        
-        result = pipeline(structure_phantom)
-        
-        assert isinstance(result, MeshPhantom)
-        assert mock_serialize.call_count == 3
-        mock_cut_parent.assert_called_once()
-        mock_cut_children.assert_called_once()
-        mock_cut_tubes.assert_called_once()
-        expected_clean_calls = 1 + len(result.children) + len(result.tubes)
-        assert mock_clean.call_count == expected_clean_calls
-
-
-def test_meshes_cutout_cut_parent_error_message_includes_details(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union', side_effect=Exception("Mock error")):
-        with pytest.raises(RuntimeError) as exc_info:
-            cutout._cut_parent(complex_mesh_phantom)
-        
-        error_msg = str(exc_info.value)
-        assert "Parent vertices:" in error_msg
-        assert "Parent faces:" in error_msg
-        assert "Parent volume:" in error_msg
-        assert "Cutters count:" in error_msg
-
-
-def test_meshes_cutout_cut_children_error_message_includes_details(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.union', side_effect=Exception("Mock error")):
-        with pytest.raises(RuntimeError) as exc_info:
-            cutout._cut_children(complex_mesh_phantom)
-        
-        error_msg = str(exc_info.value)
-        assert "Children count:" in error_msg
-        assert "Tubes count:" in error_msg
-
-
-def test_meshes_cutout_cut_tubes_error_message_includes_details(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('trimesh.boolean.intersection', side_effect=Exception("Mock error")), \
-         patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-        
-        with pytest.raises(RuntimeError) as exc_info:
-            cutout._cut_tubes(complex_mesh_phantom)
-        
-        error_msg = str(exc_info.value)
-        assert "Failed to cut tube 0" in error_msg
-        assert "vertices:" in error_msg
-        assert "faces:" in error_msg
-        assert "volume:" in error_msg
-
-
 def test_transforms_work_with_real_meshes():
     parent_sphere = trimesh.creation.icosphere(subdivisions=2, radius=2.0)
     child_sphere = trimesh.creation.icosphere(subdivisions=1, radius=0.8)
@@ -524,22 +304,6 @@ def test_abstract_transform_call_method_raises_not_implemented():
         transform("dummy_input")
 
 
-def test_meshes_cutout_cut_tubes_general_exception_handler(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch('magnet_pinn.generator.transforms._validate_input_meshes', side_effect=ValueError("Validation error")):
-        
-        with pytest.raises(RuntimeError) as exc_info:
-            cutout._cut_tubes(complex_mesh_phantom)
-        
-        error_msg = str(exc_info.value)
-        assert "Boolean operation failed for tube cutting" in error_msg
-        assert "Tubes count:" in error_msg
-        assert "Parent vertices:" in error_msg
-        assert "Parent faces:" in error_msg
-        assert "Parent volume:" in error_msg
-
-
 def test_compose_initialization_validates_transform_interface():
     transform = MockTransform()
     compose = Compose([transform])
@@ -557,23 +321,6 @@ def test_tomesh_call_preserves_phantom_structure_integrity(structure_phantom):
         
         assert len(result.children) == len(structure_phantom.children)
         assert len(result.tubes) == len(structure_phantom.tubes)
-
-
-def test_meshes_cutout_preserves_phantom_component_counts(complex_mesh_phantom):
-    cutout = MeshesCutout()
-    
-    with patch.object(cutout, '_cut_parent') as mock_cut_parent, \
-         patch.object(cutout, '_cut_children') as mock_cut_children, \
-         patch.object(cutout, '_cut_tubes') as mock_cut_tubes:
-        
-        mock_cut_parent.return_value = Mock(spec=trimesh.Trimesh)
-        mock_cut_children.return_value = [Mock(spec=trimesh.Trimesh) for _ in complex_mesh_phantom.children]
-        mock_cut_tubes.return_value = [Mock(spec=trimesh.Trimesh) for _ in complex_mesh_phantom.tubes]
-        
-        result = cutout(complex_mesh_phantom)
-        
-        assert len(result.children) == len(complex_mesh_phantom.children)
-        assert len(result.tubes) == len(complex_mesh_phantom.tubes)
 
 
 def test_meshes_cleaning_preserves_phantom_component_counts(complex_mesh_phantom):

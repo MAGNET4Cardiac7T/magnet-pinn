@@ -13,8 +13,15 @@ from numpy.random import default_rng
 from magnet_pinn.generator.io import MeshWriter
 from magnet_pinn.generator.phantoms import CustomPhantom
 from magnet_pinn.generator.samplers import PropertySampler
-from magnet_pinn.generator.transforms import ToMesh, MeshesClipping, MeshesCleaning, Compose
-
+from magnet_pinn.generator.transforms import (
+    Compose,
+    ToMesh,
+    MeshesTubesClipping,
+    MeshesChildrenCutout,
+    MeshesParentCutoutWithChildren,
+    MeshesParentCutoutWithTubes,
+    MeshesChildrenClipping
+)
 
 # Step 1/4: Generate stage object wit custom mesh as parent object and with blobs and tubes inside
 phantom = CustomPhantom(
@@ -32,27 +39,33 @@ print(f"- Parent blob at {raw_3d_structures.parent.position}")
 print(f"- {len(raw_3d_structures.children)} children blobs")
 print(f"- {len(raw_3d_structures.tubes)} tubes")
 
-# Step 2/4: Define the workflow for processing structures
+# Step 2/5: Convert structures into meshes
+phantom_meshes = ToMesh()(raw_3d_structures)
+
+# Step 3/5: Define the workflow for processing meshes
 workflow = Compose([
-    ToMesh(),
-    MeshesClipping(),
-    MeshesCleaning()
+    MeshesTubesClipping(),
+    MeshesChildrenCutout(),
+    MeshesParentCutoutWithChildren(),
+    MeshesParentCutoutWithTubes(),
+    MeshesChildrenClipping()
 ])
-meshes = workflow(raw_3d_structures)
+
+processed_meshes = workflow(phantom_meshes)
 print(f"Processed phantom with:")
-print(f"- Parent mesh with {len(meshes.parent.vertices)} vertices")
-print(f"- {len(meshes.children)} children meshes")
-print(f"- {len(meshes.tubes)} tube meshes")
+print(f"- Parent mesh with {len(processed_meshes.parent.vertices)} vertices")
+print(f"- {len(processed_meshes.children)} children meshes")
+print(f"- {len(processed_meshes.tubes)} tube meshes")
 
 # Optinonally, if the user has a display available, show the generated blobs and tubes
 if os.environ.get("DISPLAY"):
     print("We will show generated tubes and children meshes, restricted by the parent mesh")
     trimesh.boolean.union(
-        meshes.tubes + meshes.children,
+        processed_meshes.tubes + processed_meshes.children,
         engine='manifold',
     ).show()
 
-# Step 3/4: Sample physical properties for the generated meshes
+# Step 4/5: Sample physical properties for the generated meshes
 prop_sampler = PropertySampler(
     {
         "density": {
@@ -69,9 +82,9 @@ prop_sampler = PropertySampler(
         }
     }
 )
-prop = prop_sampler.sample_like(meshes, rng=default_rng())
+prop = prop_sampler.sample_like(processed_meshes, rng=default_rng())
 
-# Step 4/4: Save the generated meshes and properties to files
+# Step 5/5: Save the generated meshes and properties to files
 writer = MeshWriter("./gen_data/raw/custom_mesh")
-writer.write(meshes, prop)
+writer.write(processed_meshes, prop)
 print(f"Meshes and properties saved to {Path(writer.dir).resolve()}")
