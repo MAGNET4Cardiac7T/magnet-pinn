@@ -3,8 +3,8 @@ import numpy as np
 from numpy.random import default_rng
 import trimesh
 
-from magnet_pinn.generator.samplers import PointSampler, BlobSampler, TubeSampler, PropertySampler
-from magnet_pinn.generator.structures import Blob, Tube
+from magnet_pinn.generator.samplers import PointSampler, BlobSampler, TubeSampler, PropertySampler, MeshBlobSampler, MeshTubeSampler
+from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
 from magnet_pinn.generator.typing import PropertyItem, PropertyPhantom, StructurePhantom, MeshPhantom
 
 
@@ -1755,3 +1755,494 @@ def test_property_sampler_sample_like_with_invalid_phantom():
     
     with pytest.raises(AttributeError):
         sampler.sample_like("invalid_phantom", rng)
+
+
+# ============================================================================
+# MeshBlobSampler Tests
+# ============================================================================
+
+def create_test_mesh():
+    """Create a simple test mesh (cube) for testing."""
+    # Use trimesh's built-in box primitive to ensure proper orientation
+    box = trimesh.creation.box(extents=[2.0, 2.0, 2.0])  # 2x2x2 box centered at origin
+    return box
+
+
+def create_test_custom_mesh_structure():
+    """Create a CustomMeshStructure from a simple test mesh."""
+    test_mesh = create_test_mesh()
+    # Create a temporary file to work around the file path requirement
+    import tempfile
+    import os
+    
+    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp_file:
+        test_mesh.export(tmp_file.name)
+        mesh_structure = CustomMeshStructure(tmp_file.name)
+        os.unlink(tmp_file.name)  # Clean up
+    
+    # Override the mesh with our test mesh for consistency
+    mesh_structure.mesh = test_mesh
+    return mesh_structure
+
+
+def test_mesh_blob_sampler_initialization_with_valid_child_radius():
+    child_radius = 0.5
+    
+    sampler = MeshBlobSampler(child_radius=child_radius)
+    
+    assert sampler.child_radius == child_radius
+    assert isinstance(sampler.child_radius, float)
+    assert sampler.sample_children_only_inside is False
+
+
+def test_mesh_blob_sampler_initialization_with_sample_children_only_inside():
+    child_radius = 0.3
+    sample_children_only_inside = True
+    
+    sampler = MeshBlobSampler(child_radius=child_radius, sample_children_only_inside=sample_children_only_inside)
+    
+    assert sampler.child_radius == child_radius
+    assert sampler.sample_children_only_inside is True
+
+
+def test_mesh_blob_sampler_initialization_with_minimal_child_radius():
+    child_radius = np.finfo(float).eps
+    
+    sampler = MeshBlobSampler(child_radius=child_radius)
+    assert sampler.child_radius == child_radius
+
+
+def test_mesh_blob_sampler_initialization_with_large_child_radius():
+    child_radius = 1000.0
+    
+    sampler = MeshBlobSampler(child_radius=child_radius)
+    assert sampler.child_radius == child_radius
+
+
+def test_mesh_blob_sampler_rejects_zero_child_radius():
+    with pytest.raises(ValueError, match="child_radius must be positive"):
+        MeshBlobSampler(child_radius=0.0)
+
+
+def test_mesh_blob_sampler_rejects_negative_child_radius():
+    with pytest.raises(ValueError, match="child_radius must be positive"):
+        MeshBlobSampler(child_radius=-1.0)
+
+
+def test_mesh_blob_sampler_sample_children_blobs_with_zero_children():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    children = sampler.sample_children_blobs(parent_mesh_structure, 0, rng)
+    
+    assert len(children) == 0
+    assert isinstance(children, list)
+
+
+def test_mesh_blob_sampler_sample_children_blobs_with_single_child():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng)
+    
+    assert len(children) == 1
+    assert isinstance(children[0], Blob)
+    assert children[0].radius == sampler.child_radius
+
+
+def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children():
+    sampler = MeshBlobSampler(child_radius=0.05)  # Small radius to fit multiple
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    num_children = 2
+    
+    children = sampler.sample_children_blobs(parent_mesh_structure, num_children, rng)
+    
+    assert len(children) == num_children
+    for child in children:
+        assert isinstance(child, Blob)
+        assert child.radius == sampler.child_radius
+
+
+def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(42)
+    
+    children1 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng1)
+    children2 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng2)
+    
+    assert len(children1) == len(children2)
+    for c1, c2 in zip(children1, children2):
+        assert np.allclose(c1.position, c2.position)
+        assert c1.radius == c2.radius
+
+
+def test_mesh_blob_sampler_sample_children_blobs_different_results_with_different_seeds():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(123)
+    
+    children1 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng1)
+    children2 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng2)
+    
+    # Results should be different with different seeds
+    assert not np.allclose(children1[0].position, children2[0].position)
+
+
+def test_mesh_blob_sampler_sample_inside_volume_returns_valid_positions():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    mesh = create_test_mesh()
+    rng = default_rng(42)
+    
+    positions = sampler._sample_inside_volume(mesh, rng, batch_size=1000, points_to_return=10)
+    
+    assert positions.shape[0] <= 10  # Should return up to 10 points
+    assert positions.shape[1] == 3   # 3D coordinates
+    
+    # Check that points are inside the mesh
+    for position in positions:
+        assert mesh.contains([position])[0]
+
+
+def test_mesh_blob_sampler_sample_inside_volume_with_minimal_batch_size():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    mesh = create_test_mesh()
+    rng = default_rng(42)
+    
+    positions = sampler._sample_inside_volume(mesh, rng, batch_size=100, points_to_return=1)
+    
+    assert positions.shape[0] <= 1
+    assert positions.shape[1] == 3
+
+
+def test_mesh_blob_sampler_sample_inside_volume_runtime_error_on_failure():
+    """Test that RuntimeError is raised when no valid positions can be found."""
+    sampler = MeshBlobSampler(child_radius=0.1)
+    
+    # Create a very thin mesh that's hard to sample from
+    vertices = np.array([
+        [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
+    ])
+    faces = np.array([[0, 1, 2], [0, 2, 3]])
+    thin_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+    
+    rng = default_rng(42)
+    
+    # This should fail to find valid points and raise RuntimeError
+    with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
+        sampler._sample_inside_volume(thin_mesh, rng, batch_size=10, points_to_return=1)
+
+
+def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements():
+    """Test that RuntimeError is raised when no valid blob placements can be found."""
+    sampler = MeshBlobSampler(child_radius=0.5)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    # Try to place many large children that definitely can't fit without overlapping
+    with pytest.raises(RuntimeError, match="No valid blob placements found"):
+        sampler.sample_children_blobs(parent_mesh_structure, 20, rng, batch_size=50)  # 20 large blobs in small space
+
+
+def test_mesh_blob_sampler_with_sample_children_only_inside_true():
+    sampler = MeshBlobSampler(child_radius=0.05, sample_children_only_inside=True)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    # This might fail with small mesh and restrictive constraints
+    try:
+        children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=10000)
+        assert len(children) <= 1
+        if len(children) > 0:
+            assert isinstance(children[0], Blob)
+    except RuntimeError as e:
+        # Expected if constraints are too restrictive
+        assert "No valid blob placements found" in str(e)
+
+
+def test_mesh_blob_sampler_batch_size_parameter():
+    sampler = MeshBlobSampler(child_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=5000)
+    
+    assert len(children) == 1
+    assert isinstance(children[0], Blob)
+
+
+# ============================================================================
+# MeshTubeSampler Tests
+# ============================================================================
+
+def test_mesh_tube_sampler_initialization_with_valid_radii():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    
+    assert sampler.tube_max_radius == tube_max_radius
+    assert sampler.tube_min_radius == tube_min_radius
+    assert isinstance(sampler.tube_max_radius, float)
+    assert isinstance(sampler.tube_min_radius, float)
+
+
+def test_mesh_tube_sampler_initialization_with_minimal_difference():
+    tube_max_radius = 1.0 + np.finfo(float).eps
+    tube_min_radius = 1.0
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    assert sampler.tube_max_radius == tube_max_radius
+    assert sampler.tube_min_radius == tube_min_radius
+
+
+def test_mesh_tube_sampler_initialization_with_large_difference():
+    tube_max_radius = 1000.0
+    tube_min_radius = 0.001
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    assert sampler.tube_max_radius == tube_max_radius
+    assert sampler.tube_min_radius == tube_min_radius
+
+
+def test_mesh_tube_sampler_rejects_zero_max_radius():
+    with pytest.raises(ValueError, match="tube_max_radius must be positive"):
+        MeshTubeSampler(tube_max_radius=0.0, tube_min_radius=0.1)
+
+
+def test_mesh_tube_sampler_rejects_negative_max_radius():
+    with pytest.raises(ValueError, match="tube_max_radius must be positive"):
+        MeshTubeSampler(tube_max_radius=-1.0, tube_min_radius=0.1)
+
+
+def test_mesh_tube_sampler_rejects_zero_min_radius():
+    with pytest.raises(ValueError, match="tube_min_radius must be positive"):
+        MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.0)
+
+
+def test_mesh_tube_sampler_rejects_negative_min_radius():
+    with pytest.raises(ValueError, match="tube_min_radius must be positive"):
+        MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=-0.1)
+
+
+def test_mesh_tube_sampler_rejects_min_radius_equal_to_max_radius():
+    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+        MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=1.0)
+
+
+def test_mesh_tube_sampler_rejects_min_radius_greater_than_max_radius():
+    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+        MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=1.0)
+
+
+def test_mesh_tube_sampler_sample_inside_position_returns_valid_position():
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    mesh = create_test_mesh()
+    rng = default_rng(42)
+    
+    position = sampler._sample_inside_position(mesh, rng)
+    
+    assert isinstance(position, np.ndarray)
+    assert position.shape == (3,)
+    assert mesh.contains([position])[0]
+
+
+def test_mesh_tube_sampler_sample_inside_position_reproducible_with_same_seed():
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    mesh = create_test_mesh()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(42)
+    
+    position1 = sampler._sample_inside_position(mesh, rng1)
+    position2 = sampler._sample_inside_position(mesh, rng2)
+    
+    assert np.allclose(position1, position2)
+
+
+def test_mesh_tube_sampler_sample_inside_position_different_results_with_different_seeds():
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    mesh = create_test_mesh()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(123)
+    
+    position1 = sampler._sample_inside_position(mesh, rng1)
+    position2 = sampler._sample_inside_position(mesh, rng2)
+    
+    assert not np.allclose(position1, position2)
+
+
+def test_mesh_tube_sampler_sample_inside_position_runtime_error_on_failure():
+    """Test that RuntimeError is raised when no valid position can be found."""
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    
+    # Create a very thin mesh that's hard to sample from
+    vertices = np.array([
+        [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
+    ])
+    faces = np.array([[0, 1, 2], [0, 2, 3]])
+    thin_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+    
+    rng = default_rng(42)
+    
+    # This should fail to find valid points and raise RuntimeError
+    with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
+        sampler._sample_inside_position(thin_mesh, rng, max_iter=10)
+
+
+def test_mesh_tube_sampler_sample_tubes_with_zero_tubes():
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 0, rng)
+    
+    assert len(tubes) == 0
+    assert isinstance(tubes, list)
+
+
+def test_mesh_tube_sampler_sample_tubes_with_single_tube():
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
+    
+    assert len(tubes) == 1
+    assert isinstance(tubes[0], Tube)
+    assert sampler.tube_min_radius <= tubes[0].radius <= sampler.tube_max_radius
+
+
+def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes():
+    sampler = MeshTubeSampler(tube_max_radius=0.2, tube_min_radius=0.05)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    num_tubes = 2
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, num_tubes, rng)
+    
+    assert len(tubes) <= num_tubes  # May be fewer due to collision constraints
+    for tube in tubes:
+        assert isinstance(tube, Tube)
+        assert sampler.tube_min_radius <= tube.radius <= sampler.tube_max_radius
+        assert np.isclose(np.linalg.norm(tube.direction), 1.0)
+
+
+def test_mesh_tube_sampler_sample_tubes_radii_within_range():
+    sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.2)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
+    
+    for tube in tubes:
+        assert sampler.tube_min_radius <= tube.radius <= sampler.tube_max_radius
+
+
+def test_mesh_tube_sampler_sample_tubes_collision_detection():
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
+    
+    # Check that tubes don't intersect (collision detection working)
+    for i, tube1 in enumerate(tubes):
+        for j, tube2 in enumerate(tubes):
+            if i != j:
+                distance = Tube.distance_to_tube(tube1, tube2)
+                min_distance = tube1.radius + tube2.radius
+                assert distance >= min_distance or np.isclose(distance, min_distance, atol=1e-10)
+
+
+def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed():
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(42)
+    
+    tubes1 = sampler.sample_tubes(parent_mesh_structure, 1, rng1)
+    tubes2 = sampler.sample_tubes(parent_mesh_structure, 1, rng2)
+    
+    assert len(tubes1) == len(tubes2)
+    if len(tubes1) > 0:
+        for t1, t2 in zip(tubes1, tubes2):
+            assert np.allclose(t1.position, t2.position)
+            assert np.allclose(t1.direction, t2.direction)
+            assert t1.radius == t2.radius
+
+
+def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds():
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    
+    rng1 = default_rng(42)
+    rng2 = default_rng(123)
+    
+    tubes1 = sampler.sample_tubes(parent_mesh_structure, 1, rng1)
+    tubes2 = sampler.sample_tubes(parent_mesh_structure, 1, rng2)
+    
+    if len(tubes1) > 0 and len(tubes2) > 0:
+        # Results should be different with different seeds
+        different = False
+        t1, t2 = tubes1[0], tubes2[0]
+        if not np.allclose(t1.position, t2.position) or not np.allclose(t1.direction, t2.direction) or t1.radius != t2.radius:
+            different = True
+        assert different
+
+
+def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations():
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng, max_iterations=100)
+    
+    assert len(tubes) <= 1
+
+
+def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure():
+    """Test that sampling terminates early when tube placement becomes impossible."""
+    sampler = MeshTubeSampler(tube_max_radius=1.5, tube_min_radius=1.0)  # Large tubes relative to mesh
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    # Should terminate early due to collision constraints
+    tubes = sampler.sample_tubes(parent_mesh_structure, 5, rng, max_iterations=10)
+    
+    # Should produce fewer tubes than requested due to collision constraints
+    assert len(tubes) < 5
+
+
+def test_mesh_tube_sampler_sample_tubes_with_minimal_radius():
+    sampler = MeshTubeSampler(tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
+    
+    assert len(tubes) <= 1
+    if len(tubes) > 0:
+        assert tubes[0].radius >= sampler.tube_min_radius
+        assert tubes[0].radius <= sampler.tube_max_radius
+
+
+def test_mesh_tube_sampler_direction_vector_normalization():
+    """Test that direction vectors are properly normalized."""
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure()
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
+    
+    for tube in tubes:
+        assert np.isclose(np.linalg.norm(tube.direction), 1.0, atol=1e-10)

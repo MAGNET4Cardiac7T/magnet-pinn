@@ -266,13 +266,14 @@ class CustomPhantom(Phantom):
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
         self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius)
 
-    def generate(self, seed: int = None) -> StructurePhantom:
+    def generate(self, seed: int = None, child_blobs_batch_size: int = 1000000) -> StructurePhantom:
         rng = default_rng(seed)
         
         children_blobs = self.child_sampler.sample_children_blobs(
             self.parent_structure,
             num_children=self.num_children_blobs,
-            rng=rng
+            rng=rng,
+            batch_size=child_blobs_batch_size
         )
 
         tubes = self.tube_sampler.sample_tubes(

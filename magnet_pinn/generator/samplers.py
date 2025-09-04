@@ -587,7 +587,7 @@ class MeshBlobSampler:
         if child_radius <= 0:
             raise ValueError("child_radius must be positive")
         self.child_radius = child_radius
-        self.sample_chld_only_inside = sample_children_only_inside
+        self.sample_children_only_inside = sample_children_only_inside
 
     def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, batch_size: int = 50000, points_to_return: int = 1) -> np.ndarray:
             points = (rng.random((batch_size, 3)) * mesh.extents) + mesh.bounds[0]
@@ -613,13 +613,18 @@ class MeshBlobSampler:
             Blob(np.zeros(3), self.child_radius, seed=rng.integers(0, 2**32-1).item())
             for _ in range(num_children)
         ]
+
         potential_centers = self._sample_inside_volume(mesh, rng, batch_size=batch_size, points_to_return=batch_size)
         w = sliding_window_view(potential_centers, window_shape=num_children, axis=0)
         w = np.swapaxes(w, 1, 2)
-        s = np.einsum('...ik,...ik->...i', w, w)
-        G = np.einsum('...ik,...jk->...ij', w, w)
-        D = np.sqrt(np.maximum(s[..., :, None] + s[..., None, :] - 2*G, 0))
-        D = np.triu(D, k=1)
+        w_squared_norms = np.sum(w**2, axis=-1)
+        dot_products = w @ w.swapaxes(-1, -2)
+        squared_distances = w_squared_norms[..., :, None] + w_squared_norms[..., None, :] - 2 * dot_products
+        mask = np.triu(np.ones((num_children, num_children), dtype=bool), k=1)
+        D_squared = np.maximum(squared_distances, 0)
+        D = np.zeros_like(squared_distances)
+        D[..., mask] = np.sqrt(D_squared[..., mask])
+        # n, childer, children
 
         effective_radii = np.array([
             blob.effective_radius for blob in placed_blobs
@@ -627,39 +632,31 @@ class MeshBlobSampler:
         centers_distances = effective_radii[:, None] + effective_radii[None, :]
         centers_distances = np.triu(centers_distances, k=1)
 
-        indices = (D >= centers_distances).all(axis=(1,2))
+        valid_samples_indices = (D >= centers_distances).all(axis=(1,2))
 
-        if np.sum(indices) == 0:
+        if np.sum(valid_samples_indices) == 0:
             raise RuntimeError("No valid blob placements found")
+        
+        valid_centers = w[valid_samples_indices]
 
+        if self.sample_children_only_inside:
+            # n, children, 3
+            dist_to_mesh_surface = np.vectorize(parent_mesh_structure.mesh.nearest.signed_distance, signature='(n,3)->(n)')(valid_centers)
+            valid_samples_indices = (dist_to_mesh_surface > effective_radii).all(axis=1)
+
+            if valid_samples_indices.sum() == 0:
+                raise RuntimeError("No valid blob placements found inside the parental mesh")
+            
+            valid_centers = valid_centers[valid_samples_indices]
+
+        
         result = []
-        for point, blob in zip(w[indices][0], placed_blobs):
-            blob.position = point
+        for center, blob in zip(valid_centers[0], placed_blobs):
+            blob.position = center
             result.append(blob)
 
         return result
 
-    def _is_blob_inside_the_parental_mesh(self, parent_mesh: Trimesh, child_blob: Blob) -> bool:
-        effective_radius = child_blob.radius * (1 + child_blob.empirical_max_offset)
-        distance_to_surface = parent_mesh.nearest.signed_distance([child_blob.position])[0]
-        return distance_to_surface > effective_radius
-
-    def _validates_blob_collision(self, position: np.ndarray, existing_blobs: list[Blob]) -> bool:
-        # enforce no-overlap by checking pairwise distances
-        min_distance = 2 * self.child_radius  # No overlap
-        # if no existing blobs, always valid
-        if not existing_blobs:
-            return True
-        # collect existing positions plus candidate
-        points = np.vstack([blob.position for blob in existing_blobs] + [position])
-        # compute pairwise distances
-        dists = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=-1)
-        # ignore self-distances
-        dists += np.eye(len(points)) * 1e10
-        # each point's nearest neighbor distance
-        min_dists = dists.min(axis=0)
-        return np.all(min_dists >= min_distance)
-    
 
 class MeshTubeSampler:
     """Sampler for tubes inside a mesh volume with collision detection and radius variation."""
