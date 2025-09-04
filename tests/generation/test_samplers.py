@@ -1017,8 +1017,6 @@ def test_blob_sampler_progressive_sampling_boundary_conditions():
         pass
 
 
-# PropertySampler Tests
-
 def test_property_sampler_initialization_with_valid_single_property_config():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0}
@@ -1757,30 +1755,23 @@ def test_property_sampler_sample_like_with_invalid_phantom():
         sampler.sample_like("invalid_phantom", rng)
 
 
-# ============================================================================
-# MeshBlobSampler Tests
-# ============================================================================
-
 def create_test_mesh():
     """Create a simple test mesh (cube) for testing."""
-    # Use trimesh's built-in box primitive to ensure proper orientation
-    box = trimesh.creation.box(extents=[2.0, 2.0, 2.0])  # 2x2x2 box centered at origin
+    box = trimesh.creation.box(extents=[2.0, 2.0, 2.0])
     return box
 
 
 def create_test_custom_mesh_structure():
     """Create a CustomMeshStructure from a simple test mesh."""
     test_mesh = create_test_mesh()
-    # Create a temporary file to work around the file path requirement
     import tempfile
     import os
     
     with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp_file:
         test_mesh.export(tmp_file.name)
         mesh_structure = CustomMeshStructure(tmp_file.name)
-        os.unlink(tmp_file.name)  # Clean up
+        os.unlink(tmp_file.name)
     
-    # Override the mesh with our test mesh for consistency
     mesh_structure.mesh = test_mesh
     return mesh_structure
 
@@ -1853,7 +1844,7 @@ def test_mesh_blob_sampler_sample_children_blobs_with_single_child():
 
 
 def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children():
-    sampler = MeshBlobSampler(child_radius=0.05)  # Small radius to fit multiple
+    sampler = MeshBlobSampler(child_radius=0.05)
     parent_mesh_structure = create_test_custom_mesh_structure()
     rng = default_rng(42)
     num_children = 2
@@ -1892,7 +1883,6 @@ def test_mesh_blob_sampler_sample_children_blobs_different_results_with_differen
     children1 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng1)
     children2 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng2)
     
-    # Results should be different with different seeds
     assert not np.allclose(children1[0].position, children2[0].position)
 
 
@@ -1903,10 +1893,9 @@ def test_mesh_blob_sampler_sample_inside_volume_returns_valid_positions():
     
     positions = sampler._sample_inside_volume(mesh, rng, batch_size=1000, points_to_return=10)
     
-    assert positions.shape[0] <= 10  # Should return up to 10 points
-    assert positions.shape[1] == 3   # 3D coordinates
+    assert positions.shape[0] <= 10
+    assert positions.shape[1] == 3
     
-    # Check that points are inside the mesh
     for position in positions:
         assert mesh.contains([position])[0]
 
@@ -1926,7 +1915,6 @@ def test_mesh_blob_sampler_sample_inside_volume_runtime_error_on_failure():
     """Test that RuntimeError is raised when no valid positions can be found."""
     sampler = MeshBlobSampler(child_radius=0.1)
     
-    # Create a very thin mesh that's hard to sample from
     vertices = np.array([
         [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
     ])
@@ -1935,7 +1923,6 @@ def test_mesh_blob_sampler_sample_inside_volume_runtime_error_on_failure():
     
     rng = default_rng(42)
     
-    # This should fail to find valid points and raise RuntimeError
     with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
         sampler._sample_inside_volume(thin_mesh, rng, batch_size=10, points_to_return=1)
 
@@ -1946,9 +1933,8 @@ def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements(
     parent_mesh_structure = create_test_custom_mesh_structure()
     rng = default_rng(42)
     
-    # Try to place many large children that definitely can't fit without overlapping
     with pytest.raises(RuntimeError, match="No valid blob placements found"):
-        sampler.sample_children_blobs(parent_mesh_structure, 20, rng, batch_size=50)  # 20 large blobs in small space
+        sampler.sample_children_blobs(parent_mesh_structure, 20, rng, batch_size=50)
 
 
 def test_mesh_blob_sampler_with_sample_children_only_inside_true():
@@ -1956,14 +1942,12 @@ def test_mesh_blob_sampler_with_sample_children_only_inside_true():
     parent_mesh_structure = create_test_custom_mesh_structure()
     rng = default_rng(42)
     
-    # This might fail with small mesh and restrictive constraints
     try:
         children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=10000)
         assert len(children) <= 1
         if len(children) > 0:
             assert isinstance(children[0], Blob)
     except RuntimeError as e:
-        # Expected if constraints are too restrictive
         assert "No valid blob placements found" in str(e)
 
 
@@ -1978,9 +1962,6 @@ def test_mesh_blob_sampler_batch_size_parameter():
     assert isinstance(children[0], Blob)
 
 
-# ============================================================================
-# MeshTubeSampler Tests
-# ============================================================================
 
 def test_mesh_tube_sampler_initialization_with_valid_radii():
     tube_max_radius = 2.0
@@ -2084,7 +2065,6 @@ def test_mesh_tube_sampler_sample_inside_position_runtime_error_on_failure():
     """Test that RuntimeError is raised when no valid position can be found."""
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
     
-    # Create a very thin mesh that's hard to sample from
     vertices = np.array([
         [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
     ])
@@ -2093,7 +2073,6 @@ def test_mesh_tube_sampler_sample_inside_position_runtime_error_on_failure():
     
     rng = default_rng(42)
     
-    # This should fail to find valid points and raise RuntimeError
     with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
         sampler._sample_inside_position(thin_mesh, rng, max_iter=10)
 
@@ -2129,7 +2108,7 @@ def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes():
     
     tubes = sampler.sample_tubes(parent_mesh_structure, num_tubes, rng)
     
-    assert len(tubes) <= num_tubes  # May be fewer due to collision constraints
+    assert len(tubes) <= num_tubes
     for tube in tubes:
         assert isinstance(tube, Tube)
         assert sampler.tube_min_radius <= tube.radius <= sampler.tube_max_radius
@@ -2154,7 +2133,6 @@ def test_mesh_tube_sampler_sample_tubes_collision_detection():
     
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
     
-    # Check that tubes don't intersect (collision detection working)
     for i, tube1 in enumerate(tubes):
         for j, tube2 in enumerate(tubes):
             if i != j:
@@ -2192,7 +2170,6 @@ def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds()
     tubes2 = sampler.sample_tubes(parent_mesh_structure, 1, rng2)
     
     if len(tubes1) > 0 and len(tubes2) > 0:
-        # Results should be different with different seeds
         different = False
         t1, t2 = tubes1[0], tubes2[0]
         if not np.allclose(t1.position, t2.position) or not np.allclose(t1.direction, t2.direction) or t1.radius != t2.radius:
@@ -2212,14 +2189,12 @@ def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations():
 
 def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure():
     """Test that sampling terminates early when tube placement becomes impossible."""
-    sampler = MeshTubeSampler(tube_max_radius=1.5, tube_min_radius=1.0)  # Large tubes relative to mesh
+    sampler = MeshTubeSampler(tube_max_radius=1.5, tube_min_radius=1.0)
     parent_mesh_structure = create_test_custom_mesh_structure()
     rng = default_rng(42)
     
-    # Should terminate early due to collision constraints
     tubes = sampler.sample_tubes(parent_mesh_structure, 5, rng, max_iterations=10)
     
-    # Should produce fewer tubes than requested due to collision constraints
     assert len(tubes) < 5
 
 

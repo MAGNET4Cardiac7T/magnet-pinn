@@ -1,10 +1,13 @@
 import pytest
 import numpy as np
+import os
+import tempfile
+import trimesh
 
-from magnet_pinn.generator.phantoms import Phantom, Tissue
-from magnet_pinn.generator.structures import Blob, Tube
+from magnet_pinn.generator.phantoms import Phantom, Tissue, CustomPhantom
+from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
 from magnet_pinn.generator.typing import StructurePhantom
-from magnet_pinn.generator.samplers import BlobSampler, TubeSampler
+from magnet_pinn.generator.samplers import BlobSampler, TubeSampler, MeshBlobSampler, MeshTubeSampler
 
 
 class ConcretePhantom(Phantom):
@@ -694,3 +697,379 @@ def test_tissue_rejects_blob_radius_decrease_per_level_greater_than_one():
             num_tubes=0,
             relative_tube_max_radius=0.1
         )
+
+
+@pytest.fixture
+def simple_stl_file():
+    """Create a simple STL file for testing purposes."""
+    mesh = trimesh.creation.icosphere(subdivisions=2, radius=2.0)
+    
+    temp_file = tempfile.NamedTemporaryFile(suffix='.stl', delete=False)
+    temp_file.close()
+    
+    mesh.export(temp_file.name)
+    
+    yield temp_file.name
+    
+    if os.path.exists(temp_file.name):
+        os.unlink(temp_file.name)
+
+
+@pytest.fixture
+def existing_stl_file():
+    """Use the existing phantom.stl file in the repository."""
+    stl_path = "/home/alex/PycharmProjects/magnet-pinn/phantom.stl"
+    if os.path.exists(stl_path):
+        return stl_path
+    else:
+        pytest.skip("phantom.stl file not found in repository")
+
+
+def test_custom_phantom_initialization_with_valid_stl_file(simple_stl_file):
+    """Test CustomPhantom initialization with valid STL file."""
+    num_children_blobs = 3
+    blob_radius_decrease_per_level = 0.3
+    num_tubes = 5
+    relative_tube_max_radius = 0.1
+    relative_tube_min_radius = 0.01
+    sample_children_only_inside = False
+    
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=num_children_blobs,
+        blob_radius_decrease_per_level=blob_radius_decrease_per_level,
+        num_tubes=num_tubes,
+        relative_tube_max_radius=relative_tube_max_radius,
+        relative_tube_min_radius=relative_tube_min_radius,
+        sample_children_only_inside=sample_children_only_inside
+    )
+    
+    assert phantom.num_children_blobs == num_children_blobs
+    assert phantom.num_tubes == num_tubes
+    assert isinstance(phantom.parent_structure, CustomMeshStructure)
+    assert isinstance(phantom.child_sampler, MeshBlobSampler)
+    assert isinstance(phantom.tube_sampler, MeshTubeSampler)
+    assert phantom.initial_blob_radius is None
+    assert phantom.initial_blob_center_extent is None
+
+
+def test_custom_phantom_initialization_with_default_parameters(simple_stl_file):
+    """Test CustomPhantom initialization with default parameters."""
+    phantom = CustomPhantom(stl_mesh_path=simple_stl_file)
+    
+    assert phantom.num_children_blobs == 3
+    assert phantom.num_tubes == 5
+    assert isinstance(phantom.parent_structure, CustomMeshStructure)
+    assert isinstance(phantom.child_sampler, MeshBlobSampler)
+    assert isinstance(phantom.tube_sampler, MeshTubeSampler)
+
+
+def test_custom_phantom_initialization_with_zero_children(simple_stl_file):
+    """Test CustomPhantom initialization with zero children blobs."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=0,
+        num_tubes=2
+    )
+    
+    assert phantom.num_children_blobs == 0
+    assert phantom.num_tubes == 2
+
+
+def test_custom_phantom_initialization_with_zero_tubes(simple_stl_file):
+    """Test CustomPhantom initialization with zero tubes."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=0
+    )
+    
+    assert phantom.num_children_blobs == 2
+    assert phantom.num_tubes == 0
+
+
+def test_custom_phantom_initialization_with_minimum_blob_radius_decrease(simple_stl_file):
+    """Test CustomPhantom initialization with minimum blob radius decrease factor."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        blob_radius_decrease_per_level=0.001
+    )
+    
+    assert phantom.num_children_blobs == 3
+
+
+def test_custom_phantom_initialization_with_maximum_blob_radius_decrease(simple_stl_file):
+    """Test CustomPhantom initialization with maximum blob radius decrease factor."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        blob_radius_decrease_per_level=0.999
+    )
+    
+    assert phantom.num_children_blobs == 3
+
+
+def test_custom_phantom_initialization_with_sample_children_only_inside_true(simple_stl_file):
+    """Test CustomPhantom initialization with sample_children_only_inside=True."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        sample_children_only_inside=True
+    )
+    
+    assert phantom.num_children_blobs == 3
+
+
+def test_custom_phantom_initialization_with_large_tube_radii(simple_stl_file):
+    """Test CustomPhantom initialization with large tube radii."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        relative_tube_max_radius=0.9,
+        relative_tube_min_radius=0.1
+    )
+    
+    assert phantom.num_children_blobs == 3
+    assert phantom.num_tubes == 5
+
+
+def test_custom_phantom_initialization_with_small_tube_radii(simple_stl_file):
+    """Test CustomPhantom initialization with small tube radii."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        relative_tube_max_radius=0.001,
+        relative_tube_min_radius=0.0001
+    )
+    
+    assert phantom.num_children_blobs == 3
+    assert phantom.num_tubes == 5
+
+
+def test_custom_phantom_initialization_with_nonexistent_stl_file():
+    """Test CustomPhantom initialization with non-existent STL file."""
+    with pytest.raises((FileNotFoundError, IOError, ValueError)):
+        CustomPhantom(stl_mesh_path="/nonexistent/path/phantom.stl")
+
+
+def test_custom_phantom_initialization_with_invalid_stl_file():
+    """Test CustomPhantom initialization with invalid STL file."""
+    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.stl', delete=False)
+    temp_file.write("This is not a valid STL file")
+    temp_file.close()
+    
+    try:
+        with pytest.raises((ValueError, Exception)):
+            CustomPhantom(stl_mesh_path=temp_file.name)
+    finally:
+        if os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
+
+
+def test_custom_phantom_generate_with_zero_children_and_tubes(simple_stl_file):
+    """Test CustomPhantom generation with zero children and tubes."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=0,
+        num_tubes=0
+    )
+    
+    result = phantom.generate(seed=42)
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 0
+    assert len(result.tubes) == 0
+
+
+def test_custom_phantom_generate_with_children_only(simple_stl_file):
+    """Test CustomPhantom generation with children only."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=0
+    )
+    
+    result = phantom.generate(seed=42)
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 2
+    assert len(result.tubes) == 0
+    
+    for child in result.children:
+        assert isinstance(child, Blob)
+
+
+def test_custom_phantom_generate_with_tubes_only(simple_stl_file):
+    """Test CustomPhantom generation with tubes only."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=0,
+        num_tubes=2
+    )
+    
+    result = phantom.generate(seed=42)
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 0
+    assert len(result.tubes) == 2
+    
+    for tube in result.tubes:
+        assert isinstance(tube, Tube)
+
+
+def test_custom_phantom_generate_with_children_and_tubes(simple_stl_file):
+    """Test CustomPhantom generation with both children and tubes."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=3
+    )
+    
+    result = phantom.generate(seed=42)
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 2
+    assert len(result.tubes) == 3
+    
+    for child in result.children:
+        assert isinstance(child, Blob)
+    
+    for tube in result.tubes:
+        assert isinstance(tube, Tube)
+
+
+def test_custom_phantom_generate_reproducible_with_same_seed(simple_stl_file):
+    """Test CustomPhantom generation is reproducible with same seed."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=2
+    )
+    
+    result1 = phantom.generate(seed=42)
+    result2 = phantom.generate(seed=42)
+    
+    assert len(result1.children) == len(result2.children)
+    assert len(result1.tubes) == len(result2.tubes)
+    
+    for child1, child2 in zip(result1.children, result2.children):
+        np.testing.assert_array_almost_equal(child1.position, child2.position)
+        assert child1.radius == child2.radius
+    
+    for tube1, tube2 in zip(result1.tubes, result2.tubes):
+        np.testing.assert_array_almost_equal(tube1.position, tube2.position)
+        np.testing.assert_array_almost_equal(tube1.direction, tube2.direction)
+        assert tube1.radius == tube2.radius
+
+
+def test_custom_phantom_generate_different_results_with_different_seeds(simple_stl_file):
+    """Test CustomPhantom generation produces different results with different seeds."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=2
+    )
+    
+    result1 = phantom.generate(seed=42)
+    result2 = phantom.generate(seed=123)
+    
+    children_different = False
+    for child1, child2 in zip(result1.children, result2.children):
+        if not np.allclose(child1.position, child2.position) or child1.radius != child2.radius:
+            children_different = True
+            break
+    
+    tubes_different = False
+    for tube1, tube2 in zip(result1.tubes, result2.tubes):
+        if (not np.allclose(tube1.position, tube2.position) or 
+            not np.allclose(tube1.direction, tube2.direction) or
+            tube1.radius != tube2.radius):
+            tubes_different = True
+            break
+    
+    assert children_different or tubes_different
+
+
+def test_custom_phantom_generate_without_seed(simple_stl_file):
+    """Test CustomPhantom generation without specifying seed."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=1,
+        num_tubes=1
+    )
+    
+    result = phantom.generate()
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 1
+    assert len(result.tubes) == 1
+
+
+def test_custom_phantom_generate_with_custom_batch_size(simple_stl_file):
+    """Test CustomPhantom generation with custom batch size."""
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        num_children_blobs=2,
+        num_tubes=1
+    )
+    
+    result = phantom.generate(seed=42, child_blobs_batch_size=500000)
+    
+    assert isinstance(result, StructurePhantom)
+    assert len(result.children) == 2
+    assert len(result.tubes) == 1
+
+
+def test_custom_phantom_inheritance_from_phantom(simple_stl_file):
+    """Test CustomPhantom properly inherits from Phantom base class."""
+    phantom = CustomPhantom(stl_mesh_path=simple_stl_file)
+    
+    assert isinstance(phantom, Phantom)
+    assert hasattr(phantom, 'generate')
+    assert callable(phantom.generate)
+
+
+def test_custom_phantom_with_existing_stl_file(existing_stl_file):
+    """Test CustomPhantom with the existing phantom.stl file from repository."""
+    phantom = CustomPhantom(
+        stl_mesh_path=existing_stl_file,
+        num_children_blobs=2,
+        num_tubes=1
+    )
+    
+    result = phantom.generate(seed=42)
+    
+    assert isinstance(result, StructurePhantom)
+    assert isinstance(result.parent, CustomMeshStructure)
+    assert len(result.children) == 2
+    assert len(result.tubes) == 1
+
+
+def test_custom_phantom_sampler_configuration(simple_stl_file):
+    """Test CustomPhantom has correct sampler configuration."""
+    blob_radius_decrease = 0.4
+    tube_max_radius = 0.15
+    tube_min_radius = 0.05
+    sample_inside = True
+    
+    phantom = CustomPhantom(
+        stl_mesh_path=simple_stl_file,
+        blob_radius_decrease_per_level=blob_radius_decrease,
+        relative_tube_max_radius=tube_max_radius,
+        relative_tube_min_radius=tube_min_radius,
+        sample_children_only_inside=sample_inside
+    )
+    
+    assert isinstance(phantom.child_sampler, MeshBlobSampler)
+    assert isinstance(phantom.tube_sampler, MeshTubeSampler)
+    
+    assert isinstance(phantom.parent_structure, CustomMeshStructure)
+    
+    expected_child_radius = phantom.parent_structure.radius * blob_radius_decrease
+    expected_tube_max = tube_max_radius * phantom.parent_structure.radius
+    expected_tube_min = tube_min_radius * phantom.parent_structure.radius
+    
+    assert phantom.child_sampler.child_radius == expected_child_radius
+    assert phantom.tube_sampler.tube_max_radius == expected_tube_max
+    assert phantom.tube_sampler.tube_min_radius == expected_tube_min
