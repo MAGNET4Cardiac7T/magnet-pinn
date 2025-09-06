@@ -189,7 +189,7 @@ for epoch in range(10):
         print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss.item()}")
 ```
 
-### Example: Generating Experiment Meshes
+### Example: Generating Object Meshes
 In the following it is shown how to generate your own sample data.
 The following code snippet generates stl files with the given Tissue data.
 

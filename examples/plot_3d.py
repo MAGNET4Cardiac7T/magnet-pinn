@@ -72,15 +72,20 @@ for EM_FIELD in em_FIELD:
                         rstride=1, cstride=1, linewidth=0, antialiased=False, shade=False)
 
     ax.view_init(elev=30, azim=150)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
+    ax.set_xlabel('X', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Y', fontsize=12, fontweight='bold')
+    ax.set_zlabel('Z', fontsize=12, fontweight='bold')
 
     s = 0.5
     s2 = 0.5
     ax.set_xlim(-s, s)
     ax.set_ylim(-s2, s2)
     ax.set_zlim(-s, s)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='z', which='major', labelsize=12)
+    ax.xaxis.labelpad = 13
+    ax.yaxis.labelpad = 13
+    ax.zaxis.labelpad = 13
     ax.set_xticks(np.linspace(-s, s, 3))
     ax.set_yticks(np.linspace(-s2, s2, 3))
     ax.set_zticks(np.linspace(-s, s, 3))
@@ -96,9 +101,9 @@ for EM_FIELD in em_FIELD:
     # Hide axes lines
     plt.axis('on')
     if EM_FIELD == 'e-field':
-        ax.set_title('Absolute E-field')
+        ax.set_title('Absolute E-field', fontsize=18, fontweight='bold')
         fig.canvas.manager.set_window_title("3D E-Field Visualization")
     else:
-        ax.set_title('Absolute B-field')
+        ax.set_title('Absolute B-field', fontsize=18, fontweight='bold')
         fig.canvas.manager.set_window_title("3D B-Field Visualization")
     plt.show()
