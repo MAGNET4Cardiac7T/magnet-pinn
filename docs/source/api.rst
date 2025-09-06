@@ -13,3 +13,4 @@ API reference
    magnet_pinn.preprocessing
    magnet_pinn.losses
    magnet_pinn.utils
+   magnet_pinn.generator

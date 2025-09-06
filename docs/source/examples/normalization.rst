@@ -4,12 +4,6 @@
 Normalization
 -----------------------
 
-^^^^^^^^^^^^^^^^^^
-Prerequisites:
-^^^^^^^^^^^^^^^^^^
-
-- Preprocessed the Data (Examples 1 or 2)
-
 Normalization is an important step in the preprocessing pipeline to ensure that the data is in a suitable range for training models.
 The `StandardNormalizer` class can be used to normalize the data.
 By using the iterator created in the previous example and additionally setting the `num_samples=10` this snippet will produce the normalization json files.

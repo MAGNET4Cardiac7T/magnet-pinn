@@ -4,13 +4,6 @@
 Training a ML model
 -----------------------
 
-^^^^^^^^^^^^^^^^^^
-Prerequisites:
-^^^^^^^^^^^^^^^^^^
-
-- Preprocessed the Data (Examples 1 or 2)
-- Normalized the Data (Example 3)
-
 Once the data is preprocessed and ready, you can use it to train a model.
 The following code snippet shows how to train the 3D-UNet using the preprocessed data:
 
