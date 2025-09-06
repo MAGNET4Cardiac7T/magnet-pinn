@@ -6,9 +6,9 @@ It is intended to help users understand how to load and preporcess simulations o
 
 .. _install:
 
----------------------------
+----------------------------
 :ref:`Installation <start_>`
----------------------------
+----------------------------
 
 .. _usage:
 
@@ -53,6 +53,11 @@ A basic example of the usage when the data follows the general datastructure is:
 ^^^^^^^^^^^^^^^^^^^^^^^
 Examples
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+The examples can be used to fully trace all steps from loading the data to training a model.
+The first two examples show how to preprocess the the data, either in grid or point cloud format using python.
+The third example shows how to normalize the data, which is an important step before training a model.
+The fourth example shows how to train a model using the preprocessed data and including a normalization step.
 
 .. toctree::
     :maxdepth: 1

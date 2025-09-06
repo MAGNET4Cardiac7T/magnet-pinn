@@ -38,6 +38,16 @@ class FieldReaderFactory:
     This class checks the type of the files we have in the field directory
     and defines the reader we need
 
+    Assumed Directory structue:
+
+    |    simulation_dir/
+    |   ├── E_field/
+    |   │   └── e-field*(f=*) [AC*]*.h5
+    |   ├── H_field/
+    |   │   └── h-field*(f=*) [AC*]*.h5
+    |   └── SAR/
+    |       └── SAR*(f=*) [AC*]*.h5
+
     Parameters
     ----------
     simulation_dir_path: str
@@ -52,18 +62,6 @@ class FieldReaderFactory:
         Also is used to define the field directory name.
     files_list: list
         The list of files paths with field values which has to be read.
-
-    Assumed Directory structue
-    --------------------------
-    The simulation directory consists of different field directories
-
-    | ./simulation_dir/
-    |    ├── E_field/
-    |    │    └── e-field*(f=*) [AC*]*.h5
-    |    ├── H_field/
-    |    │    └── e-field*(f=*) [AC*]*.h5
-    |    ├── SAR/
-    |    │    └── SAR*(f=*) [AC*]*.h5
 
     Methods
     -------

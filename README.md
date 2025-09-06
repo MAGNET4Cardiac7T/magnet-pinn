@@ -37,7 +37,7 @@ Download the datset using the following command:
 
 The dataset consists of multiple simulations which are tagged by their construction.
 For example there is a simulation that containes two children and 4 tubes and is therefore tagged "children_2_tubes_4_id_1556".
-A single item in the simulation contains the E and B-fields that are both nested under fields and the coils nested under the tag coils.
+A single simulation item contains the E and B-fields that are both nested under fields and the coils nested under the tag coils.
 Moreover, both fields have a real and imaginary part and span all three spatial dimensions with $100\times100\times100$ points.
 Additionally there exists a mask for subject, the phases of the coils and another mask for the coils.
 

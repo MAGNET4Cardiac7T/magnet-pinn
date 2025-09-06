@@ -18,7 +18,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
-    'numpydoc',
+    'sphinx.ext.napoleon',
     'sphinx_design',
     'sphinx_rtd_theme',
 ]
@@ -31,7 +31,7 @@ exclude_patterns = []
 
 autodoc_default_options = {
     'members': True,
-    "undoc-members": False,
+    "undoc-members": True,
     'private-members': False,
     "inherited-members": False,
     'show-inheritance': True,
