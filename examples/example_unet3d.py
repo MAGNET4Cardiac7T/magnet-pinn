@@ -21,8 +21,8 @@ from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
 
 # Set the base directory where the preprocessed data is stored
 BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
-# target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
-# input_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/input_normalization.json")
+target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
+input_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/input_normalization.json")
 
 # Create a DataLoader for the preprocessed data
 augmentation = Compose(
@@ -52,8 +52,8 @@ for epoch in range(10):
         properties, phase, field, subject_mask = batch['input'], batch['coils'], batch['field'], batch['subject']
         x = torch.cat([properties, phase], dim=1)
         y = einops.rearrange(field, 'b he reim xyz ... -> b (he reim xyz) ...')
-        # x = input_normalizer(x)
-        # y = target_normalizer(y)
+        x = input_normalizer(x)
+        y = target_normalizer(y)
         optimizer.zero_grad()
         y_hat = model(x)
         # calculate loss

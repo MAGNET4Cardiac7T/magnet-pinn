@@ -3,19 +3,15 @@ User Guide
 ===================
 This guide is an overview of the usage of the magnet-pinn package.
 It is intended to help users understand how to load and preporcess simulations of EM-Fields inside a MRI scanner using this package and the published datasets.
-The guide contains the following sections
-
-- :ref:`Using Grid Data <grid_data>`
-- :ref:`Using Point Cloud Data <point_data>`
-- :ref:`Normalization <Normalization>`
-- :ref:`Training a PINN <PINN_training>`
 
 .. _install:
+
 ---------------------------
-:ref:`Installation <start>`
+:ref:`Installation <start_>`
 ---------------------------
 
 .. _usage:
+
 --------------------
 Usage
 --------------------
@@ -37,158 +33,31 @@ We recommend using a virtual environment to manage the dependencies of the packa
 - `NumPy <https://numpy.org/install/>`_
 - `Torch <https://pytorch.org/get-started/locally/>`_
 
-.. _grid_data:
-^^^^^^^^^^^^^^^^^^^
-Using Grid Data
-^^^^^^^^^^^^^^^^^^^
-To start off we can load the data from a simulation file and preprocess it.
-The following code snippet shows how to load the data from a simulation file and preprocess it:
-For further detail see the :ref:`API reference <api>`.
-
-.. code-block:: python
-
-    from magnet_pinn.preprocessing.preprocessing import GridPreprocessing
-    import numpy as np
-
-    # The prepocessor subclass for grid data
-    preprocessor = GridPreprocessing(
-        ["data/raw/batches/batch_1", "data/raw/batches/batch_2"],   # simulation files to load
-        "data/raw/antenna",                                         # path to the antenna file
-        "data/processed/train",                                     # directory to save the processed data
-        field_dtype=np.float32,                                     # data type of the field values
-        x_min=-240,                                                 # kwargs
-        x_max=240,
-        y_min=-220,
-        y_max=220,
-        z_min=-250,
-        z_max=250
-    )
-
-    # Process the simulation data and save it in the specified directory
-    preprocessor.process_simulations()
-
-The next step is to build an iterator that can be used to load the now processed data.
-The following code snippet shows how to build an iterator that can be used to load the processed data:
-
-.. code-block:: python
-
-    from magnet_pinn.data.grid import MagnetGridIterator
-    from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose, DefaultTransform
-
-    # Compose a series of transformations to apply to the data
-    augmentation = Compose(
-        [
-            Crop(crop_size=(100, 100, 100)),
-            GridPhaseShift(num_coils=8)
-        ]
-    )
-
-    # Create an iterator for the processed grid data
-    iterator = MagnetGridIterator(
-        "/home/andi/coding/data/magnet/processed/train/grid_voxel_size_4_data_type_float32",
-        transforms=augmentation,
-        num_samples=1
-    )
-
-.. _point_data:
-^^^^^^^^^^^^^^^^^^^^^^
-Using Point Cloud Data
-^^^^^^^^^^^^^^^^^^^^^^
-To start off we can load the data from a simulation file and preprocess it.
-The following code snippet shows how to load the data from a simulation file and preprocess it:
-For further detail see the :ref:`API reference <api>`.
-
-.. code-block:: python
-
-    from magnet_pinn.preprocessing.preprocessing import PointPreprocessing
-    import numpy as np
-
-    # The prepocessor subclass for point data
-    point_preprocessor = PointPreprocessing(
-        ["data/raw/batches/batch_1", "data/raw/batches/batch_2"],   # simulation files to load
-        "data/raw/antenna",                                         # path to the antenna file
-        "data/processed/train",                                     # directory to save the processed data
-        field_dtype=np.float32                                      # data type of the field values
-    )
-
-    # Process the simulation data and save it in the specified directory
-    point_preprocessor.process_simulations()
-
-The next step is to build an iterator that can be used to load the now processed data.
-The following code snippet shows how to build an iterator that can be used to load the processed data:
-
-.. code-block:: python
-
-    from magnet_pinn.data.point import MagnetPointIterator
-    from magnet_pinn.data.transforms import PointSampling, PointPhaseShift, Compose, PointFeatureRearrange
-
-    # Compose a series of transformations to apply to the data
-    augmentation = Compose(
-        [
-            PointSampling(points_sampled=1000),
-            PointPhaseShift(num_coils=8),
-            PointFeatureRearrange(num_coils=8)
-        ]
-    )
-
-    # Create an iterator for the processed point data
-    iterator = MagnetPointIterator(
-        "data/processed/train/point_data_type_float32",
-        transforms=augmentation,
-        num_samples=100
-    )
-
-.. _Normalization:
 ^^^^^^^^^^^^^^^^^^^^^^^
-Normalization
+Using the CLI interface
 ^^^^^^^^^^^^^^^^^^^^^^^
-Normalization is an important step in the preprocessing pipeline to ensure that the data is in a suitable range for training models.
-The `StandardNormalizer` class can be used to normalize the data.
-The following code snippet shows how to normalize the data:
+An easy way to preprocess the data is the cli interface which enables the use directly from the command line.
+To use the cli interface execute the following command, which will return instructions on how to use the function.
+The processed data will be saved in the default output path `./data/processed`, where it can then be loaded from to be used in i.e. the iterator.
 
+.. code-block:: shell
 
-.. _PINN_training:
------------------------
-Training a ML model
------------------------
-Once the data is preprocessed and ready, you can use it to train a model.
-The following code snippet shows how to train a PINN using the preprocessed data:
+    python -m magnet_pinn.preprocessing --help
 
-.. code-block:: python
+A basic example of the usage when the data follows the general datastructure is:
 
-    import torch
-    import einops
-    from magnet_pinn.losses import MSELoss
-    from magnet_pinn.utils import StandardNormalizer
-    from magnet_pinn.data.utils import worker_init_fn
-    from magnet_pinn.models import UNet3D
+.. code-block:: shell
 
-    # Set the base directory where the preprocessed data is stored
-    BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
+    python -m magnet_pinn.preprocessing grid
 
-    # Create a DataLoader for the preprocessed data
-    train_loader = torch.utils.data.DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)
+^^^^^^^^^^^^^^^^^^^^^^^
+Examples
+^^^^^^^^^^^^^^^^^^^^^^^
 
-    # Create the model
-    model = UNet3D(5, 12, f_maps=32)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    criterion = MSELoss()
-    subject_lambda = 10.0
-    space_lambda = 0.01
+.. toctree::
+    :maxdepth: 1
 
-    for epoch in range(10):
-        model.train()
-        for i, batch in enumerate(train_loader):
-            properties, phase, field, subject_mask = batch['input'], batch['coils'], batch['field'], batch['subject']
-            x = torch.cat([properties, phase], dim=1)
-            y = einops.rearrange(field, 'b he reim xyz ... -> b (he reim xyz) ...')
-            optimizer.zero_grad()
-            y_hat = model(x)
-            # calculate loss
-            subject_loss = criterion(y_hat, y, subject_mask)
-            space_loss = criterion(y_hat, y, ~subject_mask)
-            loss = subject_loss*subject_lambda + space_loss*space_lambda
-
-            loss.backward()
-            optimizer.step()
-            print(f"Epoch: {epoch}, Batch: {i}, Loss: {loss.item()}")
+    Example 1: Preprocessing Grid Data <examples/preprocessing_grid>
+    Example 2: Preprocessing Point Cloud Data <examples/preprocessing_point>
+    Example 3: Normalization <examples/normalization>
+    Example 4: Training a ML model <examples/ml_train>

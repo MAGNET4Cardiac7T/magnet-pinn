@@ -19,7 +19,7 @@ Therefore, a dataset was developed to immitate MRI images that can be used to tr
 This package contains functions that can be applied to the dataset to preprocess it and finally use it as input to an ML model.
 The package contains an easy-to-use interface to make the data readily available and fit it to the desired needs.
 
-For more details check out the [documentation](https://dynabench.github.io).
+For more details check out the [documentation](https://magnet_pinn.github.io).
 
 
 ## ⚡️ Getting Started
@@ -35,7 +35,17 @@ Download the datset using the following command:
 
 ```
 
-The dataset consists of ...
+The dataset consists of multiple simulations which are tagged by their construction.
+For example there is a simulation that containes two children and 4 tubes and is therefore tagged "children_2_tubes_4_id_1556".
+A single item in the simulation contains the E and B-fields that are both nested under fields and the coils nested under the tag coils.
+Moreover, both fields have a real and imaginary part and span all three spatial dimensions with $100\times100\times100$ points.
+Additionally there exists a mask for subject, the phases of the coils and another mask for the coils.
+
+#### Examplary slices of the absolute E and B-field:
+<p align="center">
+  <img src="docs/source/images/slices_e2.png" alt="E-field Slice" width="45%" />
+  <img src="docs/source/images/slices_b2.png" alt="B-field Slice" width="45%" />
+</p>
 
 The simulation data needs to be placed in the data folder under `data/raw/GROUP_NAME/simulations` and the antenna data under `data/raw/GROUP_NAME/antenna`.
 
@@ -44,8 +54,6 @@ E.g.:
 `data/raw/batch_1/antenna/Dipole_1.stl`, `data/raw/batch_1/antenna/materials.txt`
 
 ## ⚙️ Usage
-
-
 
 ### Loading & Preprocessing of the Data
 Once the dataset is downloaded you can simply load the data in your project and start using it.
@@ -86,6 +94,7 @@ preprocessor = GridPreprocessing(
 # Process the simulation data and save it in the specified directory
 preprocessor.process_simulations()
 ```
+Using the preprocessed data from the previous step we then build an iterator instance where the data is loaded and a list of transforms is applied.
 
 ```python
 from magnet_pinn.data.grid import MagnetGridIterator
@@ -102,6 +111,37 @@ iterator = MagnetGridIterator(
     "/home/andi/coding/data/magnet/processed/train/grid_voxel_size_4_data_type_float32",
     transforms=augmentation,
     num_samples=1
+```
+Normalization is an important part of the data pipeline and therefore we need to compute the normalization for the input and target data.
+The normalization can be computed using the available example script.
+It is useful to set the num_samples of the iterator to more than 1. We recommend using `num_samples=10`.
+
+```python
+from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
+import einops
+
+class Iterator:
+    def __init__(self, path, iterator):
+        self.path = path
+        self.iterator = iterator
+
+    def __len__(self):
+        return len(self.iterator)
+
+    def __iter__(self):
+        for batch in self.iterator:
+            input = np.concatenate([batch['input'], batch['coils']], axis=0)
+            target = einops.rearrange(batch['field'], 'he reim xyz ... -> (he reim xyz) ...')
+            yield {
+                'input': input,
+                'target': target,
+            }
+
+iterator = Iterator("data/processed/train/grid_voxel_size_4_data_type_float32", iterator)
+
+normalizer = StandardNormalizer()
+normalizer.fit_params(iterator, key='input', axis=0)  # use either target or input
+normalizer.save_as_json("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/input_normalization.json")
 ```
 
 ### Example: Training a ML model

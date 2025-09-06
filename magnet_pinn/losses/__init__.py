@@ -3,5 +3,6 @@
 """
 
 from .base import MSELoss, MAELoss, HuberLoss, LogCoshLoss
+from .physics import BasePhysicsLoss, DivergenceLoss
 
-__all__ = ['MSELoss', 'MAELoss', 'HuberLoss', 'LogCoshLoss']
+__all__ = ['MSELoss', 'MAELoss', 'HuberLoss', 'LogCoshLoss', 'BasePhysicsLoss', 'DivergenceLoss']
