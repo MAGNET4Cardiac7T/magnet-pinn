@@ -583,7 +583,7 @@ class TubeSampler:
 
 class MeshBlobSampler:
     """
-    Sampls blobs inside a mesh volume with collision detection.
+    Sample blobs inside a mesh volume with collision detection.
 
     Attributes
     ----------

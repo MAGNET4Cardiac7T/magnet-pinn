@@ -134,7 +134,7 @@ class Compose(Transform):
 
         Parameters
         ----------
-        tissue : PhantomType
+        original_phantom : PhantomType
             The input phantom to transform (StructurePhantom or MeshPhantom).
         *args, **kwds
             Additional arguments passed to each transform in the pipeline.

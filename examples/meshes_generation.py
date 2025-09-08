@@ -27,7 +27,7 @@ from magnet_pinn.generator.transforms import (
 
 # Step 1/5: Generate Tissue with blobs and tubes inside
 tissue = Tissue(
-    num_children_blobs=3,
+    num_children_blobs=0,
     initial_blob_radius=100,
     initial_blob_center_extent=np.array([
         [-5, 5],
@@ -92,6 +92,6 @@ prop_sampler = PropertySampler(
 prop = prop_sampler.sample_like(processed_meshes, rng=default_rng())
 
 # Step 5/5: Save the generated meshes and properties to files
-writer = MeshWriter("./gen_data/raw/custom_mesh")
+writer = MeshWriter("./gen_data/raw/tissue_meshes")
 writer.write(processed_meshes, prop)
 print(f"Meshes and properties saved to {Path(writer.dir).resolve()}")
