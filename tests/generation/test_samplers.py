@@ -1765,12 +1765,10 @@ def create_test_custom_mesh_structure():
     """Create a CustomMeshStructure from a simple test mesh."""
     test_mesh = create_test_mesh()
     import tempfile
-    import os
     
-    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(suffix='.stl', delete=True) as tmp_file:
         test_mesh.export(tmp_file.name)
         mesh_structure = CustomMeshStructure(tmp_file.name)
-        os.unlink(tmp_file.name)
     
     mesh_structure.mesh = test_mesh
     return mesh_structure
