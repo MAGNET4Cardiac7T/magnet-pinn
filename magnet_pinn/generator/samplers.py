@@ -582,6 +582,16 @@ class TubeSampler:
     
 
 class MeshBlobSampler:
+    """
+    Sampls blobs inside a mesh volume with collision detection.
+
+    Attributes
+    ----------
+    child_radius : float
+        Radius of the child blobs to be placed inside the mesh. Must be positive.
+    sample_children_only_inside : bool
+        If True, ensures that child blobs are fully contained within the mesh volume.
+    """
     
     def __init__(self, child_radius: float, sample_children_only_inside: bool = False):
         if child_radius <= 0:
@@ -589,7 +599,26 @@ class MeshBlobSampler:
         self.child_radius = child_radius
         self.sample_children_only_inside = sample_children_only_inside
 
-    def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, batch_size: int = 50000, points_to_return: int = 1) -> np.ndarray:
+    def _sample_inside_volume(self, mesh: Trimesh, rng: Generator, batch_size: int = 50000, points_to_return: int = 50000) -> np.ndarray:
+            """
+            Sample points uniformly inside the mesh volume using winding number method to check if the point is inside the mesh.
+
+            Parameters
+            ----------
+            mesh : Trimesh
+                The mesh to sample points inside.
+            rng : Generator
+                Random number generator for reproducible sampling.
+            batch_size : int, optional
+                Number of points to sample in batch. Default is 50,000.
+            points_to_return : int, optional
+                Number of points to return. Default is 50000.
+
+            Returns
+            -------
+            np.ndarray
+                Array of shape (points_to_return, 3) containing sampled points inside the mesh.
+            """
             points = (rng.random((batch_size, 3)) * mesh.extents) + mesh.bounds[0]
             winding_number = fast_winding_number(
                 mesh.vertices,
@@ -605,6 +634,29 @@ class MeshBlobSampler:
     def sample_children_blobs(self, parent_mesh_structure: CustomMeshStructure, 
                             num_children: int, rng: Generator, 
                             batch_size: int = 10000000) -> list[Blob]:
+        """
+        Sample child blobs inside a mesh volume with collision detection.
+        Places child blobs within the given mesh structure using random sampling
+        and collision detection to ensure no overlaps. Optionally ensures that
+        child blobs are fully contained within the mesh volume.
+
+        Parameters
+        ----------
+        parent_mesh_structure : CustomMeshStructure
+            The mesh structure to place child blobs within.
+        num_children : int
+            Number of child blobs to generate. Must be non-negative.
+        rng : Generator
+            Random number generator for reproducible blob positioning and creation.
+        batch_size : int, optional
+            Number of points to sample in batch for potential blob centers. Default is 10,000,000.
+
+        Returns
+        -------
+        list[Blob]
+            List of positioned child blob structures. Empty list if
+            num_children is 0. Each blob has valid position.
+        """
         if num_children == 0:
             return []
             
@@ -659,7 +711,21 @@ class MeshBlobSampler:
 
 
 class MeshTubeSampler:
-    """Sampler for tubes inside a mesh volume with collision detection and radius variation."""
+    """
+    Sampler for tubes inside a mesh volume with collision detection and radius variation.
+    
+    Allows placement of multiple tubes within a mesh while ensuring no intersections
+    between tubes. Tubes are assigned random radii within specified bounds and
+    are positioned using random sampling with collision checks. Stateless sampler
+    that receives RNG as parameter to sampling methods.
+
+    Attributes
+    ----------
+    tube_max_radius : float
+        Maximum radius for generated tubes. Must be positive.
+    tube_min_radius : float
+        Minimum radius for generated tubes. Must be positive and less than max_radius.
+    """
     def __init__(self, tube_max_radius: float, tube_min_radius: float):
         if tube_max_radius <= 0:
             raise ValueError("tube_max_radius must be positive")
@@ -671,7 +737,23 @@ class MeshTubeSampler:
         self.tube_min_radius = tube_min_radius
 
     def _sample_inside_position(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
-        """Sample a single start point uniformly from the mesh volume."""
+        """
+        Sample a single start point uniformly from the mesh volume.
+        
+        Parameters
+        ----------
+        mesh : Trimesh
+            The mesh to sample points inside.
+        rng : Generator
+            Random number generator for reproducible sampling.
+        max_iter : int, optional
+            Maximum number of sampling attempts. Default is 10,000.
+
+        Returns
+        -------
+        np.ndarray
+            A single point inside the mesh as [x, y, z] coordinates.
+        """
         for _ in range(max_iter):
             points = (rng.random((1, 3)) * mesh.extents) + mesh.bounds[0]
             contained = mesh.contains(points)
@@ -681,6 +763,28 @@ class MeshTubeSampler:
 
     def sample_tubes(self, parent_mesh_structure: CustomMeshStructure, num_tubes: int, rng: Generator,
                     max_iterations: int = 10000) -> list[Tube]:
+        """
+        Sample tubes inside a mesh volume with collision detection.
+        Places tubes within the given mesh structure using random sampling
+        and collision detection to ensure no overlaps.
+        
+        Parameters
+        ----------
+        parent_mesh_structure : CustomMeshStructure
+            The mesh structure to place tubes within.
+        num_tubes : int
+            Number of tubes to generate. Must be non-negative.
+        rng : Generator
+            Random number generator for reproducible tube positioning and creation.
+        max_iterations : int, optional
+            Maximum number of attempts per tube. Default is 10,000.
+
+        Returns
+        -------
+        list[Tube]
+            List of positioned tube structures. Empty list if
+            num_tubes is 0. Each tube has valid position and radius.
+        """
         mesh = parent_mesh_structure.mesh
         placed_tubes: list[Tube] = []
         for i in range(num_tubes):
