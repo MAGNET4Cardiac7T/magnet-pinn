@@ -481,7 +481,7 @@ class TubeSampler:
         Minimum radius for generated tubes. Must be positive and less than max_radius.
     """
     
-    def __init__(self, tube_max_radius: float, tube_min_radius: float):
+    def __init__(self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250):
         """
         Initialize tube sampler with configuration parameters.
         
@@ -510,6 +510,7 @@ class TubeSampler:
         
         self.tube_max_radius = tube_max_radius
         self.tube_min_radius = tube_min_radius
+        self.parent_radius = parent_radius
 
     def _sample_line(self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator) -> Tube:
         """Sample a tube line within a ball (formerly LineSampler functionality)."""
@@ -525,7 +526,7 @@ class TubeSampler:
             direction = direction - np.dot(direction, center_to_point) / (center_to_point_norm ** 2) * center_to_point
         
         direction = direction / np.linalg.norm(direction)
-        return Tube(point, direction, tube_radius)
+        return Tube(point, direction, tube_radius, height=4 * self.parent_radius)
 
     def sample_tubes(self, center: np.ndarray, radius: float, num_tubes: int, rng: Generator, max_iterations: int = 10000) -> list[Tube]:
         """
@@ -726,7 +727,7 @@ class MeshTubeSampler:
     tube_min_radius : float
         Minimum radius for generated tubes. Must be positive and less than max_radius.
     """
-    def __init__(self, tube_max_radius: float, tube_min_radius: float):
+    def __init__(self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250):
         if tube_max_radius <= 0:
             raise ValueError("tube_max_radius must be positive")
         if tube_min_radius <= 0:
@@ -735,6 +736,7 @@ class MeshTubeSampler:
             raise ValueError("tube_min_radius must be less than tube_max_radius")
         self.tube_max_radius = tube_max_radius
         self.tube_min_radius = tube_min_radius
+        self.parent_radius = parent_radius
 
     def _sample_inside_position(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
         """
@@ -796,7 +798,7 @@ class MeshTubeSampler:
                 direction = rng.normal(size=start.shape)
                 # normalize direction
                 direction = direction / np.linalg.norm(direction)
-                tube = Tube(start, direction, radius)
+                tube = Tube(start, direction, radius, height=4 * self.parent_radius)
                 # collision check using Tube.distance_to_tube
                 is_intersecting = any(
                     Tube.distance_to_tube(tube, other) < tube.radius + other.radius

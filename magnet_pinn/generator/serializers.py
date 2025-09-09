@@ -126,7 +126,7 @@ class MeshSerializer(Serializer):
         )
         return trimesh.creation.cylinder(
             radius=tube.radius,
-            height=tube.height * tube.radius,
+            height=tube.height,
             sections=subdivisions ** 2,
             transform=transform
         )

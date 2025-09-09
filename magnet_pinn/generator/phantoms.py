@@ -176,7 +176,7 @@ class Tissue(Phantom):
         
         tube_max_radius = relative_tube_max_radius * initial_blob_radius
         tube_min_radius = relative_tube_min_radius * initial_blob_radius
-        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius)
+        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius, initial_blob_radius)
 
     def generate(self, seed: int = None) -> StructurePhantom:
         """
@@ -272,6 +272,8 @@ class CustomPhantom(Phantom):
                  sample_children_only_inside: bool = False):
         self.parent_structure = CustomMeshStructure(stl_mesh_path)
 
+        print(f"Loaded parent mesh from {stl_mesh_path} with radius {self.parent_structure.radius:.2f}")
+
         super().__init__(None, None)
 
         child_radius = self.parent_structure.radius * blob_radius_decrease_per_level
@@ -286,7 +288,7 @@ class CustomPhantom(Phantom):
         
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
-        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius)
+        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius, self.parent_structure.radius)
 
     def generate(self, seed: int = None, child_blobs_batch_size: int = 1000000) -> StructurePhantom:
         rng = default_rng(seed)
