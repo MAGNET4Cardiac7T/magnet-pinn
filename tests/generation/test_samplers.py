@@ -988,6 +988,120 @@ def test_tube_sampler_sample_tubes_with_minimal_space():
     assert len(tubes) <= 2
 
 
+def test_tube_sampler_initialization_with_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 100.0
+    
+    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.tube_max_radius == tube_max_radius
+    assert sampler.tube_min_radius == tube_min_radius
+    assert sampler.parent_radius == parent_radius
+    assert isinstance(sampler.parent_radius, float)
+
+
+def test_tube_sampler_initialization_with_default_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    
+    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    
+    assert sampler.parent_radius == 250.0
+
+
+def test_tube_sampler_initialization_with_zero_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 0.0
+    
+    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.parent_radius == 0.0
+
+
+def test_tube_sampler_initialization_with_large_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 10000.0
+    
+    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.parent_radius == parent_radius
+
+
+def test_tube_sampler_sample_line_sets_height_based_on_parent_radius():
+    parent_radius = 50.0
+    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    center = np.array([0.0, 0.0, 0.0])
+    ball_radius = 5.0
+    tube_radius = 0.5
+    rng = default_rng(42)
+    
+    tube = sampler._sample_line(center, ball_radius, tube_radius, rng)
+    
+    expected_height = 4 * parent_radius
+    assert tube.height == expected_height
+
+
+def test_tube_sampler_sample_line_with_default_parent_radius_height():
+    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    center = np.array([0.0, 0.0, 0.0])
+    ball_radius = 5.0
+    tube_radius = 0.5
+    rng = default_rng(42)
+    
+    tube = sampler._sample_line(center, ball_radius, tube_radius, rng)
+    
+    expected_height = 4 * 250.0
+    assert tube.height == expected_height
+
+
+def test_tube_sampler_sample_tubes_all_have_correct_height():
+    parent_radius = 75.0
+    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    center = np.array([0.0, 0.0, 0.0])
+    radius = 5.0
+    num_tubes = 3
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(center, radius, num_tubes, rng)
+    
+    expected_height = 4 * parent_radius
+    for tube in tubes:
+        assert tube.height == expected_height
+
+
+def test_tube_sampler_sample_tubes_height_calculation_with_zero_parent_radius():
+    parent_radius = 0.0
+    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    center = np.array([0.0, 0.0, 0.0])
+    radius = 5.0
+    num_tubes = 2
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(center, radius, num_tubes, rng)
+    
+    expected_height = 4 * parent_radius
+    for tube in tubes:
+        assert tube.height == expected_height
+
+
+def test_tube_sampler_height_calculation_formula_verification():
+    parent_radius_values = [10.0, 25.5, 100.0, 1000.0]
+    
+    for parent_radius in parent_radius_values:
+        sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+        center = np.array([0.0, 0.0, 0.0])
+        ball_radius = 5.0
+        tube_radius = 0.5
+        rng = default_rng(42)
+        
+        tube = sampler._sample_line(center, ball_radius, tube_radius, rng)
+        
+        assert tube.height == 4 * parent_radius
+
+
 def test_point_sampler_normalization_with_zero_vector():
     center = np.array([0.0, 0.0, 0.0])
     radius = 1.0
@@ -2217,3 +2331,113 @@ def test_mesh_tube_sampler_direction_vector_normalization(tmp_path):
     
     for tube in tubes:
         assert np.isclose(np.linalg.norm(tube.direction), 1.0, atol=1e-10)
+
+
+def test_mesh_tube_sampler_initialization_with_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 150.0
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.tube_max_radius == tube_max_radius
+    assert sampler.tube_min_radius == tube_min_radius
+    assert sampler.parent_radius == parent_radius
+    assert isinstance(sampler.parent_radius, float)
+
+
+def test_mesh_tube_sampler_initialization_with_default_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    
+    assert sampler.parent_radius == 250.0
+
+
+def test_mesh_tube_sampler_initialization_with_zero_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 0.0
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.parent_radius == 0.0
+
+
+def test_mesh_tube_sampler_initialization_with_large_parent_radius():
+    tube_max_radius = 2.0
+    tube_min_radius = 0.5
+    parent_radius = 5000.0
+    
+    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    
+    assert sampler.parent_radius == parent_radius
+
+
+def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(tmp_path):
+    parent_radius = 80.0
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
+    
+    expected_height = 4 * parent_radius
+    for tube in tubes:
+        assert tube.height == expected_height
+
+
+def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(tmp_path):
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
+    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
+    
+    expected_height = 4 * 250.0
+    for tube in tubes:
+        assert tube.height == expected_height
+
+
+def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(tmp_path):
+    parent_radius = 0.0
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
+    
+    expected_height = 4 * parent_radius
+    for tube in tubes:
+        assert tube.height == expected_height
+
+
+def test_mesh_tube_sampler_height_calculation_formula_verification(tmp_path):
+    parent_radius_values = [15.0, 50.0, 200.0, 1500.0]
+    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    
+    for parent_radius in parent_radius_values:
+        sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+        rng = default_rng(42)
+        
+        tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
+        
+        expected_height = 4 * parent_radius
+        for tube in tubes:
+            assert tube.height == expected_height
+
+
+def test_mesh_tube_sampler_parent_radius_consistency_across_multiple_tubes(tmp_path):
+    parent_radius = 120.0
+    sampler = MeshTubeSampler(tube_max_radius=0.3, tube_min_radius=0.05, parent_radius=parent_radius)
+    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
+    
+    expected_height = 4 * parent_radius
+    heights = [tube.height for tube in tubes]
+    
+    assert all(height == expected_height for height in heights)
+    assert len(set(heights)) == 1
