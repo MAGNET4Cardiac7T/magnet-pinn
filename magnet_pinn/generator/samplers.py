@@ -487,7 +487,9 @@ class TubeSampler:
         
         Creates a stateless sampler that requires RNG to be passed to sampling methods.
         This design allows for proper seed control and makes the sampler reusable
-        across different generation contexts.
+        across different generation contexts. Samples tubes with random radii within
+        specified bounds and ensures no intersections through collision detection. Also defines
+        a fixed height for tubes based on an approximate parent radius.
 
         Parameters
         ----------
@@ -495,6 +497,8 @@ class TubeSampler:
             Maximum radius for generated tubes. Must be positive.
         tube_min_radius : float
             Minimum radius for generated tubes. Must be positive and less than max_radius.
+        parent_radius : float
+            Approximate parent radius to define tube height. Default is 250.
 
         Raises
         ------
@@ -513,7 +517,9 @@ class TubeSampler:
         self.parent_radius = parent_radius
 
     def _sample_line(self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator) -> Tube:
-        """Sample a tube line within a ball (formerly LineSampler functionality)."""
+        """
+        Sample a tube line within a ball. Defines a fixed line height as 4 times the parent radius.
+        """
         point_sampler = PointSampler(center, ball_radius)
         point = point_sampler.sample_point(rng)
 
@@ -768,7 +774,8 @@ class MeshTubeSampler:
         """
         Sample tubes inside a mesh volume with collision detection.
         Places tubes within the given mesh structure using random sampling
-        and collision detection to ensure no overlaps.
+        and collision detection to ensure no overlaps. Defines tube height
+        based on an approximate parent radius and it should be 4 times the parent radius.
         
         Parameters
         ----------
