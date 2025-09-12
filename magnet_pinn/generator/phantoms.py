@@ -272,8 +272,6 @@ class CustomPhantom(Phantom):
                  sample_children_only_inside: bool = False):
         self.parent_structure = CustomMeshStructure(stl_mesh_path)
 
-        print(f"Loaded parent mesh from {stl_mesh_path} with radius {self.parent_structure.radius:.2f}")
-
         super().__init__(None, None)
 
         child_radius = self.parent_structure.radius * blob_radius_decrease_per_level
