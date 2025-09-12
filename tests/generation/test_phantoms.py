@@ -715,16 +715,6 @@ def simple_stl_file():
         os.unlink(temp_file.name)
 
 
-@pytest.fixture
-def existing_stl_file():
-    """Use the existing phantom.stl file in the repository."""
-    stl_path = "/home/alex/PycharmProjects/magnet-pinn/phantom.stl"
-    if os.path.exists(stl_path):
-        return stl_path
-    else:
-        pytest.skip("phantom.stl file not found in repository")
-
-
 def test_custom_phantom_initialization_with_valid_stl_file(simple_stl_file):
     """Test CustomPhantom initialization with valid STL file."""
     num_children_blobs = 3
@@ -1028,22 +1018,6 @@ def test_custom_phantom_inheritance_from_phantom(simple_stl_file):
     assert isinstance(phantom, Phantom)
     assert hasattr(phantom, 'generate')
     assert callable(phantom.generate)
-
-
-def test_custom_phantom_with_existing_stl_file(existing_stl_file):
-    """Test CustomPhantom with the existing phantom.stl file from repository."""
-    phantom = CustomPhantom(
-        stl_mesh_path=existing_stl_file,
-        num_children_blobs=2,
-        num_tubes=1
-    )
-    
-    result = phantom.generate(seed=42)
-    
-    assert isinstance(result, StructurePhantom)
-    assert isinstance(result.parent, CustomMeshStructure)
-    assert len(result.children) == 2
-    assert len(result.tubes) == 1
 
 
 def test_custom_phantom_sampler_configuration(simple_stl_file):
