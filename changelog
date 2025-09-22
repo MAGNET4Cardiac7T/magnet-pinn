@@ -38,7 +38,7 @@
 - refactor grid and point dataloaders
 - adjust examples with transforms
 
-## [0.0.7] 
+## [0.0.7] -> Feb 13, 2025
 - Hotfix: pass down sampling_method to child classes
 - Hotfix: np.float_ deprecated in numpy 2.0
 - Fix: positions not being returned in point phase shift
@@ -46,3 +46,28 @@
 - Fix: change wrong calculation of imag field during phase shift
 - Fix: point cloud axis rearranging and order of axis now fixed
 - Add tests for dataloading
+
+## [0.0.8] -> Mar 20, 2025
+- Change voxelization to only consider the voxel center point to determine if voxel is part of mesh
+- Implements divergence physics loss function
+- Add single coil enumeration transform
+
+## [0.0.9] -> Mar 20, 2025
+- Hotfix: Pointwise voxelisation leads to missing coils - add coil thickening
+
+## [0.0.10] -> Sep 22,2025
+- Data generation:
+    - Implemented the Blob Dataset generation Pipeline
+    - Implemented the Custom Mesh generation pipeline
+    - Implemented Boolean operation for cutting, trimming meshes
+- Tests for data generation
+- Optimize samplers for mesh placement (vectorized)
+- Add command line interface for preprocessing
+- Fix: tubes length to normal size
+- Add docs for dataloading
+
+## [0.0.11]
+- Add nonlinear normalization types
+- Add tests for normalization
+- Change tests to only run on ubuntu for normal pushes
+- Full tests only run on release

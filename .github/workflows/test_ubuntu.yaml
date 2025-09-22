@@ -1,14 +1,14 @@
 name: "All Tests"
 
-on: [release]
+on: [push]
 
 jobs:
   build:
     strategy:
       matrix:
         poetry-version: ["1.8.4"]
-        python-version: ["3.11", "3.12"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12"]
+        os: [ubuntu-latest]
     defaults:
       run:
         shell: bash

@@ -19,8 +19,13 @@ import pandas as pd
 from h5py import File
 from tqdm import tqdm
 from trimesh import Trimesh
+from ordered_set import OrderedSet
 from einops import rearrange, repeat, reduce
-from igl import fast_winding_number_for_meshes
+
+try:
+    from igl import fast_winding_number
+except ImportError:
+    from igl import fast_winding_number_for_meshes as fast_winding_number
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
@@ -87,6 +92,8 @@ class Preprocessing(ABC):
         Calculated dipoles features in each measurement point
     _dipoles_masks : np.array
         Dipoles mask in each measurement point
+    coil_thick_coef : float | None
+        Controlls the thickness of coils
 
     Methods
     -------
@@ -98,6 +105,7 @@ class Preprocessing(ABC):
 
     __dipoles_masks = None
     __dipoles_features = None
+    coil_thick_coef = None
 
     @property
     def _dipoles_masks(self) -> np.array:
@@ -126,8 +134,12 @@ class Preprocessing(ABC):
                  batches_dir_paths: Union[str, Path, List[str], List[Path]], 
                  antenna_dir_path: Union[str, Path],
                  output_dir_path: Union[str, Path],
-                 field_dtype: np.dtype = np.complex64) -> None:
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Optional[float] = 2.0) -> None:
         """
+        The method checks the input and output directories, reads antenna data and 
+        prepares the output directories. It also checks if simulations have unique names.
+
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -138,6 +150,8 @@ class Preprocessing(ABC):
             Path to the output directory. All processed data will be saved here.
         field_dtype : np.dtype
             type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering
         """
         self.field_dtype = np.dtype(field_dtype)
 
@@ -149,6 +163,8 @@ class Preprocessing(ABC):
             raise TypeError("Source/s should be a string/list of strings")
         
         self.all_sim_paths = self.__extract_simulations(batches)
+        if len(self.all_sim_paths) != len(set(map(lambda x: x.name, self.all_sim_paths))):
+            raise Exception("Simulation names should be unique")
 
         # create output directories
         target_dir_name = self._output_target_dir
@@ -166,9 +182,33 @@ class Preprocessing(ABC):
             antenna_dir_path
         )
 
+        self.coil_thick_coef = coil_thick_coef
+        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
+            raise Exception("Coil thick coef should be greater than 0")
+        elif self.coil_thick_coef is not None:
+            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
+
+    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
+        """
+        Makes coils mesh thicker.
+
+        Parameters
+        ----------
+        mesh : Trimesh
+            a mesh object
+
+        Returns
+        -------
+        Trimesh:
+            a thicker mesh
+        """
+        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
+        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
+
     def __extract_simulations(self, batches_paths: List[str]) -> List[Path]:
         """
         Extract the list of simulation files from the batch directories.
+        We save the absolute path for each simulation.
 
         Parameters
         ----------
@@ -190,7 +230,7 @@ class Preprocessing(ABC):
             elif len(list(batch_path.iterdir())) == 0:
                 raise FileNotFoundError(f"Batch directory {batch_path} is empty")
 
-            all_simulations_paths.extend([i for i in batch_path.iterdir() if i.is_dir()])
+            all_simulations_paths.extend([i.resolve().absolute() for i in batch_path.iterdir() if i.is_dir()])
 
         if len(all_simulations_paths) == 0:
             raise FileNotFoundError("No simulations found")
@@ -230,39 +270,82 @@ class Preprocessing(ABC):
             meshes,
         )
 
-    def process_simulations(self, simulation_names: Optional[List[str]] = None):
+    def process_simulations(self, simulations: Optional[List[Union[str, Path]]] = None):
         """
         Main processing method. It processes all simulations in the batch
         or that one which are mentioned in the `simulation_names` list.
+
+        The method works in 2 phases:
+
+        - check simulations for being in the batch
+        - process each simulation
 
         This method make iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
         After the main work is done it also calls `_write_dipoles` method 
         to save processed antenna data. 
 
+        Simulation names in different batches can not be the same, 
+        if they are we would choose a random one would be chosen to preprocess. 
+
         Parameters
         ----------
-        simulation_names : List[str] | None
+        simulations : List[Union[str, Path]] | None
             A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
-        all_sims_set = set(map(lambda x: x.name, self.all_sim_paths))
-        given_sim_set = all_sims_set if simulation_names is None else set(simulation_names)
-        if not given_sim_set.issubset(all_sims_set):
-            not_existing_simulations = given_sim_set - all_sims_set
-            not_existing_dirs_enumeration = ", ".join(not_existing_simulations)
-            raise Exception(f"Simulations [{not_existing_dirs_enumeration}] do not exist in the directory")
-        
-        sim_we_use = list(filter(lambda x: x.name in given_sim_set, self.all_sim_paths))
+        simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
 
-        pbar = tqdm(sim_we_use, total=len(sim_we_use))
-        for sim_path in pbar:
-            self.__process_simulation(sim_path)
-            pbar.set_postfix({"done": sim_path.name}, refresh=True)
+        if len(simulations) == 0:
+            return
+
+        pbar = tqdm(total=len(simulations), desc="Simulations processing")
+        for i in simulations:
+            sim_res_path = self._process_simulation(i)           
+            pbar.set_postfix({"done": sim_res_path}, refresh=True)
+            pbar.update(1)
         
         self._write_dipoles()
 
-    def __process_simulation(self, sim_path: Path):
+    def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
+        """
+        A method to resolve simulations given by user. Each element in the simulations
+        collection is checked to be path or str. In the case or Path we just return the resolved
+        absolute path. In the case of just a simulation name we check if it is in the list
+        of simulations in the batches and return the first one with the same name.
+        """
+
+        all_sim_names = OrderedSet(map(lambda x: x.name, self.all_sim_paths))
+
+        def resolve_simulation(simulation: Union[str, Path]) -> Path:
+            """
+            Resolves the path to the simulation directory.
+            If it is path it is resolved and saved in the abs form, 
+            if a name - check if it is in the list and return the path, which
+            satisfies the name.
+            """
+            if isinstance(simulation, Path):
+                simulation = simulation.resolve().absolute()
+                if not simulation in self.all_sim_paths:
+                    raise Exception(f"Simulation is not in the batches")
+                
+            elif isinstance(simulation, str):
+                if simulation not in all_sim_names:
+                    raise Exception(f"Simulation is not in the batches")
+                
+                simulation = self.all_sim_paths[all_sim_names.index(simulation)]
+
+            else:
+                raise TypeError("Simulation should be a string or a path")
+            
+            if not simulation.exists():
+                raise FileNotFoundError(f"Simulation {simulation} does not exist")
+            
+            return simulation
+        
+        return list(map(resolve_simulation, simulations))
+            
+    def _process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
@@ -286,6 +369,8 @@ class Preprocessing(ABC):
         self.__calculate_features(simulation)
 
         self._format_and_write_dataset(simulation)
+
+        return simulation.resulting_path
 
     def _extract_fields_data(self, out_simulation: Simulation):
         """
@@ -481,6 +566,8 @@ class Preprocessing(ABC):
         The method formats data from the `out_simulation` instance 
         and writes it to the output directory.
 
+        Also it writes resulting file path to the `out_simulation` instance.
+
         Parameters
         ----------
         out_simulation : Simulation
@@ -499,6 +586,8 @@ class Preprocessing(ABC):
             f.create_dataset(H_FIELD_OUT_KEY, data=h_field)
             f.create_dataset(SUBJECT_OUT_KEY, data=object_masks)
             self._write_extra_data(out_simulation, f)
+
+        out_simulation.resulting_path = output_file_path.resolve().absolute()
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """
@@ -649,6 +738,7 @@ class GridPreprocessing(Preprocessing):
         output_dir_path: str, 
         voxel_size: int = STANDARD_VOXEL_SIZE, 
         field_dtype: np.dtype = np.complex64, 
+        coil_thick_coef: Optional[float] = 1.0,
         **kwargs
     ):
         """
@@ -666,18 +756,18 @@ class GridPreprocessing(Preprocessing):
             The size of the voxel for creating a grid
         field_dtype : np.dtype
             type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering
         """
         self.voxel_size = voxel_size
-        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
+        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
 
         # check extent for validity
         min_values = np.array(
-            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"]),
-            dtype=np.float32
+            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
         )
         max_values = np.array(
-            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"]),
-            dtype=np.float32
+            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
         )
         if not np.all((max_values - min_values) % voxel_size == 0):
             raise Exception("Extent not divisible by voxel size")
@@ -899,56 +989,7 @@ class PointPreprocessing(Preprocessing):
     process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
-    coil_thick_coef = None
     _coordinates = None
-
-    def __init__(self, 
-                 simulations_dir_path: Union[str, List[str]],
-                 antenna_dir_path: str,
-                 output_dir_path: str, 
-                 field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Optional[float] = 1.0):
-        """
-        Initializes the point preprocessing object.
-
-        Parameters
-        ----------
-        simulations_dir_path : str
-            Path to the batch directory
-        antenna_dir_path : str
-            Path to the antenna directory
-        output_dir_path : str
-            Path to the output directory
-        field_dtype : np.dtype
-            type of saving field data
-        coil_thick_coef : float | None
-            colis are mostly flat, this parameters controlls thickering 
-            of the coils; only the values >0 can be used; to switch it off set it None
-        """
-        self.coil_thick_coef = coil_thick_coef
-        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype)
-
-        if self.coil_thick_coef is not None and self.coil_thick_coef <= 0:
-            raise Exception("Coil thick coef should be greater than 0")
-        elif self.coil_thick_coef is not None:
-            self.dipoles_meshes = list(map(self._thicken_mesh, self.dipoles_meshes))
-
-    def _thicken_mesh(self, mesh: Trimesh) -> Trimesh:
-        """
-        Makes coils mesh thicker.
-
-        Parameters
-        ----------
-        mesh : Trimesh
-            a mesh object
-
-        Returns
-        -------
-        Trimesh:
-            a thicker mesh
-        """
-        offset_vertices = mesh.vertices + mesh.vertex_normals * self.coil_thick_coef
-        return Trimesh(vertices=offset_vertices, faces=mesh.faces)
 
     @property
     def coordinates(self):
@@ -1077,15 +1118,20 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-        fast_winding_number = fast_winding_number_for_meshes(
-            mesh.vertices.astype(np.float32),
-            mesh.faces.astype(np.int32),
-            self.coordinates.astype(np.float32)
+        
+        vertices = np.ascontiguousarray(mesh.vertices)
+        faces = np.ascontiguousarray(mesh.faces)
+        points = np.ascontiguousarray(self.coordinates, dtype=vertices.dtype)
+
+        winding_number = fast_winding_number(
+            vertices,
+            faces,
+            points
         )
 
         return np.logical_and(
-            ~ np.isclose(fast_winding_number, 0.5),
-            fast_winding_number > 0.5
+            ~ np.isclose(winding_number, 0.5),
+            winding_number > 0.5
         )
     
     @property

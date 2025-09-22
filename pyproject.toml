@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.7"
+version = "0.0.10"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
@@ -8,13 +8,13 @@ authors = [
     "Farzad Jabbarigargari <Jabbarigar_F@ukw.de>",
     "Alex Tarasov <tarasov.oleksander@gmail.com>"
 ]
-license = "GNU"
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-numpy = "^1.26.4"
-trimesh = "^4.2.4"
+python = ">=3.11,<3.14"
+numpy = ">=1.26.4"
+trimesh = ">=4.2.4"
 h5py = "^3.10.0"
 mypy = "^1.9.0"
 torch = "^2.3.1"
@@ -23,9 +23,12 @@ scipy = "^1.13.0"
 pandas = "^2.2.2"
 tqdm = "^4.66.4"
 einops = "^0.8.0"
-libigl = "^2.5.1"
+libigl = "^2.6.1"
 findiff = "^0.10.2"
 natsort = "^8.4.0"
+ordered-set = "^4.1.0"
+perlin-noise = "^1.14"
+manifold3d = "^3.1.0"
 
 [tool.poetry.group.dev.dependencies]
 matplotlib = "^3.8.4"

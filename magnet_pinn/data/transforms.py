@@ -17,6 +17,10 @@ from .dataitem import DataItem
 
 
 def check_transforms(transforms):
+    """
+    The method checks if the given transformations are valid. 
+    The valid transformations should have at least one phase shift transform.
+    """
     if not isinstance(transforms, BaseTransform):
         raise ValueError("Transforms should be an instance of BaseTransform")
     elif isinstance(transforms, DefaultTransform):
@@ -31,6 +35,9 @@ def check_transforms(transforms):
 
 
 class BaseTransform(ABC):
+    """
+    The basic abstract transform class for the simulation data.
+    """
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -107,6 +114,7 @@ class DefaultTransform(BaseTransform):
         """
         Sums the fields by coils, does same with coils data and define it as real part of the coils.
         Imaginary considered to be 0. Phase is set to 0 and mask to 1, both have size of the number of coils.
+        It creates a new instance of the DataItem with the new data.
 
         Parameters
         ----------
@@ -163,16 +171,12 @@ class Crop(BaseTransform):
     def __init__(self, 
                  crop_size: Tuple[int, int, int],
                  crop_position: Literal['random', 'center'] = 'center'):
+        """
+        Basically validates parameters and save them as attributes.
+        """
         super().__init__()
 
-        if not isinstance(crop_size, Iterable):
-            raise ValueError("Crop size should be a tuple")
-        elif len(crop_size) != 3:
-            raise ValueError("Crop size should have 3 dimensional")
-        elif not all((isinstance(i, int) for i in crop_size)):
-            raise ValueError("Crop size should contain only integers")
-        elif not (np.array(crop_size) > 0).all():
-            raise ValueError("Crop size should be larger than 0")
+        self._validate_crop_size(crop_size)
         
         if crop_position not in ['random', 'center']:
             raise ValueError("Crop position should be either 'random' or 'center'")
@@ -181,10 +185,25 @@ class Crop(BaseTransform):
         self.crop_size = crop_size
         self.crop_position = crop_position
 
+    def _validate_crop_size(self, crop_size: Tuple[int, int, int]) -> None:
+        """
+        Method for validating the crop size parameter. 
+        It should be a tuple of ints and all of them should be larger than 0.
+        """
+        if not isinstance(crop_size, Iterable):
+            raise ValueError("Crop size should be a tuple")
+        elif len(crop_size) != 3:
+            raise ValueError("Crop size should have 3 dimensional")
+        elif not all((isinstance(i, int) for i in crop_size)):
+            raise ValueError("Crop size should contain only integers")
+        elif not (np.array(crop_size) > 0).all():
+            raise ValueError("Crop size should be larger than 0")
+
     def __call__(self, simulation: DataItem):
         """
         Crops data based on the given arguments. In the case of the `center` crop position make almost equal margins on both sides.
-        In the case of the `random` crop position, the crop margin is randomly selected as well as crop start. 
+        In the case of the `random` crop position, the crop margin is randomly selected as well as crop start.
+        Also important to note the creation of a new data item with the cropped data including all other fields from the input data.
         Parameters
         ----------
         data : DataItem
@@ -217,11 +236,47 @@ class Crop(BaseTransform):
                     array: npt.NDArray[np.float32],
                     crop_mask: Tuple[slice, slice, slice], 
                     starting_axis: int) -> npt.NDArray[np.float32]:
+        """
+        Method for cropping the array based on the given mask and starting axis.
+
+        Parameters
+        ----------
+        array : npt.NDArray[np.float32]
+            Array to be cropped
+
+        crop_mask : Tuple[slice, slice, slice]
+            Mask for the cropping
+
+        starting_axis : int
+            Starting axis for the cropping
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Cropped array
+        """
         crop_mask = (slice(None), )*starting_axis + crop_mask
         return array[*crop_mask]
 
     
     def _sample_crop_start(self, full_size: Tuple[int, int, int], crop_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
+        """
+        Method for sampling the crop start based on the full size and crop size.
+        The crop start is sampled based on the crop position. If the crop size is larger than the full size, it raises an error.
+
+        Parameters
+        ----------
+        full_size : Tuple[int, int, int]
+            Full size of the data
+
+        crop_size : Tuple[int, int, int]
+            Size of the crop
+
+        Returns
+        -------
+        Tuple[int, int, int]
+            Crop start
+        """
         for i in range(3):
             if crop_size[i] > full_size[i]:
                 raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
@@ -234,9 +289,71 @@ class Crop(BaseTransform):
         else:
             raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
+
+
+class Rotate(BaseTransform):
+    """
+    Class for rotating the simulation data around the z-axis.
+
+    Parameters
+    ----------
+    rot_angle : Literal['random', '90']
+        Rotation angle [deg]
+    """
+
+    def __init__(self, 
+                 rot_angle: Literal['random', '90'] = 'random'):
+        super().__init__()
+
+        if rot_angle not in ['random', '90']:
+            raise ValueError("Rotation angle should be either 'random' or '90'")
+
+        self.rot_angle = rot_angle
+        self.n_rot = 0
+
+    def __call__(self, simulation: DataItem):
+        """
+        Rotate data around the z-axis based on the given rotation angle.
+        Parameters
+        ----------
+        data : DataItem
+            DataItem object with the simulation data
+        
+        Returns
+        -------
+        DataItem
+            augmented DataItem object
+        """
+        self._check_data(simulation)
+        
+        if self.rot_angle == 'random':
+            self.n_rot = np.random.randint(0, 3)
+        else:
+            self.n_rot = 1
+
+        return DataItem(
+            input=self._rot_array(simulation.input, plane=(1,2)),
+            subject=self._rot_array(simulation.subject, plane=(0,1)),
+            simulation=simulation.simulation,
+            field=self._rot_array(simulation.field, plane=(3,4)),
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=self._rot_array(simulation.coils, plane=(1,2)),
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+        )
     
+    def _rot_array(self,
+                    array: npt.NDArray[np.float32],
+                    plane: tuple[int, int]) -> npt.NDArray[np.float32]:
+        return np.rot90(array, k=self.n_rot, axes=plane).copy()
+
 
 class PhaseShift(BaseTransform):
+    """
+    Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
+    `exp(1 + phase * j) * mask` is used to calculate the shift coefficients.
+    """
     def __init__(self, 
                  num_coils: int,
                  sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
@@ -250,10 +367,11 @@ class PhaseShift(BaseTransform):
 
     def __call__(self, simulation: DataItem):
         """
-        Method for augmenting the simulation data.
+        First it samples the phase and mask and then applies the phase shift to the field and coils data.
+        It creates a new instance of the `DataItem` with the new data. Attributes which were not changed are copied from the input data.
         Parameters
         ----------
-        data : DataItem
+        simulation : DataItem
             DataItem object with the simulation data
         
         Returns
@@ -285,11 +403,13 @@ class PhaseShift(BaseTransform):
                                dtype: str = None
                                ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
-        Method for sampling the phase and mask for the simulation.
+        A method for sampling the phase and mask. The phase is sampled from the uniform distribution and the mask is 
+        sampled based on the given method.
+
         Parameters
         ----------
-        phase_index : int
-            Index of the phase sample
+        dtype: str
+            Data type for the phase coefficients
         
         Returns
         -------
@@ -309,9 +429,30 @@ class PhaseShift(BaseTransform):
         return phase.astype(dtype), mask.astype(np.bool_)  
     
     def _sample_phase(self, dtype: str = None) -> npt.NDArray[np.float32]:
+        """
+        Method for sampling the phase coefficients. The phase is sampled from the uniform distribution.
+
+        Parameters
+        ----------
+        dtype: str
+            Data type for the phase coefficients
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            phase coefficients
+        """
         return np.random.uniform(0, 2*np.pi, self.num_coils).astype(dtype)
     
     def _sample_mask_uniform(self) -> npt.NDArray[np.bool_]:
+        """
+        A method for sampling a uniform mask. It samples the number of coils to be on and then randomly selects the coils.
+
+        Returns
+        -------
+        npt.NDArray[np.bool_]
+            mask for the phase coefficients
+        """
         num_coils_on = np.random.randint(1, self.num_coils)
         mask = np.zeros(self.num_coils, dtype=bool)
         coils_on_indices = np.random.choice(self.num_coils, num_coils_on, replace=False)
@@ -319,6 +460,9 @@ class PhaseShift(BaseTransform):
         return mask
     
     def _sample_mask_binomial(self) -> npt.NDArray[np.bool_]:
+        """
+        A method for sampling a binomial mask. It samples the number of coils to be on and then randomly selects the coils.
+        """
         mask = np.random.choice([0, 1], self.num_coils, replace=True)
         while np.sum(mask) == 0:
             mask = np.random.choice([0, 1], self.num_coils, replace=True)
@@ -419,8 +563,8 @@ class CoilEnumeratorPhaseShift(PhaseShift):
 
 class PointPhaseShift(PhaseShift):
     """
-    Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
-    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in pointcloud) in early 
+    Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
+    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early 
     stages of simulation preprocessing
     """
     def _phase_shift_field(self, 
@@ -440,7 +584,8 @@ class PointPhaseShift(PhaseShift):
 
 class PointFeatureRearrange(BaseTransform):
     """
-    Class for augmenting the simulation data.
+    A class for changing the axis of the field and coils data. The pointscloud data has a different axis order than the grid data.
+    It is (positions, x/y/z, re/im parts, field_type).
     """
     def __init__(self, 
                  num_coils: int):

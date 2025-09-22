@@ -1,4 +1,9 @@
-
+"""
+NAME
+    dataitem.py
+DESCRIPTION
+    A module consists of the data item class for the electromagnetic simulation data.
+"""
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -8,6 +13,9 @@ import numpy as np
 
 @dataclass
 class DataItem:
+    """
+    Data item class for the electromagnetic simulation data.
+    """
     simulation: str
     input: npt.NDArray[np.float32]
     field: npt.NDArray[np.float32]
