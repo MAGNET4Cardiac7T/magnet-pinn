@@ -65,3 +65,9 @@
 - Add command line interface for preprocessing
 - Fix: tubes length to normal size
 - Add docs for dataloading
+
+## [0.0.11]
+- Add nonlinear normalization types
+- Add tests for normalization
+- Change tests to only run on ubuntu for normal pushes
+- Full tests only run on release
