@@ -4,7 +4,7 @@ import einops
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Iterable, cast
+from typing import Iterable, cast, Union
 from typing_extensions import Self
 from itertools import zip_longest
 
@@ -63,21 +63,16 @@ class Arcsinh(Nonlinearity):
 class Normalizer(torch.nn.Module):
     def __init__(self,
                  params: dict = {},
-                 nonlinearity: Nonlinearity = Identity(),
+                 nonlinearity: Union[str, ] = Identity(),
                  nonlinearity_before: bool = False,
                  ):
         super().__init__()
         
         self._params = params
-        self.nonlinearity = nonlinearity
+        self.nonlinearity = nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
+        self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
         self.nonlinearity_before = nonlinearity_before
         self.counter = 0
-
-        # add name and before to the params dict
-        if 'nonlinearity' not in self._params:
-            self._params['nonlinearity'] = self.nonlinearity.__class__.__name__
-        if 'nonlinearity_before' not in self._params:
-            self._params['nonlinearity_before'] = self.nonlinearity_before
     
     def forward(self, x, axis: int = 1):
         return self._normalize(x, axis=axis)
@@ -148,7 +143,24 @@ class Normalizer(torch.nn.Module):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         with open(path, 'w') as f:
+            # add nonlinearity info
+            self._params['nonlinearity'] = self.nonlinearity_name
+            self._params['nonlinearity_before'] = self.nonlinearity_before
             json.dump(self._params, f)
+
+    def _get_nonlineartiy_function(name: str = "Identity"):
+        if name == 'Identity':
+            return Identity()
+        elif name == 'Power':
+            return Power()
+        elif name == 'Log':
+            return Log()
+        elif name == 'Tanh':
+            return Tanh()
+        elif name == 'Arcsinh':
+            return Arcsinh()
+        else:
+            raise ValueError(f"Unknown nonlinearity: {name}")
 
     @classmethod
     def load_from_json(cls, path: str) -> Self:
@@ -156,19 +168,8 @@ class Normalizer(torch.nn.Module):
             params = json.load(f)    
             nonlinearity = params.pop('nonlinearity', 'Identity')
             nonlinearity_before = params.pop('nonlinearity_before', False)
-            if nonlinearity == 'Identity':
-                nonlinearity_fn = Identity()
-            elif nonlinearity == 'Power':
-                power = params.pop('power', 2.0)
-                nonlinearity_fn = Power(power=power)
-            elif nonlinearity == 'Log':
-                nonlinearity_fn = Log()
-            elif nonlinearity == 'Tanh':
-                nonlinearity_fn = Tanh()
-            elif nonlinearity == 'Arcsinh':
-                nonlinearity_fn = Arcsinh()
-            else:
-                raise ValueError(f"Unknown nonlinearity: {nonlinearity}")
+            nonlinearity_fn = cls._get_nonlineartiy_function(nonlinearity)
+
         return cast(Self, cls(params=params, nonlinearity=nonlinearity_fn, nonlinearity_before=nonlinearity_before))
 
 class MinMaxNormalizer(Normalizer):
