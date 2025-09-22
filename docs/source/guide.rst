@@ -1,5 +1,5 @@
 ===================
-User Guide
+Tutorial
 ===================
 This guide is an overview of the usage of the magnet-pinn package.
 It is intended to help users understand how to load and preporcess simulations of EM-Fields inside a MRI scanner using this package and the published datasets.
@@ -9,6 +9,7 @@ It is intended to help users understand how to load and preporcess simulations o
 ----------------------------
 :ref:`Installation <start_>`
 ----------------------------
+For installation follow the steps indicated in the getting started guide. There you will also find a guide on how to download the dataset.
 
 .. _usage:
 
@@ -27,11 +28,13 @@ The Data can be loaded in two formats:
 The usage is similar for both formats, but there are some differences in the preprocessing steps and the way the data is loaded.
 Therefore, we explore both formats separately.
 
+There are two ways to preprocess the data, either using the command line interface (CLI) or using the python functions directly.
+The CLI is the easiest way to preprocess the data, as it requires no coding.
+The python functions give more flexibility and allow for more advanced preprocessing steps.
+The CLI is explained in the following section, while the python functions are explained in the examples section.
+
 Make sure you have installed the magnet-pinn package as well as the required dependencies.
 We recommend using a virtual environment to manage the dependencies of the package.
-
-- `NumPy <https://numpy.org/install/>`_
-- `Torch <https://pytorch.org/get-started/locally/>`_
 
 ^^^^^^^^^^^^^^^^^^^^^^^
 Using the CLI interface
@@ -50,20 +53,57 @@ A basic example of the usage when the data follows the general datastructure is:
 
     python -m magnet_pinn.preprocessing grid
 
---------------------
-Examples
---------------------
 
-The examples can be used to fully trace all steps from loading the data to training a model using python.
-The first two examples show how to preprocess the the data, either in grid or point cloud format using python.
-The third example shows how to normalize the data, which is an important step before training a model.
-The fourth example shows how to train a model using the preprocessed data and including a normalization step.
+^^^^^^^^^^^^^^^^^^^^^^^^
+Using Python functions
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. toctree::
-    :maxdepth: 1
+To preprocess the data directly in python we can use the preprocessing functions provided in the package.
 
-    Example 1: Preprocessing Grid Data <examples/preprocessing_grid>
-    Example 2: Preprocessing Point Cloud Data <examples/preprocessing_point>
-    Example 3: Normalization <examples/normalization>
-    Example 4: Training a ML model <examples/ml_train>
-    Example 5: Generating Sample Meshes <examples/generate_meshes>
+**Grid Data**
+
+For grid data we can use the `GridPreprocessing` class.
+
+.. code-block:: python
+
+    from magnet_pinn.preprocessing.preprocessing import GridPreprocessing
+
+    preprocessor = GridPreprocessing(
+        simulations_dir_path = ["data/raw/batches/batch_1", "data/raw/batches/batch_2"],
+        antenna_dir_path = "data/raw/antenna",
+        output_dir_path = "data/processed/train"
+    )
+
+**Point Cloud Data**
+
+The same can be done for point cloud data using the `PointCloudPreprocessing` class.
+
+.. code-block:: python
+
+    from magnet_pinn.preprocessing.preprocessing import PointCloudPreprocessing
+
+    preprocessor = PointCloudPreprocessing(
+        simulations_dir_path = ["data/raw/batches/batch_1", "data/raw/batches/batch_2"],
+        antenna_dir_path = "data/raw/antenna",
+        output_dir_path = "data/processed/train"
+    )
+
+    preprocessor.process_simulations()
+
+After initializing the preprocessor we can call the `process_simulations` function to preprocess all simulations in the specified directory.
+
+.. code-block:: python
+
+    preprocessor.process_simulations()
+
+**Normalization**
+
+Additionally, we can normalize the data using the `MinMaxNormalizer` or `StandardNormalizer` class.
+
+.. code-block:: python
+
+    from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
+
+    normalizer = StandardNormalizer()
+
+A full example can be found in the examples section of the documentation.

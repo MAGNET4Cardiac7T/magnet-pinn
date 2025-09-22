@@ -104,8 +104,8 @@ class Compose(BaseTransform):
 class DefaultTransform(BaseTransform):
     """
     A default transform for the simulation data.
-    It supposed to be used if the PhaseShift transform is not used.
-    It changes field, coils, fully set phase to 0 and mask to 1.
+    It is supposed to be used if the PhaseShift transform is not used.
+    It changes the field, coils, and fully sets phase to 0 and mask to 1.
 
     Parameters
     ----------
@@ -528,7 +528,7 @@ class CoilEnumeratorPhaseShift(PhaseShift):
 class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
-    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early 
+    TODO: standardize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early
     stages of simulation preprocessing
     """
     def _phase_shift_field(self, 

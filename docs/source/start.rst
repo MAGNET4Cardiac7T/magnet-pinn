@@ -24,6 +24,7 @@ Also when using pip, it’s good practice to use a virtual environment - see `th
 ^^^^^^^^^^^^^^^^^^^^
 Downloading Data
 ^^^^^^^^^^^^^^^^^^^^
+
 Download the datset using the following command:
 
 .. code-block:: shell
@@ -35,16 +36,3 @@ For example there is a simulation that containes two children and 4 tubes and is
 A single simulation item contains the E and B-fields that are both nested under fields and the coils nested under the tag coils.
 Moreover, both fields have a real and imaginary part and span all three spatial dimensions with 100 x 100 x 100 points.
 Additionally there exists a mask for the subject, the phases of the coils and another mask for the coils.
-
-Examplary slices of the absolute E and B-field:
-
-.. list-table::
-    :widths: 50 50
-    :align: center
-
-    * - .. image:: images/slices_e2.png
-            :width: 900px
-            :align: center
-      - .. image:: images/slices_b2.png
-            :width: 900px
-            :align: center

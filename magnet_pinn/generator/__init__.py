@@ -7,7 +7,7 @@ from .phantoms import Tissue
 from .samplers import PropertySampler, PointSampler, BlobSampler, TubeSampler
 from .serializers import MeshSerializer
 from .structures import Blob, Tube
-from .transforms import _validate_input_meshes, _validate_mesh, Compose, ToMesh, MeshesCutout, MeshesCleaning, MeshesRemesh
+from .transforms import Compose, ToMesh, MeshesCutout, MeshesCleaning, MeshesRemesh
 from .typing import PropertyItem, StructurePhantom, MeshPhantom, PropertyPhantom, PhantomItem
 from .utils import spheres_packable
 
@@ -20,8 +20,6 @@ __all__ = ["MeshWriter",
            "MeshSerializer",
            "Blob",
            "Tube",
-           "_validate_input_meshes",
-           "_validate_mesh",
            "Compose",
            "ToMesh",
            "MeshesCutout",

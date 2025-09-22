@@ -95,7 +95,7 @@ class UNet3D(AbstractUNet):
     """
     3DUnet model from
     `"3D U-Net: Learning Dense Volumetric Segmentation from Sparse Annotation"
-        <https://arxiv.org/pdf/1606.06650.pdf>`.
+    <https://arxiv.org/pdf/1606.06650.pdf>`.
 
     Uses `DoubleConv` as a basic_module and nearest neighbor upsampling in the decoder
 
@@ -165,7 +165,7 @@ class ResidualUNet3D(AbstractUNet):
 
 
 class ResidualUNetSE3D(AbstractUNet):
-    """_summary_
+    """
     Residual 3DUnet model implementation with squeeze and excitation based on 
     https://arxiv.org/pdf/1706.00120.pdf.
     Uses ResNetBlockSE as a basic building block, summation joining instead

@@ -13,6 +13,14 @@ import os
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 class Normalizer(torch.nn.Module):
+    """
+    Base class for normalizers
+    
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    """
     def __init__(self,
                  params: dict = {}):
         super().__init__()
@@ -98,6 +106,14 @@ class Normalizer(torch.nn.Module):
         return cast(Self, cls(params=params))
     
 class MinMaxNormalizer(Normalizer):
+    """
+    Min-Max Normalizer
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    """
     def _normalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
@@ -119,8 +135,15 @@ class MinMaxNormalizer(Normalizer):
         self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
         self._params['x_max'] = [max(prev, cur) for prev, cur in zip_longest(self._params['x_max'], cur_max, fillvalue=float('-inf'))]
     
-
 class StandardNormalizer(Normalizer):
+    """
+    Standard Normalizer
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    """
     def _normalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
