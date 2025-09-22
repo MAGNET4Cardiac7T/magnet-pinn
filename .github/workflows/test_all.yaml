@@ -1,6 +1,6 @@
 name: "All Tests"
 
-on: [push]
+on: [release]
 
 jobs:
   build:
