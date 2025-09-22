@@ -174,7 +174,7 @@ def test_mesh_serializer_tube_parameter_calculation():
                 
                 serializer._serialize_tube(tube, subdivisions=3)
                 
-                expected_height = height * radius
+                expected_height = height
                 call_args = mock_cylinder.call_args
                 assert call_args[1]['radius'] == radius
                 assert call_args[1]['height'] == expected_height
@@ -344,5 +344,136 @@ def test_mesh_serializer_tube_default_height_parameter():
                 serializer._serialize_tube(tube, subdivisions=3)
                 
                 call_args = mock_cylinder.call_args
-                expected_height = 10000 * radius  # Default height * radius
+                expected_height = 10000
                 assert call_args[1]['height'] == expected_height
+
+
+def test_integration_tube_sampler_to_serializer_height_workflow():
+    """Integration test verifying that TubeSampler creates tubes with correct height and MeshSerializer uses it directly."""
+    from magnet_pinn.generator.samplers import TubeSampler
+    from numpy.random import default_rng
+    
+    parent_radius = 200.0
+    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    serializer = MeshSerializer()
+    
+    center = np.array([0.0, 0.0, 0.0])
+    ball_radius = 5.0
+    tube_radius = 0.5
+    rng = default_rng(42)
+    
+    tube = sampler._sample_line(center, ball_radius, tube_radius, rng)
+    
+    expected_height = 4 * parent_radius
+    assert tube.height == expected_height
+    
+    mesh = serializer.serialize(tube)
+    
+    assert isinstance(mesh, Trimesh)
+    assert len(mesh.vertices) > 0
+    assert len(mesh.faces) > 0
+
+
+def test_integration_mesh_tube_sampler_to_serializer_height_workflow(tmp_path):
+    """Integration test verifying that MeshTubeSampler creates tubes with correct height and MeshSerializer uses it directly."""
+    from magnet_pinn.generator.samplers import MeshTubeSampler
+    from magnet_pinn.generator.structures import CustomMeshStructure
+    from numpy.random import default_rng
+    import trimesh
+    
+    parent_radius = 150.0
+    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+    serializer = MeshSerializer()
+    
+    stl_file = tmp_path / "test_mesh.stl"
+    test_mesh = trimesh.primitives.Box(extents=[2.0, 2.0, 2.0])
+    test_mesh.export(str(stl_file))
+    
+    parent_mesh_structure = CustomMeshStructure(str(stl_file))
+    rng = default_rng(42)
+    
+    tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
+    
+    expected_height = 4 * parent_radius
+    for tube in tubes:
+        assert tube.height == expected_height
+        
+        mesh = serializer.serialize(tube)
+        
+        assert isinstance(mesh, Trimesh)
+        assert len(mesh.vertices) > 0
+        assert len(mesh.faces) > 0
+
+
+def test_integration_tube_height_consistency_across_samplers():
+    """Test that both TubeSampler and MeshTubeSampler produce tubes with identical height calculation."""
+    from magnet_pinn.generator.samplers import TubeSampler, MeshTubeSampler
+    from numpy.random import default_rng
+    
+    parent_radius_values = [50.0, 100.0, 500.0]
+    
+    for parent_radius in parent_radius_values:
+        tube_sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+        mesh_tube_sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+        
+        rng1 = default_rng(42)
+        center = np.array([0.0, 0.0, 0.0])
+        ball_radius = 5.0
+        tube_radius = 0.5
+        
+        tube_from_sampler = tube_sampler._sample_line(center, ball_radius, tube_radius, rng1)
+        
+        expected_height = 4 * parent_radius
+        assert tube_from_sampler.height == expected_height
+        assert tube_sampler.parent_radius == mesh_tube_sampler.parent_radius
+
+
+def test_integration_serializer_handles_various_tube_heights():
+    """Test that MeshSerializer correctly handles tubes with various heights set by different parent_radius values."""
+    serializer = MeshSerializer()
+    
+    parent_radius_values = [10.0, 100.0, 1000.0]
+    position = np.array([0.0, 0.0, 0.0])
+    direction = np.array([0.0, 0.0, 1.0])
+    radius = 1.0
+    
+    for parent_radius in parent_radius_values:
+        height = 4 * parent_radius
+        tube = Tube(position=position, direction=direction, radius=radius, height=height)
+        
+        mesh = serializer.serialize(tube)
+        
+        assert isinstance(mesh, Trimesh)
+        assert len(mesh.vertices) > 0
+        assert len(mesh.faces) > 0
+
+
+def test_integration_default_parent_radius_behavior():
+    """Test that default parent_radius behavior is consistent across all components."""
+    from magnet_pinn.generator.samplers import TubeSampler, MeshTubeSampler
+    from numpy.random import default_rng
+    
+    default_parent_radius = 250.0
+    
+    tube_sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    mesh_tube_sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
+    serializer = MeshSerializer()
+    
+    assert tube_sampler.parent_radius == default_parent_radius
+    assert mesh_tube_sampler.parent_radius == default_parent_radius
+    
+    rng = default_rng(42)
+    center = np.array([0.0, 0.0, 0.0])
+    ball_radius = 5.0
+    tube_radius = 0.5
+    
+    tube = tube_sampler._sample_line(center, ball_radius, tube_radius, rng)
+    
+    expected_height = 4 * default_parent_radius
+    assert tube.height == expected_height
+    
+    mesh = serializer.serialize(tube)
+    
+    assert isinstance(mesh, Trimesh)
+    assert len(mesh.vertices) > 0
+    assert len(mesh.faces) > 0

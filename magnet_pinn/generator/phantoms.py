@@ -176,7 +176,7 @@ class Tissue(Phantom):
         
         tube_max_radius = relative_tube_max_radius * initial_blob_radius
         tube_min_radius = relative_tube_min_radius * initial_blob_radius
-        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius)
+        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius, initial_blob_radius)
 
     def generate(self, seed: int = None) -> StructurePhantom:
         """
@@ -243,6 +243,28 @@ class Tissue(Phantom):
 class CustomPhantom(Phantom):
     """
     Generator for custom phantoms based on STL mesh structures.
+
+    Creates realistic tissue phantoms by combining a parental mesh with multiple child blobs
+    and a network of tube structures representing blood vessels. The generator uses sampling 
+    points inside mesh to ensure children blobs are placed correctly inside the parental mesh.
+    Tubes are generated with configurable radius ranges.
+
+        Attributes
+    ----------
+    parent_structure : CustomMeshStructure
+        The parent mesh structure loaded from the provided STL file path.
+    num_children_blobs : int
+        Number of child blob structures to generate within the parent blob.
+        Must be non-negative. Zero creates a phantom with only parent and tubes.
+    num_tubes : int
+        Number of tube structures to generate for vascular representation.
+        Must be non-negative. Tubes are placed to avoid intersections.
+    blob_sampler : MeshBlobSampler
+        Sampler instance configured with blob generation parameters.
+    tube_sampler : MeshTubeSampler
+        Sampler instance configured with tube generation parameters.
+    sample_children_only_inside : bool
+        If True, child blobs are sampled fully inside the parent mesh
     """
     def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
                  blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
@@ -264,15 +286,16 @@ class CustomPhantom(Phantom):
         
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
-        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius)
+        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius, self.parent_structure.radius)
 
-    def generate(self, seed: int = None) -> StructurePhantom:
+    def generate(self, seed: int = None, child_blobs_batch_size: int = 1000000) -> StructurePhantom:
         rng = default_rng(seed)
         
         children_blobs = self.child_sampler.sample_children_blobs(
             self.parent_structure,
             num_children=self.num_children_blobs,
-            rng=rng
+            rng=rng,
+            batch_size=child_blobs_batch_size
         )
 
         tubes = self.tube_sampler.sample_tubes(
