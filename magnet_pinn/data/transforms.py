@@ -289,7 +289,65 @@ class Crop(BaseTransform):
         else:
             raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
+
+
+class Rotate(BaseTransform):
+    """
+    Class for rotating the simulation data around the z-axis.
+
+    Parameters
+    ----------
+    rot_angle : Literal['random', '90']
+        Rotation angle [deg]
+    """
+
+    def __init__(self, 
+                 rot_angle: Literal['random', '90'] = 'random'):
+        super().__init__()
+
+        if rot_angle not in ['random', '90']:
+            raise ValueError("Rotation angle should be either 'random' or '90'")
+
+        self.rot_angle = rot_angle
+        self.n_rot = 0
+
+    def __call__(self, simulation: DataItem):
+        """
+        Rotate data around the z-axis based on the given rotation angle.
+        Parameters
+        ----------
+        data : DataItem
+            DataItem object with the simulation data
+        
+        Returns
+        -------
+        DataItem
+            augmented DataItem object
+        """
+        self._check_data(simulation)
+        
+        if self.rot_angle == 'random':
+            self.n_rot = np.random.randint(0, 3)
+        else:
+            self.n_rot = 1
+
+        return DataItem(
+            input=self._rot_array(simulation.input, plane=(1,2)),
+            subject=self._rot_array(simulation.subject, plane=(0,1)),
+            simulation=simulation.simulation,
+            field=self._rot_array(simulation.field, plane=(3,4)),
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=self._rot_array(simulation.coils, plane=(1,2)),
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+        )
     
+    def _rot_array(self,
+                    array: npt.NDArray[np.float32],
+                    plane: tuple[int, int]) -> npt.NDArray[np.float32]:
+        return np.rot90(array, k=self.n_rot, axes=plane).copy()
+
 
 class PhaseShift(BaseTransform):
     """
