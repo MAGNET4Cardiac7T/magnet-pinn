@@ -2,17 +2,16 @@
 NAME
     meshes_generation.py
 DESCRIPTION
-    Example of how to generate experiments data by using the `src.generation` module
+    Example of how to generate experiments data by using the `src.generation` module and by having a custom mesh as a parent structure.
 """
 import os
 from pathlib import Path
 
 import trimesh
-import numpy as np
 from numpy.random import default_rng
 
 from magnet_pinn.generator.io import MeshWriter
-from magnet_pinn.generator.phantoms import Tissue
+from magnet_pinn.generator.phantoms import CustomPhantom
 from magnet_pinn.generator.samplers import PropertySampler
 from magnet_pinn.generator.transforms import (
     Compose,
@@ -24,22 +23,16 @@ from magnet_pinn.generator.transforms import (
     MeshesChildrenClipping
 )
 
-
-# Step 1/5: Generate Tissue with blobs and tubes inside
-tissue = Tissue(
-    num_children_blobs=0,
-    initial_blob_radius=100,
-    initial_blob_center_extent=np.array([
-        [-5, 5],
-        [-5, 5],
-        [-50, 50],
-    ]),
-    blob_radius_decrease_per_level=0.3,
+# Step 1/4: Generate stage object wit custom mesh as parent object and with blobs and tubes inside
+phantom = CustomPhantom(
+    stl_mesh_path="./phantom.stl",
+    num_children_blobs=5,
+    blob_radius_decrease_per_level=0.2,
     num_tubes=10,
-    relative_tube_max_radius=0.1,
-    relative_tube_min_radius=0.01
+    relative_tube_max_radius=0.08,
+    relative_tube_min_radius=0.02
 )
-raw_3d_structures = tissue.generate(seed=42)
+raw_3d_structures = phantom.generate(seed=42)
 
 print(f"Generated phantom with:")
 print(f"- Parent blob at {raw_3d_structures.parent.position}")
@@ -92,6 +85,6 @@ prop_sampler = PropertySampler(
 prop = prop_sampler.sample_like(processed_meshes, rng=default_rng())
 
 # Step 5/5: Save the generated meshes and properties to files
-writer = MeshWriter("./gen_data/raw/tissue_meshes")
+writer = MeshWriter("./gen_data/raw/custom_mesh")
 writer.write(processed_meshes, prop)
 print(f"Meshes and properties saved to {Path(writer.dir).resolve()}")

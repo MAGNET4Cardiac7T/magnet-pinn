@@ -16,7 +16,7 @@ from trimesh import Trimesh
 from .typing import PropertyPhantom, PropertyItem, MeshPhantom
 
 
-PARENT_BLOB_FILE_NAME = "parent_blob.stl"
+PARENT_BLOB_FILE_NAME = "parent.stl"
 CHILD_BLOB_FILE_NAME = "child_blob_{i}.stl"
 TUBE_FILE_NAME = "tube_{i}.stl"
 MATERIALS_FILE_NAME = "materials.txt"

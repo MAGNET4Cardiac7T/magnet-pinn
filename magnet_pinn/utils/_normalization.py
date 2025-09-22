@@ -1,9 +1,10 @@
 import torch
 import tqdm
 import einops
+import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Iterable, cast
+from typing import Iterable, cast, Union
 from typing_extensions import Self
 from itertools import zip_longest
 
@@ -11,6 +12,53 @@ import json
 import os
 
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+
+class Nonlinearity(ABC,torch.nn.Module):
+    @abstractmethod
+    def forward(self, x):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def inverse(self, x):
+        raise NotImplementedError
+    
+class Identity(Nonlinearity):
+    def forward(self, x):
+        return x
+    
+    def inverse(self, x):
+        return x
+    
+class Power(Nonlinearity):
+    def __init__(self, power: float = 2.0):
+        super().__init__()
+        self.power = power
+        assert power > 0, "Power must be positive."
+    def forward(self, x):
+        return torch.sign(x) * torch.abs(x)**self.power
+    def inverse(self, x):
+        return torch.sign(x) * torch.abs(x)**(1/self.power)
+    
+class Log(Nonlinearity):
+    def forward(self, x):
+        return torch.sign(x) * torch.log1p(torch.abs(x))
+    
+    def inverse(self, x):
+        return torch.sign(x) * (torch.expm1(torch.abs(x)))
+    
+class Tanh(Nonlinearity):
+    def forward(self, x):
+        return torch.tanh(x)
+    
+    def inverse(self, x):
+        return 0.5 * torch.log((1 + x) / (1 - x))
+
+class Arcsinh(Nonlinearity):
+    def forward(self, x):
+        return torch.asinh(x)
+    
+    def inverse(self, x):
+        return torch.sinh(x)
 
 class Normalizer(torch.nn.Module):
     """
@@ -22,10 +70,16 @@ class Normalizer(torch.nn.Module):
         Dictionary containing the parameters of the normalizer
     """
     def __init__(self,
-                 params: dict = {}):
+                 params: dict = {},
+                 nonlinearity: Union[str, ] = Identity(),
+                 nonlinearity_before: bool = False,
+                 ):
         super().__init__()
         
         self._params = params
+        self.nonlinearity = nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
+        self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
+        self.nonlinearity_before = nonlinearity_before
         self.counter = 0
     
     def forward(self, x, axis: int = 1):
@@ -97,14 +151,36 @@ class Normalizer(torch.nn.Module):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         with open(path, 'w') as f:
-            json.dump(self._params, f)
+            params = self._params.copy()
+            # add nonlinearity info
+            params['nonlinearity'] = self.nonlinearity_name
+            params['nonlinearity_before'] = self.nonlinearity_before
+            json.dump(params, f)
+
+    def _get_nonlineartiy_function(name: str = "Identity"):
+        if name == 'Identity':
+            return Identity()
+        elif name == 'Power':
+            return Power()
+        elif name == 'Log':
+            return Log()
+        elif name == 'Tanh':
+            return Tanh()
+        elif name == 'Arcsinh':
+            return Arcsinh()
+        else:
+            raise ValueError(f"Unknown nonlinearity: {name}")
 
     @classmethod
     def load_from_json(cls, path: str) -> Self:
         with open(path, 'r') as f:
             params = json.load(f)    
-        return cast(Self, cls(params=params))
-    
+            nonlinearity = params.pop('nonlinearity', 'Identity')
+            nonlinearity_before = params.pop('nonlinearity_before', False)
+            nonlinearity_fn = cls._get_nonlineartiy_function(nonlinearity)
+
+        return cast(Self, cls(params=params, nonlinearity=nonlinearity_fn, nonlinearity_before=nonlinearity_before))
+
 class MinMaxNormalizer(Normalizer):
     """
     Min-Max Normalizer
@@ -117,12 +193,22 @@ class MinMaxNormalizer(Normalizer):
     def _normalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
-        return (x - params['x_min']) / (params['x_max'] - params['x_min'])
+        if self.nonlinearity_before:
+            x_nl = self.nonlinearity(x)
+            return (x_nl - params['x_min']) / (params['x_max'] - params['x_min'])
+        else:
+            x_norm = (x - params['x_min']) / (params['x_max'] - params['x_min'])
+            return self.nonlinearity(x_norm)
     
     def _denormalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
-        return x * (params['x_max'] - params['x_min']) + params['x_min']
+        if self.nonlinearity_before:
+            x_denorm =  x * (params['x_max'] - params['x_min']) + params['x_min']
+            return self.nonlinearity.inverse(x_denorm)
+        else:
+            x_nl = self.nonlinearity.inverse(x)
+            return x_nl * (params['x_max'] - params['x_min']) + params['x_min']
     
     def _reset_params(self):
         self._params["x_min"] = [float('inf')]
@@ -130,6 +216,8 @@ class MinMaxNormalizer(Normalizer):
 
     def _update_params(self, x, axis: int = 0):
         pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
+        if self.nonlinearity_before:
+            x = self.nonlinearity(x)
         cur_min = einops.reduce(x, pattern, reduction='min').tolist()
         cur_max = einops.reduce(x, pattern, reduction='max').tolist()
         self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
@@ -163,6 +251,8 @@ class StandardNormalizer(Normalizer):
     def _update_params(self, x, axis: int = 0):
         def mean_update(prev_avg, cur_avg, counter):
             return counter / (counter + 1) * prev_avg + cur_avg / (counter + 1)
+        if self.nonlinearity_before:
+            x = self.nonlinearity(x)
         pattern = ' '.join(ALPHABET[:axis]) + ' c ... -> c'
         cur_mean = einops.reduce(x, pattern, reduction='mean').tolist()
         cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean').tolist()

@@ -13,7 +13,7 @@ import trimesh
 import numpy as np
 from trimesh import Trimesh
 
-from .structures import Structure3D, Blob, Tube
+from .structures import Structure3D, Blob, Tube, CustomMeshStructure
 
 
 class Serializer(ABC):
@@ -74,6 +74,8 @@ class MeshSerializer(Serializer):
             return self._serialize_blob(structure, subdivisions)
         elif isinstance(structure, Tube):
             return self._serialize_tube(structure, subdivisions)
+        elif isinstance(structure, CustomMeshStructure):
+            return structure.mesh.copy()
         else:
             raise ValueError("Unsupported structure type")
         
@@ -124,7 +126,7 @@ class MeshSerializer(Serializer):
         )
         return trimesh.creation.cylinder(
             radius=tube.radius,
-            height=tube.height * tube.radius,
+            height=tube.height,
             sections=subdivisions ** 2,
             transform=transform
         )

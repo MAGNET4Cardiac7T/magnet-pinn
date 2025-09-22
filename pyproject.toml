@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "magnet-pinn"
-version = "0.0.9"
+version = "0.0.10"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     "Andrzej Dulny <andzej.dulny@gmail.com>",
@@ -23,7 +23,7 @@ scipy = "^1.13.0"
 pandas = "^2.2.2"
 tqdm = "^4.66.4"
 einops = "^0.8.0"
-libigl = "^2.5.1"
+libigl = "^2.6.1"
 findiff = "^0.10.2"
 natsort = "^8.4.0"
 ordered-set = "^4.1.0"

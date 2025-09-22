@@ -9,7 +9,14 @@
 project = 'magnet-pinn'
 copyright = '2024, Andrzej Dulny'
 author = 'Andrzej Dulny'
-release = '0.0.9'
+release = '0.0.10'
+
+# from importlib.metadata import version, PackageNotFoundError
+
+# try:
+#     release = version('magnet-pinn')
+# except PackageNotFoundError:
+#     release = 'unknown'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
