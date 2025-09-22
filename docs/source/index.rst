@@ -25,7 +25,10 @@
     Examples <examples>
     API reference <api>
 
+.. raw:: html
 
+    <div style="margin-bottom: 40px;"></div>
+    
 -------------------------------------------------------------------------------------------------------------------------
 Patient-specific modeling of electromagnetic fields in ultrahigh-field cardiac MRI using physics-informed neural networks
 -------------------------------------------------------------------------------------------------------------------------
@@ -41,8 +44,8 @@ Patient-specific modeling of electromagnetic fields in ultrahigh-field cardiac M
     :target: https://pypi.org/project/magnet-pinn/
     :alt: Python versions
 
-.. image:: https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yml/badge.svg
-    :target: https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yml
+.. image:: https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yaml/badge.svg
+    :target: https://github.com/MAGNET4Cardiac7T/magnet-pinn/actions/workflows/test_all.yaml
     :alt: All Tests
 
 .. image:: https://img.shields.io/pypi/l/magnet-pinn.svg
@@ -76,6 +79,8 @@ Important features of the **magnet-pinn** package include:
 - predefined ML models
 - Evaluation metrics and visualization tools for analyzing model performance
 - Comprehensive documentation and examples to help users get started quickly
+
+Check out all :doc:`newly added features <features>`.
 
 ----------------------
 Project Overview
