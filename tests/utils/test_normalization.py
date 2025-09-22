@@ -103,10 +103,10 @@ def test_save_and_load_minmax_normalizer(tmp_path, random_iterator):
     
     assert original_params == loaded_params, "Loaded parameters do not match the original parameters"
 
-def test_save_and_load_standard_normalizer(tmp_path):
+def test_save_and_load_standard_normalizer(tmp_path, random_iterator):
     normalizer = StandardNormalizer()
-    data = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    normalizer.fit_params([{"input": data}])
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    normalizer.fit_params(iterator, axis=1)
     
     original_params = normalizer.params.copy()  # Save original parameters
     save_path = tmp_path / "standard_normalizer.json"

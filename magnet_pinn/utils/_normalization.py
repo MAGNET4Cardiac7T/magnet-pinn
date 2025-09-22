@@ -143,10 +143,11 @@ class Normalizer(torch.nn.Module):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         with open(path, 'w') as f:
+            params = self._params.copy()
             # add nonlinearity info
-            self._params['nonlinearity'] = self.nonlinearity_name
-            self._params['nonlinearity_before'] = self.nonlinearity_before
-            json.dump(self._params, f)
+            params['nonlinearity'] = self.nonlinearity_name
+            params['nonlinearity_before'] = self.nonlinearity_before
+            json.dump(params, f)
 
     def _get_nonlineartiy_function(name: str = "Identity"):
         if name == 'Identity':
