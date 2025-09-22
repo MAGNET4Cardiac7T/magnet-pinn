@@ -470,7 +470,7 @@ def test_mesh_writer_write_with_very_large_property_values(generation_output_dir
 
 
 def test_mesh_writer_filename_formatting_correctness():
-    assert PARENT_BLOB_FILE_NAME == "parent_blob.stl"
+    assert PARENT_BLOB_FILE_NAME == "parent.stl"
     assert CHILD_BLOB_FILE_NAME.format(i=1) == "child_blob_1.stl"
     assert CHILD_BLOB_FILE_NAME.format(i=10) == "child_blob_10.stl"
     assert TUBE_FILE_NAME.format(i=1) == "tube_1.stl"
