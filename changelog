@@ -54,3 +54,14 @@
 
 ## [0.0.9]
 - Hotfix: Pointwise voxelisation leads to missing coils - add coil thickening
+
+## [0.0.10]
+- Data generation:
+    - Implemented the Blob Dataset generation Pipeline
+    - Implemented the Custom Mesh generation pipeline
+    - Implemented Boolean operation for cutting, trimming meshes
+- Tests for data generation
+- Optimize samplers for mesh placement (vectorized)
+- Add command line interface for preprocessing
+- Fix: tubes length to normal size
+- Add docs for dataloading
