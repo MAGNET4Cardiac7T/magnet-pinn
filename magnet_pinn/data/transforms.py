@@ -586,7 +586,7 @@ class CoilEnumeratorPhaseShift(PhaseShift):
 class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
-    TODO: standardize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early
+    TODO: standardize the order of axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early
     stages of simulation preprocessing
     """
     def _phase_shift_field(self, 
