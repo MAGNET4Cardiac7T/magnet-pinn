@@ -412,7 +412,7 @@ class GridReader(FieldReader):
     @property
     def coordinates(self):
         """
-        TODO: Rewrite discription?
+        TODO: Rewrite description?
         It suppose just to give back the coordinates list. But if the grid trigger is 
         off, then we give the data back in the pointslist form, that is why we create
         a grid form and reshape it into the form of the pointslist.
