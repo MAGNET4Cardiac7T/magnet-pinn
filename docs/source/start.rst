@@ -25,7 +25,7 @@ Also when using pip, it’s good practice to use a virtual environment - see `th
 Downloading Data
 ^^^^^^^^^^^^^^^^^^^^
 
-Download the datset using the following command:
+Download the dataset using the following command:
 
 .. code-block:: shell
     
