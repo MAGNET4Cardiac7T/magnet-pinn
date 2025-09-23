@@ -104,8 +104,13 @@ class Compose(BaseTransform):
 class DefaultTransform(BaseTransform):
     """
     A default transform for the simulation data.
-    It supposed to be used if the PhaseShift transform is not used.
-    It changes field, coils, fully set phase to 0 and mask to 1.
+    It is supposed to be used if the PhaseShift transform is not used.
+    It changes the field, coils, and fully sets phase to 0 and mask to 1.
+
+    Parameters
+    ----------
+    simulation : DataItem
+        simulation data
     """
     def __init__(self):
         super().__init__()
@@ -353,6 +358,14 @@ class PhaseShift(BaseTransform):
     """
     Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
     `exp(1 + phase * j) * mask` is used to calculate the shift coefficients.
+
+    Parameters
+    ----------
+    num_coils : int
+        Number of coils in the simulation data
+    sampling_method : Literal['uniform', 'binomial']
+        Method for sampling the phase and mask. If 'uniform', it samples the number of coils to be on and then randomly selects the coils.
+        If 'binomial', it samples the number of coils to be on based on the binomial distribution.
     """
     def __init__(self, 
                  num_coils: int,
@@ -520,6 +533,15 @@ class GridPhaseShift(PhaseShift):
 
 ## TODO move the coil enumerator logic to sample_phase and sample_mask methods, without modifying the _sample_phase_and_mask method
 class CoilEnumeratorPhaseShift(PhaseShift):
+    """
+    Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
+    
+    Parameters
+    ----------
+    num_coils : int
+        Number of coils in the simulation data
+    
+    """
     def __init__(self, 
                  num_coils: int):
         super().__init__(num_coils=num_coils)
@@ -564,7 +586,7 @@ class CoilEnumeratorPhaseShift(PhaseShift):
 class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
-    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early 
+    TODO: standardize the order of axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early
     stages of simulation preprocessing
     """
     def _phase_shift_field(self, 
@@ -586,6 +608,12 @@ class PointFeatureRearrange(BaseTransform):
     """
     A class for changing the axis of the field and coils data. The pointscloud data has a different axis order than the grid data.
     It is (positions, x/y/z, re/im parts, field_type).
+
+    Parameters
+    ----------
+    num_coils : int
+        Number of coils in the simulation data
+
     """
     def __init__(self, 
                  num_coils: int):
@@ -645,6 +673,7 @@ class PointFeatureRearrange(BaseTransform):
 class PointSampling(BaseTransform):
     """
     Class for sampling the points from the simulation data.
+    
     Parameters
     ----------
     points_sampled : Union[float, int]

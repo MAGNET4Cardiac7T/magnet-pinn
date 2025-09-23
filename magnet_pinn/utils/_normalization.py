@@ -16,6 +16,7 @@ ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 class Nonlinearity(ABC,torch.nn.Module):
     @abstractmethod
     def forward(self, x):
+        """ """
         raise NotImplementedError
     
     @abstractmethod
@@ -23,44 +24,76 @@ class Nonlinearity(ABC,torch.nn.Module):
         raise NotImplementedError
     
 class Identity(Nonlinearity):
+    """
+    Identity nonlinearity
+    """
     def forward(self, x):
+        """ """
         return x
     
     def inverse(self, x):
         return x
     
 class Power(Nonlinearity):
+    """
+    Power nonlinearity
+    """
     def __init__(self, power: float = 2.0):
         super().__init__()
         self.power = power
         assert power > 0, "Power must be positive."
     def forward(self, x):
+        """ """
         return torch.sign(x) * torch.abs(x)**self.power
     def inverse(self, x):
         return torch.sign(x) * torch.abs(x)**(1/self.power)
     
 class Log(Nonlinearity):
+    """
+    Logarithmic nonlinearity
+    """
     def forward(self, x):
+        """ """
         return torch.sign(x) * torch.log1p(torch.abs(x))
     
     def inverse(self, x):
         return torch.sign(x) * (torch.expm1(torch.abs(x)))
     
 class Tanh(Nonlinearity):
+    """
+    Hyperbolic tangent nonlinearity
+    """
     def forward(self, x):
+        """ """
         return torch.tanh(x)
     
     def inverse(self, x):
         return 0.5 * torch.log((1 + x) / (1 - x))
 
 class Arcsinh(Nonlinearity):
+    """
+    Inverse hyperbolic sine nonlinearity
+    """
     def forward(self, x):
+        """ """
         return torch.asinh(x)
     
     def inverse(self, x):
         return torch.sinh(x)
 
 class Normalizer(torch.nn.Module):
+    """
+    Base class for normalizers
+    
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    nonlinearity : Union[str, Nonlinearity]
+        Nonlinearity to be applied before/after normalization
+    nonlinearity_before : bool
+        If True, apply nonlinearity before normalization, else after
+    """
     def __init__(self,
                  params: dict = {},
                  nonlinearity: Union[str, ] = Identity(),
@@ -75,6 +108,7 @@ class Normalizer(torch.nn.Module):
         self.counter = 0
     
     def forward(self, x, axis: int = 1):
+        """ """
         return self._normalize(x, axis=axis)
     
     def inverse(self,x, axis: int = 1):
@@ -174,6 +208,14 @@ class Normalizer(torch.nn.Module):
         return cast(Self, cls(params=params, nonlinearity=nonlinearity_fn, nonlinearity_before=nonlinearity_before))
 
 class MinMaxNormalizer(Normalizer):
+    """
+    Min-Max Normalizer
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    """
     def _normalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
@@ -207,8 +249,15 @@ class MinMaxNormalizer(Normalizer):
         self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
         self._params['x_max'] = [max(prev, cur) for prev, cur in zip_longest(self._params['x_max'], cur_max, fillvalue=float('-inf'))]
     
-
 class StandardNormalizer(Normalizer):
+    """
+    Standard Normalizer
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the parameters of the normalizer
+    """
     def _normalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)

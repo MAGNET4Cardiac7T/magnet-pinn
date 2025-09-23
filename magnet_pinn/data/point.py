@@ -18,12 +18,23 @@ from magnet_pinn.preprocessing.preprocessing import COORDINATES_OUT_KEY
 class MagnetPointIterator(MagnetBaseIterator):
     """
     Iterator for loading the electromagnetic simulation data in the point cloud format.
+    
+    Parameters
+    ----------
+    data_dir : Union[str, Path]
+        A data directory, which was created after the preprocessing step
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
     """
 
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
         Main method to implement for the children of the `MagnetBaseIterator` class.
         It loads the data from the simulation file and return the `DataItem` object.
+        
         Parameters
         ----------
         index : int

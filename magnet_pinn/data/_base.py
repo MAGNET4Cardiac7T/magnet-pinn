@@ -39,6 +39,16 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     """
     Abstract base Iterator class for loading the electromagnetic simulation data.
 
+    Parameters
+    ----------
+    data_dir : Union[str, Path]
+        A data directory, which was created after the preprocessing step
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
+
     Attributes
     ----------
     coils_path : Union[str, Path]

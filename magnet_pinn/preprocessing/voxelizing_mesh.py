@@ -20,7 +20,18 @@ import einops
 
 class MeshVoxelizer:
     """
-    The main voxelizer class.
+    Voxelizer class.
+
+    Parameters
+    ----------
+    voxel_size: float
+        The size of the voxel cube.
+    x_unique: np.array
+        x grid
+    y_unique: np.array
+        y grid
+    z_unique: np.array
+        z grid
 
     Attributes
     ----------
@@ -80,6 +91,21 @@ class MeshVoxelizer:
         self.points = np.ascontiguousarray(einops.rearrange(self.points, 'x y z d -> (x y z) d'))
 
     def __validate_input(self, grid: npt.NDArray[np.float64], axis: str):
+        """
+        Validate the input grid for voxelization.
+
+        Parameters
+        ----------
+        grid: npt.NDArray[np.float64]
+            The grid to validate.
+        axis: str
+            The axis of the grid (x, y, or z).
+        
+        Raises
+        ------
+        ValueError
+            If the grid is not sorted in ascending order or does not match the expected voxel size.
+        """
         if grid[0] >= grid[-1]:
             raise ValueError("Grid must be sorted in ascending order.")
         
