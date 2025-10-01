@@ -1,4 +1,4 @@
-name: "All Tests"
+name: "Minimal Test on Ubuntu"
 
 on: [push]
 
