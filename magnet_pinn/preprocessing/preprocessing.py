@@ -969,6 +969,7 @@ class GridPreprocessing(Preprocessing):
 
         Grid preprocessing needs to save voxel size and coordinates
         extent as metadata.
+        Also writes coordinates as one more h5 dataset.
 
         Parameters
         ----------
@@ -978,6 +979,7 @@ class GridPreprocessing(Preprocessing):
             a h5 file descriptor
         """
         super()._write_extra_data(simulation, f)
+        f.create_dataset(COORDINATES_OUT_KEY, data=np.ascontiguousarray(self.voxelizer.points).astype(np.float32))
         f.attrs[VOXEL_SIZE_OUT_KEY] = self.voxel_size
         f.attrs[MIN_EXTENT_OUT_KEY] = self.positions_min
         f.attrs[MAX_EXTENT_OUT_KEY] = self.positions_max

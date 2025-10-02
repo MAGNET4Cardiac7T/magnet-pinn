@@ -115,7 +115,7 @@ def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_d
     sim_file = p.out_simulations_dir_path /TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
 
     with File(sim_file) as f:
-        assert set(f.keys()) == {E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY}
+        assert set(f.keys()) == {E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY, COORDINATES_OUT_KEY}
         assert set(f.attrs.keys()) == {DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, VOXEL_SIZE_OUT_KEY}
 
 
