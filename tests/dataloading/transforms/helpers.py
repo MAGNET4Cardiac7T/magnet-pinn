@@ -45,7 +45,7 @@ def check_cropped_shapes(result):
     assert result.input.shape == (3, 10, 10, 10)
     assert result.field.shape == (2, 2, 3, 10, 10, 10, 8)
     assert result.subject.shape[:-1] == (10, 10, 10)
-    assert result.positions.shape == (0,)
+    assert result.positions.shape == (10, 10, 10, 3)
     assert result.phase.shape == (8,)
     assert result.mask.shape == (8,)
     assert result.coils.shape == (10, 10, 10, 8)
@@ -65,7 +65,6 @@ def check_items_shapes_suppsed_to_be_equal(result, input_item):
 
 def check_elements_not_changed_by_crop(result, input_item):
     assert result.simulation == input_item.simulation
-    assert np.equal(result.positions, input_item.positions).all()
     assert np.equal(result.phase, input_item.phase).all()
     assert np.equal(result.mask, input_item.mask).all()
     assert result.dtype == input_item.dtype
