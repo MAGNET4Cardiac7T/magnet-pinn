@@ -1,13 +1,13 @@
-name: "Minimal Test on Ubuntu"
+name: "Minimal Test Python 3.13"
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   build:
     strategy:
       matrix:
         poetry-version: ["1.8.4"]
-        python-version: ["3.12"]
+        python-version: ["3.13"]
         os: [ubuntu-latest]
     defaults:
       run:

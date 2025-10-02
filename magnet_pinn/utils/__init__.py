@@ -3,6 +3,7 @@
 """
 
 from ._normalization import StandardNormalizer, MinMaxNormalizer, Identity, Log, Power, Tanh, Arcsinh
+from ._perlin_noise import PerlinNoise
 
 __all__ = [
     "StandardNormalizer",
@@ -12,4 +13,5 @@ __all__ = [
     "Power",
     "Tanh",
     "Arcsinh",
+    "PerlinNoise",
 ]

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from trimesh import Trimesh, load_mesh
-from perlin_noise import PerlinNoise
+from ..utils import PerlinNoise
 
 from .utils import generate_fibonacci_points_on_sphere
 
