@@ -441,6 +441,209 @@ def check_shifted_features(f: File):
     assert np.equal(features[0, :, :, 5], features_without_subject).all()
 
 
+def check_grid_coordinates(f: File, voxel_size: int, x_min: float, x_max: float, 
+                          y_min: float, y_max: float, z_min: float, z_max: float):
+    """
+    Validates that the coordinates dataset contains the expected grid points
+    based on voxel size and extent boundaries.
+    
+    Parameters
+    ----------
+    f : File
+        HDF5 file handle
+    voxel_size : int
+        The voxel size used for grid generation
+    x_min, x_max : float
+        X-axis extent boundaries
+    y_min, y_max : float
+        Y-axis extent boundaries
+    z_min, z_max : float
+        Z-axis extent boundaries
+    """
+    assert COORDINATES_OUT_KEY in f.keys(), f"Coordinates dataset '{COORDINATES_OUT_KEY}' not found in file"
+    
+    coordinates = f[COORDINATES_OUT_KEY][:]
+    
+    expected_x_count = int((x_max - x_min) / voxel_size) + 1
+    expected_y_count = int((y_max - y_min) / voxel_size) + 1
+    expected_z_count = int((z_max - z_min) / voxel_size) + 1
+    
+    expected_shape = (expected_x_count, expected_y_count, expected_z_count, 3)
+    assert coordinates.shape == expected_shape, \
+        f"Coordinates shape {coordinates.shape} does not match expected {expected_shape}"
+    
+    assert coordinates.dtype == np.float32, \
+        f"Coordinates dtype {coordinates.dtype} should be float32"
+    
+    x_expected = np.arange(x_min, x_max + voxel_size, voxel_size, dtype=np.float32)
+    y_expected = np.arange(y_min, y_max + voxel_size, voxel_size, dtype=np.float32)
+    z_expected = np.arange(z_min, z_max + voxel_size, voxel_size, dtype=np.float32)
+    
+    for i, x_val in enumerate(x_expected):
+        assert np.allclose(coordinates[i, :, :, 0], x_val), \
+            f"X coordinates at index {i} should all be {x_val}"
+    
+    for j, y_val in enumerate(y_expected):
+        assert np.allclose(coordinates[:, j, :, 1], y_val), \
+            f"Y coordinates at index {j} should all be {y_val}"
+    
+    for k, z_val in enumerate(z_expected):
+        assert np.allclose(coordinates[:, :, k, 2], z_val), \
+            f"Z coordinates at index {k} should all be {z_val}"
+    
+    assert np.isclose(coordinates[0, 0, 0, 0], x_min), \
+        f"Minimum X coordinate should be {x_min}"
+    assert np.isclose(coordinates[-1, 0, 0, 0], x_max), \
+        f"Maximum X coordinate should be {x_max}"
+    
+    assert np.isclose(coordinates[0, 0, 0, 1], y_min), \
+        f"Minimum Y coordinate should be {y_min}"
+    assert np.isclose(coordinates[0, -1, 0, 1], y_max), \
+        f"Maximum Y coordinate should be {y_max}"
+    
+    assert np.isclose(coordinates[0, 0, 0, 2], z_min), \
+        f"Minimum Z coordinate should be {z_min}"
+    assert np.isclose(coordinates[0, 0, -1, 2], z_max), \
+        f"Maximum Z coordinate should be {z_max}"
+
+
+def check_grid_attributes(f: File, voxel_size: int, x_min: float, x_max: float,
+                         y_min: float, y_max: float, z_min: float, z_max: float):
+    """
+    Validates that the file attributes contain the correct metadata.
+    
+    Parameters
+    ----------
+    f : File
+        HDF5 file handle
+    voxel_size : int
+        The voxel size used for grid generation
+    x_min, x_max : float
+        X-axis extent boundaries
+    y_min, y_max : float
+        Y-axis extent boundaries
+    z_min, z_max : float
+        Z-axis extent boundaries
+    """
+    assert VOXEL_SIZE_OUT_KEY in f.attrs, f"Attribute '{VOXEL_SIZE_OUT_KEY}' not found"
+    assert f.attrs[VOXEL_SIZE_OUT_KEY] == voxel_size, \
+        f"Voxel size attribute {f.attrs[VOXEL_SIZE_OUT_KEY]} does not match expected {voxel_size}"
+    
+    assert MIN_EXTENT_OUT_KEY in f.attrs, f"Attribute '{MIN_EXTENT_OUT_KEY}' not found"
+    min_extent = f.attrs[MIN_EXTENT_OUT_KEY]
+    expected_min = np.array([x_min, y_min, z_min], dtype=np.float32)
+    assert np.allclose(min_extent, expected_min), \
+        f"Min extent {min_extent} does not match expected {expected_min}"
+    
+    assert MAX_EXTENT_OUT_KEY in f.attrs, f"Attribute '{MAX_EXTENT_OUT_KEY}' not found"
+    max_extent = f.attrs[MAX_EXTENT_OUT_KEY]
+    expected_max = np.array([x_max, y_max, z_max], dtype=np.float32)
+    assert np.allclose(max_extent, expected_max), \
+        f"Max extent {max_extent} does not match expected {expected_max}"
+
+
+def test_grid_coordinates_voxel_size_1_central(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """Test that grid coordinates are correctly generated with voxel_size=1."""
+    voxel_size = 1
+    x_min, x_max = -4, 4
+    y_min, y_max = -4, 4
+    z_min, z_max = -4, 4
+    
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=x_min,
+        x_max=x_max,
+        y_min=y_min,
+        y_max=y_max,
+        z_min=z_min,
+        z_max=z_max,
+        voxel_size=voxel_size
+    )
+    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+    
+    case_name = f"grid_voxel_size_{voxel_size}_data_type_complex64"
+    out_dir = processed_batch_dir_path / case_name
+    out_simulation_file = out_dir / PROCESSED_SIMULATIONS_DIR_PATH / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    
+    with File(out_simulation_file) as f:
+        check_grid_coordinates(f, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+        check_grid_attributes(f, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+
+
+def test_grid_coordinates_voxel_size_2_shifted(raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """Test that grid coordinates are correctly generated with voxel_size=2."""
+    voxel_size = 2
+    x_min, x_max = -4, 4
+    y_min, y_max = -4, 4
+    z_min, z_max = -4, 4
+    
+    grid_preprocessor = GridPreprocessing(
+        raw_shifted_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=x_min,
+        x_max=x_max,
+        y_min=y_min,
+        y_max=y_max,
+        z_min=z_min,
+        z_max=z_max,
+        voxel_size=voxel_size
+    )
+    grid_preprocessor.process_simulations([SHIFTED_SPHERE_SIM_NAME])
+    
+    case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
+    out_dir = processed_batch_dir_path / case_name
+    out_simulation_file = out_dir / PROCESSED_SIMULATIONS_DIR_PATH / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    
+    with File(out_simulation_file) as f:
+        check_grid_coordinates(f, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+        check_grid_attributes(f, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+
+
+def test_grid_coordinates_consistency_multiple_files(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """Test that all simulations in a batch have identical coordinates."""
+    voxel_size = 1
+    x_min, x_max = -4, 4
+    y_min, y_max = -4, 4
+    z_min, z_max = -4, 4
+    
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.complex64,
+        x_min=x_min,
+        x_max=x_max,
+        y_min=y_min,
+        y_max=y_max,
+        z_min=z_min,
+        z_max=z_max,
+        voxel_size=voxel_size
+    )
+    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    
+    case_name = f"grid_voxel_size_{voxel_size}_data_type_complex64"
+    out_dir = processed_batch_dir_path / case_name
+    out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    
+    sim1_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    with File(sim1_file) as f1:
+        coords1 = f1[COORDINATES_OUT_KEY][:]
+        check_grid_coordinates(f1, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+    
+    sim2_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    with File(sim2_file) as f2:
+        coords2 = f2[COORDINATES_OUT_KEY][:]
+        check_grid_coordinates(f2, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
+    
+    assert np.array_equal(coords1, coords2), \
+        "Coordinates should be identical across all simulations in the same batch"
+
+
 def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
