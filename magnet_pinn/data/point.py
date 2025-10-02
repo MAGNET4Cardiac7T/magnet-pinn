@@ -58,21 +58,3 @@ class MagnetPointIterator(MagnetBaseIterator):
             dtype=self._get_dtype(simulation_path),
             truncation_coefficients=self._get_truncation_coefficients(simulation_path)
         )
-    
-    def _read_positions(self, simulation_path: str) -> np.ndarray:
-        """
-        Reads the positions of points from the h5 file. 
-        Parameters
-        ----------
-        simulation_path : str
-            Path to the simulation file
-
-        Returns 
-        -------
-        np.ndarray
-            Positions of points
-        """
-
-        with h5py.File(simulation_path, 'r') as f:
-            positions = f[COORDINATES_OUT_KEY][:]
-        return positions

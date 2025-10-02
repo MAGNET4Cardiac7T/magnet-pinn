@@ -20,7 +20,7 @@ import random
 import torch
 
 from .dataitem import DataItem
-from .transforms import BaseTransform, DefaultTransform, check_transforms
+from .transforms import BaseTransform, check_transforms
 
 from magnet_pinn.preprocessing.preprocessing import (
     ANTENNA_MASKS_OUT_KEY,
@@ -31,7 +31,8 @@ from magnet_pinn.preprocessing.preprocessing import (
     PROCESSED_SIMULATIONS_DIR_PATH,
     PROCESSED_ANTENNA_DIR_PATH,
     TRUNCATION_COEFFICIENTS_OUT_KEY,
-    DTYPE_OUT_KEY
+    DTYPE_OUT_KEY,
+    COORDINATES_OUT_KEY
 )
 
 
@@ -271,6 +272,24 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         with h5py.File(simulation_path) as f:
             truncation_coefficients = f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY]
         return truncation_coefficients
+
+    def _read_positions(self, simulation_path: str) -> np.ndarray:
+        """
+        Reads the positions of points from the h5 file. 
+        Parameters
+        ----------
+        simulation_path : str
+            Path to the simulation file
+
+        Returns 
+        -------
+        np.ndarray
+            Positions of points
+        """
+
+        with h5py.File(simulation_path, 'r') as f:
+            positions = f[COORDINATES_OUT_KEY][:]
+        return positions
     
     def __iter__(self):
         """
