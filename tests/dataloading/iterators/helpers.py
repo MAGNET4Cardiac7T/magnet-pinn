@@ -75,11 +75,11 @@ def add_grid_attribures_to_file(f: File, simulation: DataItem):
     f.attrs[VOXEL_SIZE_OUT_KEY] = 4
     f.attrs[MIN_EXTENT_OUT_KEY] = np.array([-40, -40, -40])
     f.attrs[MAX_EXTENT_OUT_KEY] = np.array([36, 36, 36])
-    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions.astype(np.float32))
+    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions)
 
 
 def add_pointcloud_attributes_to_file(f: File, simulation: DataItem):
-    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions.astype(np.float32))
+    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions)
 
 
 def format_field(field: np.ndarray, dtype: str) -> np.ndarray:

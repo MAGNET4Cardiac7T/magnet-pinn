@@ -475,9 +475,9 @@ def check_grid_coordinates(f: File, voxel_size: int, x_min: float, x_max: float,
     assert coordinates.dtype == np.float32, \
         f"Coordinates dtype {coordinates.dtype} should be float32"
     
-    x_expected = np.arange(x_min, x_max + voxel_size, voxel_size, dtype=np.float32)
-    y_expected = np.arange(y_min, y_max + voxel_size, voxel_size, dtype=np.float32)
-    z_expected = np.arange(z_min, z_max + voxel_size, voxel_size, dtype=np.float32)
+    x_expected = np.linspace(x_min, x_max, expected_x_count, dtype=np.float32)
+    y_expected = np.linspace(y_min, y_max, expected_y_count, dtype=np.float32)
+    z_expected = np.linspace(z_min, z_max, expected_z_count, dtype=np.float32)
     
     for i, x_val in enumerate(x_expected):
         assert np.allclose(coordinates[i, :, :, 0], x_val), \
