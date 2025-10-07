@@ -505,6 +505,7 @@ def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output
     )
     with pytest.raises(SystemExit):
         parse_arguments()
+
 def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     """
     Check transforms_mode 'no-clipping' for tissue command
