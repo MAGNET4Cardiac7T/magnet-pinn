@@ -105,31 +105,13 @@ def parse_arguments() -> Namespace:
         help="Maximum permittivity value for property sampling, by default is 71.0"
     )
     
-    # Workflow configuration
+    # Workflow configuration preset
     global_parser.add_argument(
-        "--transforms",
-        nargs='*',
-        choices=[
-            'tubes-clipping',
-            'children-cutout',
-            'parent-cutout-children',
-            'parent-cutout-tubes',
-            'children-clipping',
-            'cleaning'
-        ],
-        default=[
-            'tubes-clipping',
-            'children-cutout',
-            'parent-cutout-children',
-            'parent-cutout-tubes',
-            'children-clipping',
-            'cleaning'
-        ],
-        help="List of transforms to apply in the mesh processing workflow. "
-             "By default, all transforms are applied. "
-             "Available: tubes-clipping, children-cutout, parent-cutout-children, "
-             "parent-cutout-tubes, children-clipping, cleaning. If you want to skip "
-             "a transform, use the flag --transforms without that transform name."
+        "--transforms-mode",
+        choices=['none', 'all', 'no-clipping'],
+        default='all',
+        help=("Preset selection of transforms: 'none' for no transforms, 'all' for all transforms, "
+              "'no-clipping' to skip tube and children clipping, default value is 'all'. For more fine-grained workflows please modify the code directly.")
     )
     
     # Structure generation arguments (common to tissue and custom)

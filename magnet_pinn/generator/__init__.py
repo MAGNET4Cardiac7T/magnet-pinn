@@ -19,7 +19,8 @@ from .io import MeshWriter
 from .transforms import (
     Compose, 
     ToMesh, 
-    MeshesParentCutoutWithChildren, 
+    MeshesParentCutoutWithChildren,
+    MeshesParentCutoutWithTubes,
     MeshesChildrenClipping, 
     MeshesCleaning, 
     MeshesRemesh

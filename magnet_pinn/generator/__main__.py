@@ -136,26 +136,23 @@ def create_workflow(args):
     Compose
         Configured transformation workflow.
     """
-    transforms = []
+    mode = args.transforms_mode
+
+    if mode == 'none':
+        return Compose([])
     
-    if 'tubes-clipping' in args.transforms:
-        transforms.append(MeshesTubesClipping())
-    
-    if 'children-cutout' in args.transforms:
-        transforms.append(MeshesChildrenCutout())
-    
-    if 'parent-cutout-children' in args.transforms:
-        transforms.append(MeshesParentCutoutWithChildren())
-    
-    if 'parent-cutout-tubes' in args.transforms:
-        transforms.append(MeshesParentCutoutWithTubes())
-    
-    if 'children-clipping' in args.transforms:
-        transforms.append(MeshesChildrenClipping())
-    
-    if 'cleaning' in args.transforms:
-        transforms.append(MeshesCleaning())
-    
+    transforms = [
+        MeshesChildrenCutout(),
+        MeshesParentCutoutWithChildren(),
+        MeshesParentCutoutWithTubes(),
+    ]
+
+    if mode == "all":
+        transforms.extend([
+            MeshesTubesClipping(),
+            MeshesChildrenClipping()
+        ])
+
     return Compose(transforms)
 
 

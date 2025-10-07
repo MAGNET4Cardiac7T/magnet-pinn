@@ -25,91 +25,6 @@ def test_cli_check_no_command(monkeypatch):
         parse_arguments()
 
 
-def test_cli_check_tissue_default_command(monkeypatch):
-    """
-    General check for the tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
-    )
-    args = parse_arguments()
-    assert args.phantom_type == "tissue"
-
-
-def test_cli_check_custom_default_command(monkeypatch, generation_output_dir_path):
-    """
-    General check for the custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file)
-        ]
-    )
-    args = parse_arguments()
-    assert args.phantom_type == "custom"
-
-
-def test_tissue_cli_check_given_output_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give an output argument to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--output", str(generation_output_dir_path)
-        ]
-    )
-    args = parse_arguments()
-    assert args.output == generation_output_dir_path
-
-
-def test_tissue_cli_check_default_output_value(monkeypatch):
-    """
-    Case when we check a default output value for tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
-    )
-    args = parse_arguments()
-    assert args.output == OUTPUT_DIR
-
-
-def test_custom_cli_check_given_output_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give an output argument to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--output", str(generation_output_dir_path)
-        ]
-    )
-    args = parse_arguments()
-    assert args.output == generation_output_dir_path
-
-
 def test_custom_cli_check_default_output_value(monkeypatch, generation_output_dir_path):
     """
     Case when we check a default output value for custom command
@@ -417,91 +332,6 @@ def test_tissue_cli_check_default_permittivity_max_value(monkeypatch):
     assert args.permittivity_max == PERMITTIVITY_MAX
 
 
-def test_tissue_cli_check_transforms_single_value(monkeypatch):
-    """
-    Case when we give a single transform to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--transforms", "cleaning"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == ["cleaning"]
-
-
-def test_tissue_cli_check_transforms_multiple_values(monkeypatch):
-    """
-    Case when we give multiple transforms to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--transforms", "tubes-clipping", "children-clipping", "cleaning"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == ["tubes-clipping", "children-clipping", "cleaning"]
-
-
-def test_tissue_cli_check_transforms_empty_list(monkeypatch):
-    """
-    Case when we give an empty transform list to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--transforms"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == []
-
-
-def test_tissue_cli_check_transforms_invalid_value(monkeypatch):
-    """
-    Case when we give an invalid transform to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--transforms", "invalid-transform"
-        ]
-    )
-    with pytest.raises(SystemExit):
-        parse_arguments()
-
-
-def test_tissue_cli_check_default_transforms_value(monkeypatch):
-    """
-    Case when we check the default transforms value for tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == [
-        'tubes-clipping',
-        'children-cutout',
-        'parent-cutout-children',
-        'parent-cutout-tubes',
-        'children-clipping',
-        'cleaning'
-    ]
-
 
 def test_tissue_cli_check_given_num_children_blobs_value(monkeypatch):
     """
@@ -611,131 +441,91 @@ def test_tissue_cli_check_default_num_tubes_value(monkeypatch):
     args = parse_arguments()
     assert args.num_tubes == NUM_TUBES
 
-
-def test_tissue_cli_check_given_relative_tube_min_radius_value(monkeypatch):
+def test_custom_cli_check_transforms_mode_default(monkeypatch, generation_output_dir_path):
     """
-    Case when we give a relative_tube_min_radius argument to tissue command
+    Check default transforms_mode is 'all' for custom command
     """
+    stl_file = generation_output_dir_path / "test.stl"
+    stl_file.touch()
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--relative-tube-min-radius", "0.02"
-        ]
+        ["script.py", "custom", "--stl-mesh-path", str(stl_file)]
     )
     args = parse_arguments()
-    assert args.relative_tube_min_radius == 0.02
+    assert args.transforms_mode == 'all'
 
-
-def test_tissue_cli_check_default_relative_tube_min_radius_value(monkeypatch):
+def test_custom_cli_check_transforms_mode_none(monkeypatch, generation_output_dir_path):
     """
-    Case when we check a default relative_tube_min_radius value for tissue command
+    Check transforms_mode 'none' for custom command
     """
+    stl_file = generation_output_dir_path / "test.stl"
+    stl_file.touch()
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
+        ["script.py", "custom", "--stl-mesh-path", str(stl_file), "--transforms-mode", "none"]
     )
     args = parse_arguments()
-    assert args.relative_tube_min_radius == RELATIVE_TUBE_MIN_RADIUS
+    assert args.transforms_mode == 'none'
 
-
-def test_tissue_cli_check_given_relative_tube_max_radius_value(monkeypatch):
+def test_custom_cli_check_transforms_mode_all(monkeypatch, generation_output_dir_path):
     """
-    Case when we give a relative_tube_max_radius argument to tissue command
+    Check transforms_mode 'all' for custom command
     """
+    stl_file = generation_output_dir_path / "test.stl"
+    stl_file.touch()
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--relative-tube-max-radius", "0.15"
-        ]
+        ["script.py", "custom", "--stl-mesh-path", str(stl_file), "--transforms-mode", "all"]
     )
     args = parse_arguments()
-    assert args.relative_tube_max_radius == 0.15
+    assert args.transforms_mode == 'all'
 
-
-def test_tissue_cli_check_default_relative_tube_max_radius_value(monkeypatch):
+def test_custom_cli_check_transforms_mode_no_clipping(monkeypatch, generation_output_dir_path):
     """
-    Case when we check a default relative_tube_max_radius value for tissue command
+    Check transforms_mode 'no-clipping' for custom command
     """
+    stl_file = generation_output_dir_path / "test.stl"
+    stl_file.touch()
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
+        ["script.py", "custom", "--stl-mesh-path", str(stl_file), "--transforms-mode", "no-clipping"]
     )
     args = parse_arguments()
-    assert args.relative_tube_max_radius == RELATIVE_TUBE_MAX_RADIUS
+    assert args.transforms_mode == 'no-clipping'
 
-
-def test_tissue_cli_check_given_initial_blob_radius_value(monkeypatch):
+def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output_dir_path):
     """
-    Case when we give an initial_blob_radius argument to tissue command
+    Check invalid transforms_mode errors for custom command
     """
+    stl_file = generation_output_dir_path / "test.stl"
+    stl_file.touch()
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--initial-blob-radius", "150.0"
-        ]
-    )
-    args = parse_arguments()
-    assert args.initial_blob_radius == 150.0
-
-
-def test_tissue_cli_check_initial_blob_radius_invalid_value(monkeypatch):
-    """
-    Case when we give an invalid initial_blob_radius argument to tissue command
-    """
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--initial-blob-radius", "invalid"
-        ]
+        ["script.py", "custom", "--stl-mesh-path", str(stl_file), "--transforms-mode", "invalid"]
     )
     with pytest.raises(SystemExit):
         parse_arguments()
-
-
-def test_tissue_cli_check_default_initial_blob_radius_value(monkeypatch):
+def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     """
-    Case when we check a default initial_blob_radius value for tissue command
+    Check transforms_mode 'no-clipping' for tissue command
     """
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue"
-        ]
+        ["script.py", "tissue", "--transforms-mode", "no-clipping"]
     )
     args = parse_arguments()
-    assert args.initial_blob_radius == INITIAL_BLOB_RADIUS
+    assert args.transforms_mode == 'no-clipping'
 
-
-def test_tissue_cli_check_given_x_min_value(monkeypatch):
+def test_tissue_cli_check_transforms_mode_invalid(monkeypatch):
     """
-    Case when we give an x_min argument to tissue command
+    Check invalid transforms_mode errors for tissue command
     """
     monkeypatch.setattr(
         "sys.argv",
-        [
-            "script.py",
-            "tissue",
-            "--x-min", "-10.0"
-        ]
+        ["script.py", "tissue", "--transforms-mode", "invalid"]
     )
-    args = parse_arguments()
-    assert args.x_min == -10.0
-
+    with pytest.raises(SystemExit):
+        parse_arguments()
 
 def test_tissue_cli_check_x_min_invalid_value(monkeypatch):
     """
@@ -1328,92 +1118,6 @@ def test_custom_cli_check_default_permittivity_max_value(monkeypatch, generation
     assert args.permittivity_max == PERMITTIVITY_MAX
 
 
-def test_custom_cli_check_transforms_single_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give a single transform to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--transforms", "cleaning"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == ["cleaning"]
-
-
-def test_custom_cli_check_transforms_multiple_values(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give multiple transforms to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--transforms", "tubes-clipping", "children-clipping", "cleaning"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == ["tubes-clipping", "children-clipping", "cleaning"]
-
-
-def test_custom_cli_check_transforms_empty_list(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give an empty transform list to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--transforms"
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == []
-
-
-def test_custom_cli_check_default_transforms_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we check the default transforms value for custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file)
-        ]
-    )
-    args = parse_arguments()
-    assert args.transforms == [
-        'tubes-clipping',
-        'children-cutout',
-        'parent-cutout-children',
-        'parent-cutout-tubes',
-        'children-clipping',
-        'cleaning'
-    ]
-
-
 def test_custom_cli_check_given_blob_radius_decrease_value(monkeypatch, generation_output_dir_path):
     """
     Case when we give a blob_radius_decrease argument to custom command
@@ -1490,81 +1194,3 @@ def test_custom_cli_check_default_num_tubes_value(monkeypatch, generation_output
     )
     args = parse_arguments()
     assert args.num_tubes == NUM_TUBES
-
-
-def test_custom_cli_check_given_relative_tube_min_radius_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give a relative_tube_min_radius argument to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--relative-tube-min-radius", "0.02"
-        ]
-    )
-    args = parse_arguments()
-    assert args.relative_tube_min_radius == 0.02
-
-
-def test_custom_cli_check_default_relative_tube_min_radius_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we check a default relative_tube_min_radius value for custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file)
-        ]
-    )
-    args = parse_arguments()
-    assert args.relative_tube_min_radius == RELATIVE_TUBE_MIN_RADIUS
-
-
-def test_custom_cli_check_given_relative_tube_max_radius_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we give a relative_tube_max_radius argument to custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file),
-            "--relative-tube-max-radius", "0.15"
-        ]
-    )
-    args = parse_arguments()
-    assert args.relative_tube_max_radius == 0.15
-
-
-def test_custom_cli_check_default_relative_tube_max_radius_value(monkeypatch, generation_output_dir_path):
-    """
-    Case when we check a default relative_tube_max_radius value for custom command
-    """
-    stl_file = generation_output_dir_path / "test.stl"
-    stl_file.touch()
-    
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "script.py",
-            "custom",
-            "--stl-mesh-path", str(stl_file)
-        ]
-    )
-    args = parse_arguments()
-    assert args.relative_tube_max_radius == RELATIVE_TUBE_MAX_RADIUS

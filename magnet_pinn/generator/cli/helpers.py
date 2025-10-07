@@ -84,8 +84,8 @@ def _print_properties_report(args: Namespace):
 
 
 def _print_workflow_report(args: Namespace):
-    """Print workflow configuration."""
-    print(f"  Transforms: {', '.join(args.transforms) if args.transforms else 'None'}")
+    """Print workflow configuration using preset mode."""
+    print(f"  Transforms mode: {args.transforms_mode}")
 
 
 def validate_arguments(args: Namespace) -> None:
@@ -102,9 +102,7 @@ def validate_arguments(args: Namespace) -> None:
     ValueError
         If any argument values are invalid or conflicting.
     """
-    # Validate common arguments
-    if not args.transforms:
-        raise ValueError("At least one transform must be specified in --transforms")
+    # Validate common arguments (transforms_mode handled by argparse choices)
     
     if args.density_min >= args.density_max:
         raise ValueError("density_min must be less than density_max")
