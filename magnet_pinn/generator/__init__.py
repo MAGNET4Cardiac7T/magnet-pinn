@@ -1,18 +1,37 @@
 """
     A module containing the generator utilities.
 """
-
+from .typing import (
+    PropertyItem, 
+    StructurePhantom, 
+    MeshPhantom, 
+    PropertyPhantom, 
+    PhantomItem
+)
+from .typing import (
+    PropertyItem, 
+    StructurePhantom, 
+    MeshPhantom,
+    PropertyPhantom, 
+    PhantomItem
+)
 from .io import MeshWriter
-from .phantoms import Tissue
-from .samplers import PropertySampler, PointSampler, BlobSampler, TubeSampler
-from .serializers import MeshSerializer
+from .transforms import (
+    Compose, 
+    ToMesh, 
+    MeshesParentCutoutWithChildren, 
+    MeshesChildrenClipping, 
+    MeshesCleaning, 
+    MeshesRemesh
+)
 from .structures import Blob, Tube
-from .transforms import Compose, ToMesh, MeshesParentCutoutWithChildren, MeshesChildrenClipping, MeshesCleaning, MeshesRemesh
-from .typing import PropertyItem, StructurePhantom, MeshPhantom, PropertyPhantom, PhantomItem
-from .utils import spheres_packable
+from .serializers import MeshSerializer
+from .phantoms import Tissue, CustomPhantom
+from .samplers import PropertySampler, PointSampler, BlobSampler, TubeSampler
 
 __all__ = ["MeshWriter", 
-           "Tissue", 
+           "Tissue",
+           "CustomPhantom",
            "PropertySampler", 
            "PointSampler", 
            "BlobSampler", 
@@ -31,5 +50,4 @@ __all__ = ["MeshWriter",
            "StructurePhantom",
            "MeshPhantom",
            "PropertyPhantom",
-           "PhantomItem",
-           "spheres_packable"]
+           "PhantomItem"]
