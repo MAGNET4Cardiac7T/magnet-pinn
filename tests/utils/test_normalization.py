@@ -65,7 +65,7 @@ def test_standard_normalizer_param_shape(random_iterator):
     assert len(params["x_mean"]) == num_features
     assert len(params["x_mean_sq"]) == num_features
 
-def test_minmax_normallizer_correctness(random_iterator,random_batch):
+def test_minmax_normalizer_correctness(random_iterator,random_batch):
     normalizer = MinMaxNormalizer()
     iterator = random_iterator(seed=42, num_batches=1, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
@@ -84,7 +84,7 @@ def test_standard_normalizer_correctness(random_iterator, random_batch):
 
     normalized = normalizer.forward(random_batch, axis=1)
     assert torch.allclose(normalized.mean(dim=0), torch.tensor(0.0), atol=1e-6)
-    assert torch.allclose(normalized.std(dim=0), torch.tensor(1.0), atol=1e-6)
+    assert torch.allclose(normalized.std(dim=0, correction=0), torch.tensor(1.0), atol=1e-6)
 
     denormalized = normalizer.inverse(normalized, axis=1)
     assert torch.allclose(random_batch, denormalized, atol=1e-6)

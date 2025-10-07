@@ -72,3 +72,4 @@
 - Change tests to only run on ubuntu for normal pushes
 - Full tests only run on release
 - Add Perlin noise generator to utils (adapted from https://github.com/salaxieb/perlin_noise)
+- Fix failing test for standardizer
