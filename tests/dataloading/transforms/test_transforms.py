@@ -172,7 +172,7 @@ def test_crop_transform_valid_central_crop_position_check_values(random_grid_ite
     assert np.equal(result.field, random_grid_item.field[:, :, :, 5:15, 5:15, 5:15, :]).all()
     assert np.equal(result.subject, random_grid_item.subject[5:15, 5:15, 5:15]).all()
     assert np.equal(result.coils, random_grid_item.coils[5:15, 5:15, 5:15, :]).all()
-    assert np.equal(result.positions, random_grid_item.positions[5:15, 5:15, 5:15, :]).all()
+    assert np.equal(result.positions, random_grid_item.positions[: ,5:15, 5:15, 5:15]).all()
 
 
 def test_crop_transform_valid_random_crop_position(zero_grid_item):
@@ -187,7 +187,7 @@ def test_crop_transform_valid_random_crop_position(zero_grid_item):
     assert np.equal(result.input, zero_grid_item.input[:, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.subject, zero_grid_item.subject[0:10, 0:10, 0:10]).all()
     assert np.equal(result.coils, zero_grid_item.coils[0:10, 0:10, 0:10, :]).all()
-    assert np.equal(result.positions, zero_grid_item.positions[0:10, 0:10, 0:10, :]).all()
+    assert np.equal(result.positions, zero_grid_item.positions[:, 0:10, 0:10, 0:10]).all()
 
 
 def test_crop_transform_actions_not_inplace(zero_grid_item):
