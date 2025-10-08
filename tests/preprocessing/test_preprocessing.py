@@ -468,7 +468,7 @@ def check_grid_coordinates(f: File, voxel_size: int, x_min: float, x_max: float,
     expected_y_count = int((y_max - y_min) / voxel_size) + 1
     expected_z_count = int((z_max - z_min) / voxel_size) + 1
     
-    expected_shape = (expected_x_count, expected_y_count, expected_z_count, 3)
+    expected_shape = (3, expected_x_count, expected_y_count, expected_z_count)
     assert coordinates.shape == expected_shape, \
         f"Coordinates shape {coordinates.shape} does not match expected {expected_shape}"
     
@@ -480,30 +480,30 @@ def check_grid_coordinates(f: File, voxel_size: int, x_min: float, x_max: float,
     z_expected = np.linspace(z_min, z_max, expected_z_count, dtype=np.float32)
     
     for i, x_val in enumerate(x_expected):
-        assert np.allclose(coordinates[i, :, :, 0], x_val), \
+        assert np.allclose(coordinates[0, i, :, :], x_val), \
             f"X coordinates at index {i} should all be {x_val}"
     
     for j, y_val in enumerate(y_expected):
-        assert np.allclose(coordinates[:, j, :, 1], y_val), \
+        assert np.allclose(coordinates[1, :, j, :], y_val), \
             f"Y coordinates at index {j} should all be {y_val}"
     
     for k, z_val in enumerate(z_expected):
-        assert np.allclose(coordinates[:, :, k, 2], z_val), \
+        assert np.allclose(coordinates[2, :, :, k], z_val), \
             f"Z coordinates at index {k} should all be {z_val}"
     
     assert np.isclose(coordinates[0, 0, 0, 0], x_min), \
         f"Minimum X coordinate should be {x_min}"
-    assert np.isclose(coordinates[-1, 0, 0, 0], x_max), \
+    assert np.isclose(coordinates[0, -1, 0, 0], x_max), \
         f"Maximum X coordinate should be {x_max}"
     
-    assert np.isclose(coordinates[0, 0, 0, 1], y_min), \
+    assert np.isclose(coordinates[1, 0, 0, 0], y_min), \
         f"Minimum Y coordinate should be {y_min}"
-    assert np.isclose(coordinates[0, -1, 0, 1], y_max), \
+    assert np.isclose(coordinates[1, 0, -1, 0], y_max), \
         f"Maximum Y coordinate should be {y_max}"
     
-    assert np.isclose(coordinates[0, 0, 0, 2], z_min), \
+    assert np.isclose(coordinates[2, 0, 0, 0], z_min), \
         f"Minimum Z coordinate should be {z_min}"
-    assert np.isclose(coordinates[0, 0, -1, 2], z_max), \
+    assert np.isclose(coordinates[2, 0, 0, -1], z_max), \
         f"Maximum Z coordinate should be {z_max}"
 
 
@@ -898,7 +898,7 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_d
         assert features.shape == (729, 3)
 
         coordinates = f[COORDINATES_OUT_KEY][:]
-        assert coordinates.shape == (729, 3)
+        assert coordinates.shape == (3, 729)
         assert coordinates.dtype == np.float32
 
         subject = f[SUBJECT_OUT_KEY][:]
