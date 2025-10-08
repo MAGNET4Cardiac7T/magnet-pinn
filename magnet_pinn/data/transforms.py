@@ -235,6 +235,7 @@ class Crop(BaseTransform):
             coils=self._crop_array(simulation.coils, crop_mask, 0),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
+            positions=self._crop_array(simulation.positions, crop_mask, 1),
         )
     
     def _crop_array(self, 
@@ -346,6 +347,7 @@ class Rotate(BaseTransform):
             coils=self._rot_array(simulation.coils, plane=(1,2)),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
+            positions=self._rot_array(simulation.positions, plane=(1,2)),
         )
     
     def _rot_array(self,

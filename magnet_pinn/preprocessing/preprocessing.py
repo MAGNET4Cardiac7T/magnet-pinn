@@ -14,6 +14,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional, Union
 
+import einops
 import numpy as np
 import pandas as pd
 from h5py import File
@@ -969,6 +970,8 @@ class GridPreprocessing(Preprocessing):
 
         Grid preprocessing needs to save voxel size and coordinates
         extent as metadata.
+        Also writes coordinates as one more h5 dataset with a shape as 
+        (3, x, y, z).
 
         Parameters
         ----------
@@ -981,6 +984,17 @@ class GridPreprocessing(Preprocessing):
         f.attrs[VOXEL_SIZE_OUT_KEY] = self.voxel_size
         f.attrs[MIN_EXTENT_OUT_KEY] = self.positions_min
         f.attrs[MAX_EXTENT_OUT_KEY] = self.positions_max
+
+        x = len(self.voxelizer.x)
+        y = len(self.voxelizer.y)
+        z = len(self.voxelizer.z)
+        coordinates = np.ascontiguousarray(
+            einops.rearrange(
+                self.voxelizer.points, '(x y z) d -> d x y z',
+                x=x, y=y, z=z
+            )
+        ).astype(np.float32)
+        f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)
 
 
 class PointPreprocessing(Preprocessing):
@@ -1205,7 +1219,8 @@ class PointPreprocessing(Preprocessing):
         """
         Writes extra data to the output .h5 file.
 
-        Point preprocessing data needs to save coordinates.
+        Point preprocessing data needs to save coordinates. Coordinates are reformatted in the format as:
+        (3, number_of_points).
 
         Parameters
         ----------
@@ -1215,4 +1230,8 @@ class PointPreprocessing(Preprocessing):
             a h5 file descriptor
         """
         super()._write_extra_data(simulation, f)
-        f.create_dataset(COORDINATES_OUT_KEY, data=self.coordinates.astype(np.float32))
+        coordinates = np.ascontiguousarray(rearrange(
+            self.coordinates, 
+            "points axis -> axis points"
+        ))
+        f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)

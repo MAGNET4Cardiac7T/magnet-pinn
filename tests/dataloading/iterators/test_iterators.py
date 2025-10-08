@@ -28,6 +28,125 @@ def test_base_iterator_is_iterator():
     assert issubclass(MagnetBaseIterator, Iterable)
 
 
+def test_base_iterator_can_be_instantiated(grid_processed_dir, grid_aug):
+    """Test that MagnetBaseIterator can be directly instantiated since it has no abstract methods"""
+    iterator = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+    assert isinstance(iterator, MagnetBaseIterator)
+
+
+def test_base_iterator_check_coils_properties(grid_processed_dir, random_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+
+    expected_coils_path = grid_processed_dir / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
+    assert iter.coils_path == expected_coils_path
+    assert iter.num_coils == random_grid_item.coils.shape[-1]
+
+    assert iter.coils.shape == random_grid_item.coils.shape
+    assert iter.coils.dtype == np.bool_
+    assert np.equal(iter.coils, random_grid_item.coils.astype(np.bool_)).all()
+
+
+def test_base_iterator_check_simulations_properties(grid_processed_dir, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+
+    expected_sim_dir = grid_processed_dir / PROCESSED_SIMULATIONS_DIR_PATH
+    assert iter.simulation_dir == expected_sim_dir
+
+    expected_sim_list = [
+        expected_sim_dir / TARGET_FILE_NAME.format(name=RANDOM_SIM_FILE_NAME),
+        expected_sim_dir / TARGET_FILE_NAME.format(name=ZERO_SIM_FILE_NAME)
+    ]
+    assert iter.simulation_list == expected_sim_list
+
+
+def test_base_iterator_check_other_properties(grid_processed_dir, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=2)
+
+    assert iter.num_samples == 2
+    assert iter.transforms == grid_aug
+
+
+def test_base_iterator_check_num_samples_eq_to_zero(grid_processed_dir, grid_aug):
+    with pytest.raises(ValueError):
+        _ = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=0)
+
+
+def test_base_iterator_check_num_samples_less_than_0(grid_processed_dir, grid_aug):
+    with pytest.raises(ValueError):
+        _ = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=-1)
+
+
+def test_base_iterator_check_invalid_transforms(grid_processed_dir):
+    with pytest.raises(ValueError):
+        _ = MagnetBaseIterator(grid_processed_dir, transforms=None, num_samples=1)
+
+
+def test_base_iterator_check_overall_samples_numbers_for_unit_num_samples(grid_processed_dir, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+    sampled = list(iter)
+
+    assert len(sampled) == 2
+
+
+def test_base_iterator_check_overall_samples_numbers_for_multiple_num_samples(grid_processed_dir, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=100)
+    sampled = list(iter)
+
+    assert len(sampled) == 200
+
+
+def test_base_iterator_check_sampled_data_items_datatypes(grid_processed_dir, random_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+    for item in iter:
+        check_dtypes_between_iter_result_and_supposed_simulation(item, random_grid_item)
+
+
+def test_base_iterator_check_sampled_data_items_shapes(grid_processed_dir, random_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+    for item in iter:
+        check_shapes_between_item_result_and_supposed_simulation(item, random_grid_item)
+
+
+def test_base_iterator_check_sampled_data_items_values(grid_processed_dir, random_grid_item, zero_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=1)
+    for result in iter:
+        if result["simulation"] == random_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, random_grid_item)
+        elif result["simulation"] == zero_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, zero_grid_item)
+        else:
+            assert False, f"Unexpected simulation: {result['simulation']}"
+
+
+def test_base_iterator_check_sampled_data_rate(grid_processed_dir, random_grid_item, zero_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=3)
+
+    random_samples_count = 0
+    zero_samples_count = 0
+    for result in iter:
+        if result["simulation"] == random_grid_item.simulation:
+            random_samples_count += 1
+        elif result["simulation"] == zero_grid_item.simulation:
+            zero_samples_count += 1
+        else:
+            assert False, f"Unexpected simulation: {result['simulation']}"
+
+    assert random_samples_count == zero_samples_count == 3
+
+
+def test_base_iterator_check_multiple_samples(grid_processed_dir, random_grid_item, zero_grid_item, grid_aug):
+    iter = MagnetBaseIterator(grid_processed_dir, transforms=grid_aug, num_samples=3)
+
+    sampled = list(iter)
+    for result in sampled:
+        if result["simulation"] == random_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, random_grid_item)
+        elif result["simulation"] == zero_grid_item.simulation:
+            check_values_between_item_result_and_supposed_simulation(result, zero_grid_item)
+        else:
+            assert False, f"Unexpected simulation: {result['simulation']}"
+
+
 def test_grid_dataset_is_iterator():
     assert issubclass(MagnetGridIterator, MagnetBaseIterator)
 

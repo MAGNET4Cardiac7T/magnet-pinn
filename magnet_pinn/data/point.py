@@ -1,9 +1,9 @@
-"""
-NAME
+"""NAME
     point.py
 DESCRIPTION
     This module contains classes for loading the electromagnetic simulation data in the pointscloud format.
 """
+import warnings
 from typing import Union
 from pathlib import Path
 
@@ -17,62 +17,15 @@ from magnet_pinn.preprocessing.preprocessing import COORDINATES_OUT_KEY
 
 class MagnetPointIterator(MagnetBaseIterator):
     """
-    Iterator for loading the electromagnetic simulation data in the point cloud format.
-    
-    Parameters
-    ----------
-    data_dir : Union[str, Path]
-        A data directory, which was created after the preprocessing step
-    transforms : Optional[BaseTransform]
-        Transformations to apply to the data during the data loading, can have a sequence of transformations,
-        at least one of them should make a phase shift of the field
-    num_samples : int
-        Number of samples to generate from each simulation
+    Alias for the iterator of the electromagnetic simulation data in the pointscloud format.
+    A class is deprecated and will be removed.
     """
-
-    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
-        """
-        Main method to implement for the children of the `MagnetBaseIterator` class.
-        It loads the data from the simulation file and return the `DataItem` object.
-        
-        Parameters
-        ----------
-        index : int
-            Index of the simulation file
-        
-        Returns
-        -------
-        DataItem
-            DataItem object with the loaded data
-        """
-
-        return DataItem(
-            input=self._read_input(simulation_path),
-            subject=self._read_subject(simulation_path),
-            simulation=self._get_simulation_name(simulation_path),
-            field=self._read_fields(simulation_path),
-            positions=self._read_positions(simulation_path),
-            phase=np.zeros(self.num_coils),
-            mask=np.ones(self.num_coils),
-            coils=self.coils,
-            dtype=self._get_dtype(simulation_path),
-            truncation_coefficients=self._get_truncation_coefficients(simulation_path)
-        )
     
-    def _read_positions(self, simulation_path: str) -> np.ndarray:
-        """
-        Reads the positions of points from the h5 file. 
-        Parameters
-        ----------
-        simulation_path : str
-            Path to the simulation file
-
-        Returns 
-        -------
-        np.ndarray
-            Positions of points
-        """
-
-        with h5py.File(simulation_path, 'r') as f:
-            positions = f[COORDINATES_OUT_KEY][:]
-        return positions
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "MagnetPointIterator is deprecated and will be removed. "
+            "Use MagnetBaseIterator directly instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(*args, **kwargs)
