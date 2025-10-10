@@ -485,7 +485,7 @@ class GridReader(FieldReader):
         else:
             result = rearrange(
                 field_components,
-                "components ax x y z -> (x y z) ax components"
+                "components ax x y z -> ax (x y z) components"
             )
 
         return np.ascontiguousarray(result, dtype=np.complex64)
@@ -591,5 +591,5 @@ class PointReader(FieldReader):
         """
         return np.ascontiguousarray(rearrange(
             field_components,
-            "components batch ax -> batch ax components"
+            "components batch ax -> ax batch components"
         ), dtype=np.complex64)
