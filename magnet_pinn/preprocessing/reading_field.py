@@ -480,12 +480,12 @@ class GridReader(FieldReader):
         if self.is_grid:
             result = rearrange(
                 field_components,
-                "components ax x y z -> ax x y z components"
+                "components ax x y z -> components ax x y z"
             )
         else:
             result = rearrange(
                 field_components,
-                "components ax x y z -> ax (x y z) components"
+                "components ax x y z -> components ax (x y z)"
             )
 
         return np.ascontiguousarray(result, dtype=np.complex64)
@@ -577,7 +577,7 @@ class PointReader(FieldReader):
         """
         Compose together field components from different files
 
-        Just return data as a lisst of points measurements.
+        Just return data as a list of points measurements.
 
         Parameters
         ----------
@@ -591,5 +591,5 @@ class PointReader(FieldReader):
         """
         return np.ascontiguousarray(rearrange(
             field_components,
-            "components batch ax -> ax batch components"
+            "components batch ax -> components ax batch"
         ), dtype=np.complex64)

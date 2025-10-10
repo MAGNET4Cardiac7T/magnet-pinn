@@ -24,7 +24,7 @@ def test_valid_grid_e_field(e_field_grid_data):
     assert len(coordinates[2]) == 126
 
     data = reader.extract_data()
-    assert data.shape == (3, 121, 111, 126, 2)
+    assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
 
@@ -42,7 +42,7 @@ def test_valid_grid_h_field(h_field_grid_data):
     assert len(coordinates[2]) == 126
 
     data = reader.extract_data()
-    assert data.shape == (3, 121, 111, 126, 2)
+    assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
 
@@ -60,7 +60,7 @@ def test_valid_grid_e_field_with_mixed_axis_order(e_field_grid_data_with_mixed_a
     assert len(coordinates[2]) == 126
 
     data = reader.extract_data()
-    assert data.shape == (3, 121, 111, 126, 2)
+    assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
 
@@ -78,7 +78,7 @@ def test_valid_grid_h_field_with_mixed_axis_order(h_field_grid_data_with_mixed_a
     assert len(coordinates[2]) == 126
 
     data = reader.extract_data()
-    assert data.shape == (3, 121, 111, 126, 2)
+    assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
 
@@ -293,7 +293,7 @@ def test_grid_single_ac_file(tmp_path):
     assert len(reader.files_list) == 1
     
     data = reader.extract_data()
-    assert data.shape == (3, 121, 111, 126, 1)
+    assert data.shape == (1, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
 
