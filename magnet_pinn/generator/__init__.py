@@ -8,13 +8,6 @@ from .typing import (
     PropertyPhantom, 
     PhantomItem
 )
-from .typing import (
-    PropertyItem, 
-    StructurePhantom, 
-    MeshPhantom,
-    PropertyPhantom, 
-    PhantomItem
-)
 from .io import MeshWriter
 from .transforms import (
     Compose, 
