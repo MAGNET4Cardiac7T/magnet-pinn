@@ -1,6 +1,6 @@
 """
 NAME
-    cli_helpers.py
+    helpers.py
 DESCRIPTION
     Helper functions for the generator CLI module.
 """
