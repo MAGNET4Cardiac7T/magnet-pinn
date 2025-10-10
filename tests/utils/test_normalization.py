@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from magnet_pinn.utils._normalization import (
     Identity, Power, Log, Tanh, Arcsinh,
-    MinMaxNormalizer, StandardNormalizer
+    MinMaxNormalizer, StandardNormalizer, MetaNormalizer
 )
 
 def test_random_batch(random_iterator, random_batch):
@@ -116,3 +116,53 @@ def test_save_and_load_standard_normalizer(tmp_path, random_iterator):
     loaded_params = loaded_normalizer.params  # Load parameters from the saved file
     
     assert original_params == loaded_params, "Loaded parameters do not match the original parameters"
+
+def test_meta_normalizer_fit(random_iterator, random_batch):
+    minmax_normalizer = MinMaxNormalizer()
+    standard_normalizer = StandardNormalizer()
+    meta_normalizer = MetaNormalizer([minmax_normalizer, standard_normalizer])
+
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    meta_normalizer.fit_params(iterator, axis=1, keys="input")
+
+    # Fit individual normalizers for comparison
+    minmax_normalizer_individual = MinMaxNormalizer()
+    standard_normalizer_individual = StandardNormalizer()
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    minmax_normalizer_individual.fit_params(iterator, axis=1)
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    standard_normalizer_individual.fit_params(iterator, axis=1)
+
+    # Compare parameters
+    assert minmax_normalizer.params == minmax_normalizer_individual.params, "MinMaxNormalizer parameters do not match"
+    assert standard_normalizer.params == standard_normalizer_individual.params, "StandardNormalizer parameters do not match"
+
+def test_meta_normalizer_forward_inverse(random_iterator, random_batch):
+    minmax_normalizer = MinMaxNormalizer()
+    standard_normalizer = StandardNormalizer()
+    meta_normalizer = MetaNormalizer([minmax_normalizer, standard_normalizer])
+
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    meta_normalizer.fit_params(iterator, axis=1, keys="input")
+
+    # Test forward and inverse for MinMaxNormalizer
+    normalized_minmax = minmax_normalizer.forward(random_batch, axis=1)
+    denormalized_minmax = minmax_normalizer.inverse(normalized_minmax, axis=1)
+    assert torch.allclose(random_batch, denormalized_minmax, atol=1e-6), "MinMaxNormalizer forward/inverse mismatch"
+
+    # Test forward and inverse for StandardNormalizer
+    normalized_standard = standard_normalizer.forward(random_batch, axis=1)
+    denormalized_standard = standard_normalizer.inverse(normalized_standard, axis=1)
+    assert torch.allclose(random_batch, denormalized_standard, atol=1e-6), "StandardNormalizer forward/inverse mismatch"
+
+def test_meta_normalizer_different_keys(random_iterator):
+    minmax_normalizer = MinMaxNormalizer()
+    standard_normalizer = StandardNormalizer()
+    meta_normalizer = MetaNormalizer([minmax_normalizer, standard_normalizer])
+
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    meta_normalizer.fit_params(iterator, axis=1, keys=["input", "input"])
+
+    # Ensure parameters are set correctly
+    assert "x_min" in minmax_normalizer.params and "x_max" in minmax_normalizer.params, "MinMaxNormalizer parameters missing"
+    assert "x_mean" in standard_normalizer.params and "x_mean_sq" in standard_normalizer.params, "StandardNormalizer parameters missing"
