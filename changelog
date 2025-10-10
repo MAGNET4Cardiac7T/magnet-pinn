@@ -73,3 +73,4 @@
 - Full tests only run on release
 - Add Perlin noise generator to utils (adapted from https://github.com/salaxieb/perlin_noise)
 - Fix failing test for standardizer
+- Add `MetaNormalizer` to fit multiple normalizers in one pass, tests and examples
