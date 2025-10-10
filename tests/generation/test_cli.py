@@ -332,7 +332,6 @@ def test_tissue_cli_check_default_permittivity_max_value(monkeypatch):
     assert args.permittivity_max == PERMITTIVITY_MAX
 
 
-
 def test_tissue_cli_check_given_num_children_blobs_value(monkeypatch):
     """
     Case when we give a num_children_blobs argument to tissue command
