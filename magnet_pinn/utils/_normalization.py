@@ -4,7 +4,7 @@ import einops
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Iterable, cast, Union, List
+from typing import Iterable, cast, Union, List, Optional
 from typing_extensions import Self
 from itertools import zip_longest
 
@@ -313,6 +313,8 @@ class MetaNormalizer(Normalizer):
     -------
     fit_params(dataset, axis=0, keys="input", verbose=True):
         Fits the parameters of all normalizers in one loop over the dataset.
+    save_as_json(base_path):
+        Saves all normalizers separately to the specified base path.
     """
     def __init__(self, normalizers: list):
         self.normalizers = normalizers
@@ -373,3 +375,27 @@ class MetaNormalizer(Normalizer):
                 normalizer.counter = self.counter
                 normalizer._update_params(x, axis=axis)
             self.counter += 1  # Increment MetaNormalizer's counter
+
+    def save_as_json(self, file_names: List[str], base_path: Optional[str] = None) -> None:
+        """
+        Save all normalizers separately to the specified file names.
+
+        Parameters
+        ----------
+        file_names : List[str]
+            List of file names for saving each normalizer. The length of the list
+            must match the number of normalizers.
+        base_path : Optional[str], optional
+            The base directory to prepend to each file name. If None, only the
+            file names are used. If provided, it must be a string.
+        """
+        if len(file_names) != len(self.normalizers):
+            raise ValueError("The number of file names must match the number of normalizers.")
+
+        if base_path is not None and not isinstance(base_path, str):
+            raise TypeError("base_path must be a string or None.")
+
+        for i, (normalizer, file_name) in enumerate(zip(self.normalizers, file_names)):
+            if base_path:
+                file_name = os.path.join(base_path, file_name)
+            normalizer.save_as_json(file_name)

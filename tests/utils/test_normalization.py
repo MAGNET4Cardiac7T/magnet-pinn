@@ -166,3 +166,26 @@ def test_meta_normalizer_different_keys(random_iterator):
     # Ensure parameters are set correctly
     assert "x_min" in minmax_normalizer.params and "x_max" in minmax_normalizer.params, "MinMaxNormalizer parameters missing"
     assert "x_mean" in standard_normalizer.params and "x_mean_sq" in standard_normalizer.params, "StandardNormalizer parameters missing"
+
+def test_save_and_load_meta_normalizer(tmp_path, random_iterator):
+    # Create normalizers
+    minmax_normalizer = MinMaxNormalizer()
+    standard_normalizer = StandardNormalizer()
+    meta_normalizer = MetaNormalizer([minmax_normalizer, standard_normalizer])
+
+    # Fit the meta normalizer
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    meta_normalizer.fit_params(iterator, keys=["input", "input"], axis=1)
+
+    # Save the meta normalizer
+    file_names = ["minmax_normalizer.json", "standard_normalizer.json"]
+    base_path = tmp_path / "meta_normalizer"
+    meta_normalizer.save_as_json(file_names, base_path=str(base_path))
+
+    # Load the normalizers individually
+    loaded_minmax = MinMaxNormalizer.load_from_json(base_path / file_names[0])
+    loaded_standard = StandardNormalizer.load_from_json(base_path / file_names[1])
+
+    # Compare parameters
+    assert minmax_normalizer.params == loaded_minmax.params, "MinMaxNormalizer parameters do not match after loading"
+    assert standard_normalizer.params == loaded_standard.params, "StandardNormalizer parameters do not match after loading"
