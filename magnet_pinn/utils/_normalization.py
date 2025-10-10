@@ -4,7 +4,7 @@ import einops
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Iterable, cast, Union
+from typing import Iterable, cast, Union, List, Optional
 from typing_extensions import Self
 from itertools import zip_longest
 
@@ -95,13 +95,13 @@ class Normalizer(torch.nn.Module):
         If True, apply nonlinearity before normalization, else after
     """
     def __init__(self,
-                 params: dict = {},
+                 params: dict = None,
                  nonlinearity: Union[str, ] = Identity(),
                  nonlinearity_before: bool = False,
                  ):
         super().__init__()
         
-        self._params = params
+        self._params = params.copy() if params else {}
         self.nonlinearity = nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
         self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
         self.nonlinearity_before = nonlinearity_before
@@ -284,3 +284,118 @@ class StandardNormalizer(Normalizer):
         cur_mean_sq = einops.reduce(x**2, pattern, reduction='mean').tolist()
         self._params["x_mean"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean"], cur_mean, fillvalue=0)]
         self._params["x_mean_sq"] = [mean_update(prev, cur, self.counter) for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)]
+
+class MetaNormalizer(Normalizer):
+    """
+    MetaNormalizer to fit multiple normalizers in one loop over the dataset.
+
+    Purpose
+    -------
+    The MetaNormalizer is designed to streamline the process of fitting multiple
+    normalizers (e.g., MinMaxNormalizer, StandardNormalizer) simultaneously in a
+    single pass over the dataset. This is particularly useful when iterating over
+    the dataset is time-consuming, as it avoids the need for multiple iterations.
+
+    Functionality
+    -------------
+    - The MetaNormalizer manages a list of normalizers.
+    - It ensures that each normalizer is updated with the appropriate data during
+      the fitting process.
+    - It supports using the same or different keys for extracting data for each
+      normalizer.
+
+    Parameters
+    ----------
+    normalizers : list
+        List of normalizer instances to be managed by MetaNormalizer.
+
+    Methods
+    -------
+    fit_params(dataset, axis=0, keys="input", verbose=True):
+        Fits the parameters of all normalizers in one loop over the dataset.
+    save_as_json(base_path):
+        Saves all normalizers separately to the specified base path.
+    """
+    def __init__(self, normalizers: list):
+        self.normalizers = normalizers
+        self.counter = 0  # MetaNormalizer's counter
+
+    def _normalize(self, x, axis: int = 0):
+        raise NotImplementedError("MetaNormalizer does not support direct normalization.")
+
+    def _denormalize(self, x, axis: int = 0):
+        raise NotImplementedError("MetaNormalizer does not support direct denormalization.")
+
+    def _expand_params(self, params_dict: dict = None, axis: int = 0, ndims: int = 5):
+        raise NotImplementedError("MetaNormalizer does not support parameter expansion.")
+
+    def _cast_params(self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device('cpu')):
+        raise NotImplementedError("MetaNormalizer does not support parameter casting.")
+
+    def _reset_params(self):
+        for normalizer in self.normalizers:
+            normalizer._reset_params()
+
+    def fit_params(self, 
+                   dataset: Iterable, 
+                   axis: int = 0, 
+                   keys: Union[str, List[str]] = "input", 
+                   verbose: bool = True) -> None:
+        """
+        Fit parameters for all normalizers in one loop over the dataset.
+
+        Parameters
+        ----------
+        dataset : Iterable
+            Dataset to fit the normalizers on.
+        axis : int
+            Axis along which to normalize.
+        keys : Union[str, List[str]]
+            Key(s) to extract data for each normalizer. If a single string is provided,
+            it is used for all normalizers. If a list is provided, it must have the same
+            length as the number of normalizers.
+        verbose : bool
+            Whether to display a progress bar.
+        """
+        self.counter = 0  # Reset MetaNormalizer's counter
+        if isinstance(keys, str):
+            keys = [keys] * len(self.normalizers)
+        elif isinstance(keys, list):
+            if len(keys) != len(self.normalizers):
+                raise ValueError("The number of keys must match the number of normalizers.")
+        else:
+            raise TypeError("Keys must be either a string or a list of strings.")
+
+        self._reset_params()
+        iterator = tqdm.tqdm(dataset) if verbose else dataset
+
+        for batch in iterator:
+            for normalizer, key in zip(self.normalizers, keys):
+                x = batch[key]
+                normalizer.counter = self.counter
+                normalizer._update_params(x, axis=axis)
+            self.counter += 1  # Increment MetaNormalizer's counter
+
+    def save_as_json(self, file_names: List[str], base_path: Optional[str] = None) -> None:
+        """
+        Save all normalizers separately to the specified file names.
+
+        Parameters
+        ----------
+        file_names : List[str]
+            List of file names for saving each normalizer. The length of the list
+            must match the number of normalizers.
+        base_path : Optional[str], optional
+            The base directory to prepend to each file name. If None, only the
+            file names are used. If provided, it must be a string.
+        """
+        if len(file_names) != len(self.normalizers):
+            raise ValueError("The number of file names must match the number of normalizers.")
+
+        if base_path is not None and not isinstance(base_path, str):
+            raise TypeError("base_path must be a string or None.")
+
+        for i, (normalizer, file_name) in enumerate(zip(self.normalizers, file_names)):
+            if base_path:
+                file_name = os.path.join(base_path, file_name)
+            normalizer.save_as_json(file_name)
