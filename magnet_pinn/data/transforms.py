@@ -5,7 +5,7 @@ DESCRIPTION
     This module contains classes for augmenting the simulation data.
 """
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union, Literal
+from typing import List, Tuple, Union, Literal, Optional
 from collections.abc import Iterable
 from copy import copy
 
@@ -365,17 +365,23 @@ class PhaseShift(BaseTransform):
     ----------
     num_coils : int
         Number of coils in the simulation data
-    sampling_method : Literal['uniform', 'binomial']
-        Method for sampling the phase and mask. If 'uniform', it samples the number of coils to be on and then randomly selects the coils.
+    sampling_method : Literal['uniform', 'binomial', 'single', 'enumerate']
+        Method for sampling the phase and mask. 
+        If 'uniform', it samples the number of coils to be on and then randomly selects the coils.
         If 'binomial', it samples the number of coils to be on based on the binomial distribution.
+        If 'single', it activates only one random coil and samples the phase randomly.
+        If 'enumerate', it activates only a single coil in clockwise direction and sets phase to zero. Requires that num_samples == num_coils.
     """
     def __init__(self, 
                  num_coils: int,
-                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+                 sampling_method: Literal['uniform', 'binomial', 'single', 'enumerate'] = 'uniform'):
         super().__init__()
 
-        if sampling_method not in ['uniform', 'binomial']:
+        if sampling_method not in ['uniform', 'binomial', 'single', 'enumerate']:
             raise ValueError(f"Unknown masks sampling method {sampling_method}")
+        
+        if sampling_method == 'enumerate':
+            self.coil_on_index = 0
 
         self.num_coils = num_coils
         self.sampling_method = sampling_method
@@ -433,11 +439,18 @@ class PhaseShift(BaseTransform):
         npt.NDArray[np.bool_]:
             mask for the phase coefficients
         """
-        phase = self._sample_phase(dtype)
         if self.sampling_method == 'uniform':
+            phase = self._sample_phase(dtype)
             mask = self._sample_mask_uniform()
         elif self.sampling_method == 'binomial':
+            phase = self._sample_phase(dtype)
             mask = self._sample_mask_binomial()
+        elif self.sampling_method == 'single':
+            phase = self._sample_phase(dtype)
+            mask = self._sample_mask_uniform(num_coils_on=1)
+        elif self.sampling_method == 'enumerate':
+            phase = self._sample_phase_zero(dtype)
+            mask = self._enumerate_mask_single()
         else:
             raise ValueError(f"Unknown sampling method {self.sampling_method}")
 
@@ -459,7 +472,11 @@ class PhaseShift(BaseTransform):
         """
         return np.random.uniform(0, 2*np.pi, self.num_coils).astype(dtype)
     
-    def _sample_mask_uniform(self) -> npt.NDArray[np.bool_]:
+    def _zero_phase(self, dtype: str = None) -> npt.NDArray[np.float32]:
+        return np.zeros(self.num_coils).astype(dtype)
+    
+    def _sample_mask_uniform(self,
+                             num_coils_on: Optional[int] = None) -> npt.NDArray[np.bool_]:
         """
         A method for sampling a uniform mask. It samples the number of coils to be on and then randomly selects the coils.
 
@@ -468,7 +485,8 @@ class PhaseShift(BaseTransform):
         npt.NDArray[np.bool_]
             mask for the phase coefficients
         """
-        num_coils_on = np.random.randint(1, self.num_coils)
+        if num_coils_on is None:
+            num_coils_on = np.random.randint(1, self.num_coils)
         mask = np.zeros(self.num_coils, dtype=bool)
         coils_on_indices = np.random.choice(self.num_coils, num_coils_on, replace=False)
         mask[coils_on_indices] = True
@@ -481,6 +499,16 @@ class PhaseShift(BaseTransform):
         mask = np.random.choice([0, 1], self.num_coils, replace=True)
         while np.sum(mask) == 0:
             mask = np.random.choice([0, 1], self.num_coils, replace=True)
+        return mask
+    
+    def _enumerate_mask_single(self) -> npt.NDArray[np.bool_]:
+        """
+        A method for creating a mask which activates only a single coil in clockwise direction.
+        Requires that num_samples == num_coils.
+        """
+        mask = np.zeros(self.num_coils, dtype=bool)
+        mask[self.coil_on_index] = True
+        self.coil_on_index = (self.coil_on_index + 1) % self.num_coils
         return mask
     
     def _phase_shift_field(self, 
@@ -532,79 +560,16 @@ class GridPhaseShift(PhaseShift):
     """
     pass
 
-
-## TODO move the coil enumerator logic to sample_phase and sample_mask methods, without modifying the _sample_phase_and_mask method
 class CoilEnumeratorPhaseShift(PhaseShift):
     """
-    Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
-    
-    Parameters
-    ----------
-    num_coils : int
-        Number of coils in the simulation data
+    Alias for the PhaseShift class with the 'enumerate' sampling method.
+    It activates only a single coil in clockwise direction and sets phase to zero.
+    Requires that num_samples == num_coils.
     
     """
     def __init__(self, 
                  num_coils: int):
-        super().__init__(num_coils=num_coils)
-        self.coil_on_index = 0
-
-    
-    def _sample_phase_and_mask(self, 
-                               dtype: str = None
-                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
-        """
-        Augment simulation data by activating only a single coil in clockwise direction and setting phase to zero.
-        Requires that num_samples == num_coils.
-
-        ----------
-        num_coils : int
-            Number of coils in the simulation data
-        dtype : str
-            Data type of the phase coefficients
-        
-        Returns
-        -------
-        npt.NDArray[np.float32]:
-            phase coefficients
-        npt.NDArray[np.bool_]:
-            mask for the phase coefficients
-        """
-
-        phase = self._sample_phase_zero(dtype=dtype)
-        mask = self._sample_mask_single()
-
-        return phase.astype(dtype), mask.astype(np.bool_)  
-    
-    def _sample_phase_zero(self, dtype: str = None) -> npt.NDArray[np.float32]:
-        return np.zeros(self.num_coils).astype(dtype)
-    
-    def _sample_mask_single(self) -> npt.NDArray[np.bool_]:
-        mask = np.zeros(self.num_coils, dtype=bool)
-        mask[self.coil_on_index] = True
-        self.coil_on_index = (self.coil_on_index + 1) % self.num_coils
-        return mask
-
-class PointPhaseShift(PhaseShift):
-    """
-    Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
-    TODO: standardize the order of axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early
-    stages of simulation preprocessing
-    """
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32], 
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
-        coeffs_im = np.stack((im_phase, re_phase), axis=0)
-        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einops.einsum(fields, coeffs, 'hf reim ... fieldxyz coils, hf reimout reim coils -> hf reimout fieldxyz ...')
-        return field_shift
-    
+        super().__init__(num_coils=num_coils, sampling_method='enumerate')
 
 class PointFeatureRearrange(BaseTransform):
     """
