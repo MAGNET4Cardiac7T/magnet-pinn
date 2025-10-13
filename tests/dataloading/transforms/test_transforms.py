@@ -710,3 +710,104 @@ def test_point_feature_rearrange_transform_check_values(random_pointcloud_item_f
 
     check_constant_values_not_changed_except_for_field_coils(result, random_pointcloud_item_for_features_rearrange)
     check_pointcloud_feature_rearrange_values_field_coils(result, random_pointcloud_item_for_features_rearrange)
+
+
+def test_phase_shift_transform_check_properties_single():
+    aug = PhaseShift(num_coils=8, sampling_method="single")
+
+    assert aug.num_coils == 8
+    assert aug.sampling_method == "single"
+
+
+def test_phase_shift_transform_check_properties_enumerate():
+    aug = PhaseShift(num_coils=8, sampling_method="enumerate")
+
+    assert aug.num_coils == 8
+    assert aug.sampling_method == "enumerate"
+    # coil_on_index should be initialized
+    assert hasattr(aug, "coil_on_index")
+    assert isinstance(aug.coil_on_index, int)
+
+
+def test_phase_shift_transform_enumerate_mask_and_phase(random_grid_item):
+    aug = PhaseShift(num_coils=8, sampling_method="enumerate")
+    result = aug(random_grid_item)
+
+    # phase all zeros, mask one-hot
+    assert result.phase.shape == (8,)
+    assert np.all(result.phase == 0)
+    assert result.mask.dtype == np.bool_
+    assert np.sum(result.mask) == 1
+
+
+def test_phase_shift_transform_enumerate_rotates_active_coil_index(random_grid_item):
+    aug = PhaseShift(num_coils=8, sampling_method="enumerate")
+    start_idx = aug.coil_on_index
+    _ = aug(random_grid_item)
+    # after one call, index should advance by 1 modulo num_coils
+    assert aug.coil_on_index == (start_idx + 1) % 8
+
+
+def test_phase_shift_transform_enumerate_values_for_grid(random_grid_item):
+    aug = PhaseShift(num_coils=8, sampling_method="enumerate")
+
+    # Before call, note which coil will be active
+    active_idx = aug.coil_on_index
+    result = aug(random_grid_item)
+
+    # Field: output should equal input field for the active coil (phase = 0)
+    # Input shape: (hf, reim, fieldxyz, x, y, z, coils)
+    expected_field = random_grid_item.field[..., active_idx]
+    # Output shape: (hf, reim(out), fieldxyz, x, y, z) where reim(out) corresponds to original reim
+    assert result.field.shape == expected_field.shape
+    assert np.allclose(result.field, expected_field)
+
+    # Coils: real equals selected coil values, imaginary equals zeros
+    # Input coils shape: (x, y, z, coils)
+    expected_coils_re = random_grid_item.coils[..., active_idx]
+    expected_coils_im = np.zeros_like(expected_coils_re)
+
+    assert result.coils.shape[0] == 2  # re/im stacked in dim 0
+    assert np.allclose(result.coils[0], expected_coils_re)
+    assert np.allclose(result.coils[1], expected_coils_im)
+
+
+def test_phase_shift_transform_single_mask_and_phase(random_grid_item):
+    aug = PhaseShift(num_coils=8, sampling_method="single")
+    result = aug(random_grid_item)
+
+    # mask one-hot, phase length equals num_coils
+    assert result.phase.shape == (8,)
+    assert result.mask.dtype == np.bool_
+    assert np.sum(result.mask) == 1
+
+
+def test_phase_shift_transform_single_values_for_grid(random_grid_item):
+    aug = PhaseShift(num_coils=8, sampling_method="single")
+    out = aug(random_grid_item)
+
+    # identify active coil and its phase
+    active_idx = np.argmax(out.mask)
+    p = out.phase[active_idx]
+
+    # Expected field from only the active coil with complex rotation
+    field_re = random_grid_item.field[:, 0, :, ..., active_idx]
+    field_im = random_grid_item.field[:, 1, :, ..., active_idx]
+    exp_re = field_re * np.cos(p) - field_im * np.sin(p)
+    exp_im = field_re * np.sin(p) + field_im * np.cos(p)
+    expected_field = np.stack([exp_re, exp_im], axis=1)
+
+    assert out.field.shape == expected_field.shape
+    assert np.allclose(out.field, expected_field, atol=1e-6)
+
+    # Expected coils: real/imag created from selected coil and phase
+    coil_vals = random_grid_item.coils[..., active_idx]
+    expected_coils = np.stack([coil_vals * np.cos(p), coil_vals * np.sin(p)], axis=0)
+
+    assert out.coils.shape == expected_coils.shape
+    assert np.allclose(out.coils, expected_coils, atol=1e-6)
+
+
+def test_phase_shift_transform_check_not_inplace_processing_for_grid_single(random_grid_item):
+    result = PhaseShift(num_coils=8, sampling_method="single")(random_grid_item)
+    assert result is not random_grid_item
