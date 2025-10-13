@@ -570,6 +570,12 @@ class CoilEnumeratorPhaseShift(PhaseShift):
     def __init__(self, 
                  num_coils: int):
         super().__init__(num_coils=num_coils, sampling_method='enumerate')
+        
+class PointPhaseShift(PhaseShift):
+    """
+    Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
+    """
+    pass
 
 class PointFeatureRearrange(BaseTransform):
     """
