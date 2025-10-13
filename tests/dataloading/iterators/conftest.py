@@ -5,7 +5,7 @@ import numpy as np
 from h5py import File
 
 from magnet_pinn.data.transforms import (
-    Compose, PhaseShift, PointPhaseShift, PointFeatureRearrange
+    Compose, PhaseShift, PointPhaseShift
 )
 from tests.dataloading.iterators.helpers import (
     create_processed_dir
@@ -61,7 +61,4 @@ def grid_aug():
 
 @pytest.fixture(scope='module')
 def pointcloud_aug():
-    return Compose([
-        PointPhaseShift(num_coils=8),
-        PointFeatureRearrange(num_coils=8)
-    ])
+    return PointPhaseShift(num_coils=8)
