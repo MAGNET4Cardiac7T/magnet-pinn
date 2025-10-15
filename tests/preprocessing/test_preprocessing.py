@@ -346,7 +346,7 @@ def check_complex_fields(f: File):
             np.full(fill_value=2, shape=(1, 3, 9, 9, 9), dtype=np.complex64),
             np.full(fill_value=3, shape=(1, 3, 9, 9, 9), dtype=np.complex64)
         ],
-        axis=-0
+        axis=0
     )
 
     e_field = f[E_FIELD_OUT_KEY][:]
