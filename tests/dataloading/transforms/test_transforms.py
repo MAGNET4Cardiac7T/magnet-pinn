@@ -113,12 +113,16 @@ def test_crop_transform_crop_check_datatypes_random_crop(random_grid_item):
 
 
 def test_crop_transform_valid_central_crop_position_shape(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     augment = Crop(crop_size=(10, 10, 10), crop_position="center")
     result = augment(zero_grid_item)
     check_cropped_shapes(result)
 
 
 def test_crop_transform_valid_random_crop_position_shape(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     augment = Crop(crop_size=(10, 10, 10), crop_position="random")
     result = augment(zero_grid_item)
     check_cropped_shapes(result)
@@ -167,13 +171,15 @@ def test_crop_transform_crop_size_axis_bigger_than_original_random_crop_position
 
 
 def test_crop_transform_valid_central_crop_position_check_values(random_grid_item):
+    random_grid_item = deepcopy(random_grid_item)
+    random_grid_item.subject = np.max(random_grid_item.subject, axis=0)
     augment = Crop(crop_size=(10, 10, 10), crop_position="center")
     result = augment(random_grid_item)
 
     check_elements_not_changed_by_crop(result, random_grid_item)
     assert np.equal(result.input, random_grid_item.input[:, 5:15, 5:15, 5:15]).all()
     assert np.equal(result.field, random_grid_item.field[:, :, :, :, 5:15, 5:15, 5:15]).all()
-    assert np.equal(result.subject, random_grid_item.subject[:, 5:15, 5:15, 5:15]).all()
+    assert np.equal(result.subject, random_grid_item.subject[5:15, 5:15, 5:15]).all()
     assert np.equal(result.coils, random_grid_item.coils[:, 5:15, 5:15, 5:15]).all()
     assert np.equal(result.positions, random_grid_item.positions[:, 5:15, 5:15, 5:15]).all()
 
@@ -182,13 +188,15 @@ def test_crop_transform_valid_random_crop_position(zero_grid_item):
     """
     As a test array we take zeros array, so the cropped array would be also zeros array
     """
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     crop = Crop(crop_size=(10, 10, 10), crop_position="random")
     result = crop(zero_grid_item)
 
     check_elements_not_changed_by_crop(result, zero_grid_item)
     assert np.equal(result.field, zero_grid_item.field[:, :, :, :, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.input, zero_grid_item.input[:, 0:10, 0:10, 0:10]).all()
-    assert np.equal(result.subject, zero_grid_item.subject[:, 0:10, 0:10, 0:10]).all()
+    assert np.equal(result.subject, zero_grid_item.subject[0:10, 0:10, 0:10]).all()
     assert np.equal(result.coils, zero_grid_item.coils[:, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.positions, zero_grid_item.positions[:, 0:10, 0:10, 0:10]).all()
 

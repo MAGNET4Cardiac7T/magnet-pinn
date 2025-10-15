@@ -232,7 +232,7 @@ class Crop(BaseTransform):
             Expected data shapes:
             - field: (h/e, re/im, coils, x/y/z, spatial_axis)
             - input: (cond/perm/dens, spatial_axis)
-            - subject: (parent/child/tube, spatial_axis)
+            - subject: (spatial_axis)
             - positions: (x/y/z, spatial_axis)
             - coils: (coils, spatial_axis)
             - phase: (coils,)
@@ -245,7 +245,7 @@ class Crop(BaseTransform):
             Expected data shapes:
             - field: (h/e, re/im, coils, x/y/z, spatial_axis_cropped)
             - input: (cond/perm/dens, spatial_axis_cropped)
-            - subject: (parent/child/tube, spatial_axis_cropped)
+            - subject: (spatial_axis_cropped)
             - positions: (x/y/z, spatial_axis_cropped)
             - coils: (coils, spatial_axis_cropped)
             - phase: (coils,)
@@ -259,7 +259,7 @@ class Crop(BaseTransform):
 
         return DataItem(
             input=self._crop_array(simulation.input, crop_mask, 1),
-            subject=self._crop_array(simulation.subject, crop_mask, 1),
+            subject=self._crop_array(simulation.subject, crop_mask, 0),
             simulation=simulation.simulation,
             field=self._crop_array(simulation.field, crop_mask, 4),
             phase=simulation.phase,
@@ -359,7 +359,7 @@ class Rotate(BaseTransform):
             Expected data shapes:
             - field: (h/e, re/im, coils, x/y/z, spatial_axis)
             - input: (cond/perm/dens, spatial_axis)
-            - subject: (parent/child/tube, spatial_axis)
+            - subject: (spatial_axis)
             - positions: (x/y/z, spatial_axis)
             - coils: (coils, spatial_axis)
             - phase: (coils,)
@@ -372,7 +372,7 @@ class Rotate(BaseTransform):
             Expected data shapes:
             - field: (h/e, re/im, coils, x/y/z, spatial_axis)
             - input: (cond/perm/dens, spatial_axis)
-            - subject: (parent/child/tube, spatial_axis)
+            - subject: (spatial_axis)
             - positions: (x/y/z, spatial_axis)
             - coils: (coils, spatial_axis)
             - phase: (coils,)

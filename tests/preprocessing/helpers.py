@@ -155,9 +155,11 @@ def create_simulation_data(simulations_dir_path: str, sim_name: str, subject_fun
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 0)
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 1)
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 2)
+    create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 3)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 0)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 1)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 2)
+    create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 3)
 
 
 def create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: int = 0):
