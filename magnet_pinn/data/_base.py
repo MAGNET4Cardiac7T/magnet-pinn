@@ -88,7 +88,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
 
         self.coils_path = data_dir / PROCESSED_ANTENNA_DIR_PATH / "antenna.h5"
         self.coils = self._read_coils()
-        self.num_coils = self.coils.shape[-1]
+        self.num_coils = self.coils.shape[0]
 
         self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
         self.simulation_list = self._get_simulations_list()
@@ -164,6 +164,14 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         -------
         DataItem
             DataItem object with the loaded data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis,)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         """
         return DataItem(
             input=self._read_input(simulation_path),
@@ -242,7 +250,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         """
         with h5py.File(simulation_path) as f:
             subject = f[SUBJECT_OUT_KEY][:]
-        subject = np.max(subject, axis=-1)
+        subject = np.max(subject, axis=0)
         return subject
     
     def _get_dtype(self, simulation_path: Union[Path, str]) -> str:

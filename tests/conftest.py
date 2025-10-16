@@ -1,5 +1,6 @@
 import random
 from shutil import rmtree
+from pathlib import Path
 
 import pytest
 import numpy as np
@@ -13,6 +14,18 @@ def deterministicity():
     seed = 42
     np.random.seed(seed)
     random.seed(seed)
+
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup_basetemp(request):
+    """Clean up the basetemp directory after all tests complete."""
+    yield
+    # Clean up basetemp if it was explicitly set via --basetemp flag
+    basetemp = request.config.option.basetemp
+    if basetemp:
+        basetemp_path = Path(basetemp)
+        if basetemp_path.exists():
+            rmtree(basetemp_path, ignore_errors=True)
 
 
 @pytest.fixture(scope='module')

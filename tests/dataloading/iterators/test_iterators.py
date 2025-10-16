@@ -8,7 +8,7 @@ from magnet_pinn.data._base import MagnetBaseIterator
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.point import MagnetPointIterator
 from magnet_pinn.data.transforms import (
-    Compose, PhaseShift, PointPhaseShift, PointFeatureRearrange
+    Compose, PhaseShift, PointPhaseShift
 )
 from magnet_pinn.preprocessing.preprocessing import (
     PROCESSED_ANTENNA_DIR_PATH, TARGET_FILE_NAME, PROCESSED_SIMULATIONS_DIR_PATH
@@ -39,7 +39,7 @@ def test_base_iterator_check_coils_properties(grid_processed_dir, random_grid_it
 
     expected_coils_path = grid_processed_dir / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
     assert iter.coils_path == expected_coils_path
-    assert iter.num_coils == random_grid_item.coils.shape[-1]
+    assert iter.num_coils == random_grid_item.coils.shape[0]
 
     assert iter.coils.shape == random_grid_item.coils.shape
     assert iter.coils.dtype == np.bool_
@@ -223,7 +223,7 @@ def test_grid_iterator_check_coils_properties(grid_processed_dir, random_grid_it
 
     expected_coils_path = grid_processed_dir / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
     assert iter.coils_path == expected_coils_path
-    assert iter.num_coils == random_grid_item.coils.shape[-1]
+    assert iter.num_coils == random_grid_item.coils.shape[0]
 
     assert iter.coils.shape == random_grid_item.coils.shape
     assert iter.coils.dtype == np.bool_
@@ -396,7 +396,7 @@ def test_point_iterator_check_coils_properties(pointcloud_processed_dir, random_
 
     expected_coils_path = pointcloud_processed_dir / PROCESSED_ANTENNA_DIR_PATH / TARGET_FILE_NAME.format(name="antenna")
     assert iter.coils_path == expected_coils_path
-    assert iter.num_coils == random_pointcloud_item.coils.shape[-1]
+    assert iter.num_coils == random_pointcloud_item.coils.shape[0]
 
     assert iter.coils.shape == random_pointcloud_item.coils.shape
     assert iter.coils.dtype == np.bool_

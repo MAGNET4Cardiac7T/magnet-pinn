@@ -908,7 +908,7 @@ class GridPreprocessing(Preprocessing):
         str
             an einops pattern
         """
-        return "component x y z -> x y z component"
+        return "component x y z -> component x y z"
     
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
         """
@@ -925,10 +925,10 @@ class GridPreprocessing(Preprocessing):
         """
         return np.ascontiguousarray(repeat(
             props,
-            "feature component -> feature x y z component",
-            x=masks.shape[0],
-            y=masks.shape[1],
-            z=masks.shape[2]
+            "feature component -> feature component x y z",
+            x=masks.shape[1],
+            y=masks.shape[2],
+            z=masks.shape[3]
         ))
     
     @property
@@ -936,14 +936,14 @@ class GridPreprocessing(Preprocessing):
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
-        return "x y z component -> feature x y z component"
+        return "component x y z -> feature component x y z"
     
     @property
     def _features_sum_pattern(self) -> str:
         """
         An einops pattern how to sum features over the component axis.
         """
-        return "feature x y z component -> feature x y z"
+        return "feature component x y z -> feature x y z"
     
     def _format_features(self, simulation: Simulation) -> np.array:
         """
@@ -1112,8 +1112,8 @@ class PointPreprocessing(Preprocessing):
         """
         return np.ascontiguousarray(repeat(
             props,
-            "feature component -> points feature component",
-            points=masks.shape[0]
+            "feature component -> feature component points",
+            points=masks.shape[1]
         ))
     
     @property
@@ -1121,14 +1121,14 @@ class PointPreprocessing(Preprocessing):
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
-        return "points component -> points feature component"
+        return "component points -> feature component points"
     
     @property
     def _features_sum_pattern(self) -> str:
         """
         An einops pattern how to sum features over the component axis.
         """
-        return "points feature component -> points feature"
+        return "feature component points -> feature points"
 
     def _set_air_features(self, features: np.array) -> np.array:
         """
@@ -1146,14 +1146,14 @@ class PointPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extneded_air_prop = np.ascontiguousarray(repeat(
+        extended_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
-            "feature -> points feature",
-            points=features.shape[0]
+            "feature -> feature points",
+            points=features.shape[-1]
         ))
 
-        return features + extneded_air_prop * air_mask
-    
+        return features + extended_air_prop * air_mask
+
     def _get_mask(self, mesh: Trimesh) -> np.array:
         """
         A method returns mask for the mesh.
@@ -1194,7 +1194,7 @@ class PointPreprocessing(Preprocessing):
         """
         An einops pattern how to stack masks arrys axis.
         """
-        return "component points -> points component"
+        return "component points -> component points"
     
     def _format_features(self, simulation: Simulation) -> np.array:
         """
@@ -1211,7 +1211,7 @@ class PointPreprocessing(Preprocessing):
             features data
         """
         truncation_coefficients = self._feature_truncate_coefficients(simulation)
-        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=0)
+        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=-1)
         features = simulation.features / truncation_coefficients
         return features.astype(self.field_dtype.type(0).real)
     
