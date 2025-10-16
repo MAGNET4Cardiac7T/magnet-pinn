@@ -106,7 +106,7 @@ def test_valid_grid_to_pointslist(e_field_grid_data):
     ).create_reader(keep_grid_output_format=False)
 
     assert isinstance(reader, GridReader)
-    assert reader.is_grid == False
+    assert not reader.is_grid
 
 
 def test_valid_pointslist_e_field(e_field_pointslist_data):
