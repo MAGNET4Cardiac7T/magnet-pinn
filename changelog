@@ -66,7 +66,7 @@
 - Fix: tubes length to normal size
 - Add docs for dataloading
 
-## [0.0.11]
+## [0.0.11]  -> Oct 10, 2025
 - Add nonlinear normalization types
 - Add tests for normalization
 - Change tests to only run on ubuntu for normal pushes
@@ -74,3 +74,6 @@
 - Add Perlin noise generator to utils (adapted from https://github.com/salaxieb/perlin_noise)
 - Fix failing test for standardizer
 - Add `MetaNormalizer` to fit multiple normalizers in one pass, tests and examples
+
+## [0.0.12] ->
+- Unify grid and point cloud shapes
