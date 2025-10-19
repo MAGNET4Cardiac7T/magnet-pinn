@@ -11,7 +11,7 @@ from magnet_pinn.data.transforms import (
 )
 from tests.dataloading.transforms.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
-    check_cropped_shapes, check_items_shapes_suppsed_to_be_equal, check_elements_not_changed_by_crop,
+    check_cropped_shapes, check_items_shapes_supposed_to_be_equal, check_elements_not_changed_by_crop,
     check_constant_shapes_not_changed_except_for_field_coils, check_constant_values_not_changed_by_phase_shift,
     check_default_transform_resulting_shapes, check_default_transform_resulting_values,
     check_complex_number_calculations_in_phase_shift, check_complex_number_calculations_in_pointscloud_phase_shift
@@ -131,13 +131,13 @@ def test_crop_transform_valid_random_crop_position_shape(zero_grid_item):
 def test_crop_transform_crop_size_matches_original_central_crop_position(zero_grid_item):
     crop = Crop(crop_size=(20, 20, 20), crop_position="center")
     result = crop(zero_grid_item)
-    check_items_shapes_suppsed_to_be_equal(result, zero_grid_item)
+    check_items_shapes_supposed_to_be_equal(result, zero_grid_item)
 
 
 def test_crop_transform_crop_size_matches_original_random_crop_position(zero_grid_item):
     crop = Crop(crop_size=(20, 20, 20), crop_position="random")
     result = crop(zero_grid_item)
-    check_items_shapes_suppsed_to_be_equal(result, zero_grid_item)
+    check_items_shapes_supposed_to_be_equal(result, zero_grid_item)
 
 
 def test_crop_transform_crop_size_axis_less_equal_zero():
@@ -495,7 +495,7 @@ def test_points_sampling_transform_check_points_sampling_parameter_int_and_equal
         random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
         result = PointSampling(points_sampled=8000)(random_pointcloud_item)
 
-        check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+        check_items_shapes_supposed_to_be_equal(result, random_pointcloud_item)
 
 
 def test_points_sampling_transform_check_points_sampling_parameter_int_and_less_than_points_in_total(random_pointcloud_item):
@@ -515,7 +515,7 @@ def test_points_sampling_transform_check_points_sampling_parameter_float_and_equ
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PointSampling(points_sampled=1.0)(random_pointcloud_item)
 
-    check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+    check_items_shapes_supposed_to_be_equal(result, random_pointcloud_item)
 
 
 def test_points_sampling_transform_check_points_sampling_parameter_float_and_less_than_points_in_total(random_pointcloud_item):
@@ -821,7 +821,7 @@ def test_rotate_transform_check_shapes_for_grid(random_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="z")
     result = aug(random_grid_item)
     
-    check_items_shapes_suppsed_to_be_equal(result, random_grid_item)
+    check_items_shapes_supposed_to_be_equal(result, random_grid_item)
 
 
 def test_rotate_transform_90_degrees_z_axis_for_grid(zero_grid_item):
@@ -951,7 +951,7 @@ def test_mirror_transform_check_shapes_for_grid(random_grid_item):
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_grid_item)
     
-    check_items_shapes_suppsed_to_be_equal(result, random_grid_item)
+    check_items_shapes_supposed_to_be_equal(result, random_grid_item)
 
 
 def test_mirror_transform_check_shapes_for_pointcloud(random_pointcloud_item):
@@ -960,7 +960,7 @@ def test_mirror_transform_check_shapes_for_pointcloud(random_pointcloud_item):
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_pointcloud_item)
     
-    check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+    check_items_shapes_supposed_to_be_equal(result, random_pointcloud_item)
 
 
 def test_mirror_transform_z_axis_for_grid(zero_grid_item):

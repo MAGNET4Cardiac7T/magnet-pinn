@@ -57,7 +57,7 @@ class Compose(BaseTransform):
     """
     Compose function for combining multiple augmentations.
 
-    Parameters
+    Attributes
     ----------
     augmentations : List[BaseTransform]
         List of augmentations to be applied to the simulation data
@@ -107,7 +107,7 @@ class DefaultTransform(BaseTransform):
     It is supposed to be used if the PhaseShift transform is not used.
     It changes the field, coils, and fully sets phase to 0 and mask to 1.
 
-    Parameters
+    Attributes
     ----------
     simulation : DataItem
         simulation data
@@ -180,7 +180,7 @@ class Crop(BaseTransform):
     """
     Class for cropping the simulation data.
 
-    Parameters
+    Attributes
     ----------
     crop_size : Tuple[int, int, int]
         Size of the resulting data
@@ -333,7 +333,7 @@ class Rotate(BaseTransform):
     """
     Class for rotating the simulation data around the z-axis.
 
-    Parameters
+    Attributes
     ----------
     rot_angle : Literal['random', '90']
         Rotation angle [deg]
@@ -366,7 +366,8 @@ class Rotate(BaseTransform):
 
     def __call__(self, simulation: DataItem):
         """
-        Rotate data around the z-axis based on the given rotation angle.
+        Rotate data around the axis based on the given rotation angle.
+        Rotation parameters were given as `rot_angle` and `rot_plane`.
         Parameters
         ----------
         data : DataItem
@@ -422,7 +423,7 @@ class Mirror(BaseTransform):
     """
     Class for mirroring (flipping) the simulation data along a specified axis.
 
-    Parameters
+    Attributes
     ----------
     mirror_axis : int
         Axis along which to flip the data. Spatial axes are expected at the end of the array in the order x, y, z.
@@ -528,7 +529,7 @@ class PhaseShift(BaseTransform):
     Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
     `exp(1 + phase * j) * mask` is used to calculate the shift coefficients.
 
-    Parameters
+    Attributes
     ----------
     num_coils : int
         Number of coils in the simulation data
@@ -718,8 +719,8 @@ class GridPhaseShift(PhaseShift):
 class CoilEnumeratorPhaseShift(PhaseShift):
     """
     Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
-    
-    Parameters
+
+    Attributes
     ----------
     num_coils : int
         Number of coils in the simulation data
@@ -776,8 +777,8 @@ class PointPhaseShift(PhaseShift):
 class PointSampling(BaseTransform):
     """
     Class for sampling the points from the simulation data.
-    
-    Parameters
+
+    Attributes
     ----------
     points_sampled : Union[float, int]
         Number of points to be sampled. If float, it is considered as a fraction of the total number of points.

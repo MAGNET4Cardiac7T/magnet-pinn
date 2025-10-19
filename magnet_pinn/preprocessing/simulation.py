@@ -19,24 +19,24 @@ import numpy as np
 @dataclass
 class Simulation:
     """
-        A dataclass for storing the data of one numerical simulation of EM fields.
+    A dataclass for storing the data of one numerical simulation of EM fields.
 
-        Attributes
-        ----------
-        name : str
-            The name of the simulation.
-        path : Path
-            The path to the simulation data.
-        e_field : np.array, optional
-            The electric field data.
-        h_field : np.array, optional
-            The magnetic field data.    
-        object_masks : np.array, optional
-            The object masks.
-        features : np.array, optional
-            The physical features - permittivity, permeability, conductivity.
-        resulting_path : Path, optional
-            The path to the resulting `.h5` file
+    Attributes
+    ----------
+    name : str
+        The name of the simulation.
+    path : Path
+        The path to the simulation data.
+    e_field : np.array, optional
+        The electric field data.
+    h_field : np.array, optional
+        The magnetic field data.    
+    object_masks : np.array, optional
+        The object masks.
+    features : np.array, optional
+        The physical features - permittivity, permeability, conductivity.
+    resulting_path : Path, optional
+        The path to the resulting `.h5` file
     """
 
     name: str
