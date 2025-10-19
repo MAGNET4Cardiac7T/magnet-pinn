@@ -7,7 +7,7 @@ from einops import rearrange
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
     Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
-    PhaseShift, BaseTransform, DefaultTransform
+    PhaseShift, BaseTransform, DefaultTransform, Rotate, Mirror
 )
 from tests.dataloading.transforms.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
@@ -768,4 +768,283 @@ def test_point_phase_shift_transform_check_not_inplace_processing_for_binomial(r
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
+    assert result is not random_pointcloud_item
+
+
+def test_rotate_transform_invalid_rot_angle():
+    with pytest.raises(ValueError):
+        _ = Rotate(rot_angle="invalid")
+
+
+def test_rotate_transform_invalid_rot_axis():
+    with pytest.raises(ValueError):
+        _ = Rotate(rot_axis="invalid")
+
+
+def test_rotate_transform_check_properties_random_z():
+    aug = Rotate(rot_angle="random", rot_axis="z")
+    
+    assert aug.rot_angle == "random"
+    assert aug.rot_plane == (-3, -2)
+
+
+def test_rotate_transform_check_properties_90_z():
+    aug = Rotate(rot_angle="90", rot_axis="z")
+    
+    assert aug.rot_angle == "90"
+    assert aug.n_rot == 0
+    assert aug.rot_plane == (-3, -2)
+
+
+def test_rotate_transform_check_properties_random_x():
+    aug = Rotate(rot_angle="random", rot_axis="x")
+    
+    assert aug.rot_angle == "random"
+    assert aug.rot_plane == (-2, -1)
+
+
+def test_rotate_transform_check_properties_random_y():
+    aug = Rotate(rot_angle="random", rot_axis="y")
+    
+    assert aug.rot_angle == "random"
+    assert aug.rot_plane == (-3, -1)
+
+
+def test_rotate_transform_check_datatypes_for_grid(random_grid_item):
+    aug = Rotate(rot_angle="90", rot_axis="z")
+    result = aug(random_grid_item)
+    
+    check_items_datatypes(result, random_grid_item)
+
+
+def test_rotate_transform_check_shapes_for_grid(random_grid_item):
+    aug = Rotate(rot_angle="90", rot_axis="z")
+    result = aug(random_grid_item)
+    
+    check_items_shapes_suppsed_to_be_equal(result, random_grid_item)
+
+
+def test_rotate_transform_90_degrees_z_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Rotate(rot_angle="90", rot_axis="z")
+    result = aug(zero_grid_item)
+    
+    assert result.simulation == zero_grid_item.simulation
+    assert np.equal(result.phase, zero_grid_item.phase).all()
+    assert np.equal(result.mask, zero_grid_item.mask).all()
+    assert result.dtype == zero_grid_item.dtype
+    assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
+    
+    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
+    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
+    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))).all()
+    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))).all()
+    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))).all()
+
+
+def test_rotate_transform_90_degrees_x_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Rotate(rot_angle="90", rot_axis="x")
+    result = aug(zero_grid_item)
+    
+    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-2, -1))).all()
+    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-2, -1))).all()
+    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-2, -1))).all()
+    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-2, -1))).all()
+    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-2, -1))).all()
+
+
+def test_rotate_transform_90_degrees_y_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Rotate(rot_angle="90", rot_axis="y")
+    result = aug(zero_grid_item)
+    
+    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -1))).all()
+    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -1))).all()
+    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -1))).all()
+    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -1))).all()
+    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -1))).all()
+
+
+def test_rotate_transform_random_angle_z_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Rotate(rot_angle="random", rot_axis="z")
+    result = aug(zero_grid_item)
+    
+    assert aug.n_rot in [0, 1, 2]
+    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=aug.n_rot, axes=(-3, -2))).all()
+    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=aug.n_rot, axes=(-3, -2))).all()
+    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=aug.n_rot, axes=(-3, -2))).all()
+    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=aug.n_rot, axes=(-3, -2))).all()
+    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=aug.n_rot, axes=(-3, -2))).all()
+
+
+def test_rotate_transform_not_inplace_processing_for_grid(random_grid_item):
+    aug = Rotate(rot_angle="90", rot_axis="z")
+    result = aug(random_grid_item)
+    
+    assert result is not random_grid_item
+
+
+def test_mirror_transform_invalid_mirror_axis():
+    with pytest.raises(ValueError):
+        _ = Mirror(mirror_axis="invalid")
+
+
+def test_mirror_transform_invalid_mirror_prob_type():
+    with pytest.raises(ValueError):
+        _ = Mirror(mirror_prob="invalid")
+
+
+def test_mirror_transform_invalid_mirror_prob_negative():
+    with pytest.raises(ValueError):
+        _ = Mirror(mirror_prob=-0.5)
+
+
+def test_mirror_transform_invalid_mirror_prob_greater_than_one():
+    with pytest.raises(ValueError):
+        _ = Mirror(mirror_prob=1.5)
+
+
+def test_mirror_transform_check_properties_z_axis():
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    
+    assert aug.mirror_axis == -1
+    assert aug.mirror_prob == 1.0
+
+
+def test_mirror_transform_check_properties_x_axis():
+    aug = Mirror(mirror_axis="x", mirror_prob=0.5)
+    
+    assert aug.mirror_axis == -3
+    assert aug.mirror_prob == 0.5
+
+
+def test_mirror_transform_check_properties_y_axis():
+    aug = Mirror(mirror_axis="y", mirror_prob=0.8)
+    
+    assert aug.mirror_axis == -2
+    assert aug.mirror_prob == 0.8
+
+
+def test_mirror_transform_check_datatypes_for_grid(random_grid_item):
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_grid_item)
+    
+    check_items_datatypes(result, random_grid_item)
+
+
+def test_mirror_transform_check_datatypes_for_pointcloud(random_pointcloud_item):
+    random_pointcloud_item = deepcopy(random_pointcloud_item)
+    random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_pointcloud_item)
+    
+    check_items_datatypes(result, random_pointcloud_item)
+
+
+def test_mirror_transform_check_shapes_for_grid(random_grid_item):
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_grid_item)
+    
+    check_items_shapes_suppsed_to_be_equal(result, random_grid_item)
+
+
+def test_mirror_transform_check_shapes_for_pointcloud(random_pointcloud_item):
+    random_pointcloud_item = deepcopy(random_pointcloud_item)
+    random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_pointcloud_item)
+    
+    check_items_shapes_suppsed_to_be_equal(result, random_pointcloud_item)
+
+
+def test_mirror_transform_z_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(zero_grid_item)
+    
+    assert result.simulation == zero_grid_item.simulation
+    assert np.equal(result.phase, zero_grid_item.phase).all()
+    assert np.equal(result.mask, zero_grid_item.mask).all()
+    assert result.dtype == zero_grid_item.dtype
+    assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
+    
+    assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-1)).all()
+    assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-1)).all()
+    assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-1)).all()
+    assert np.equal(result.coils, np.flip(zero_grid_item.coils, axis=-1)).all()
+    assert np.equal(result.positions, np.flip(zero_grid_item.positions, axis=-1)).all()
+
+
+def test_mirror_transform_x_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Mirror(mirror_axis="x", mirror_prob=1.0)
+    result = aug(zero_grid_item)
+    
+    assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-3)).all()
+    assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-3)).all()
+    assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-3)).all()
+    assert np.equal(result.coils, np.flip(zero_grid_item.coils, axis=-3)).all()
+    assert np.equal(result.positions, np.flip(zero_grid_item.positions, axis=-3)).all()
+
+
+def test_mirror_transform_y_axis_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Mirror(mirror_axis="y", mirror_prob=1.0)
+    result = aug(zero_grid_item)
+    
+    assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-2)).all()
+    assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-2)).all()
+    assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-2)).all()
+    assert np.equal(result.coils, np.flip(zero_grid_item.coils, axis=-2)).all()
+    assert np.equal(result.positions, np.flip(zero_grid_item.positions, axis=-2)).all()
+
+
+def test_mirror_transform_probability_zero_for_grid(zero_grid_item):
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=0.0)
+    result = aug(zero_grid_item)
+    
+    assert np.equal(result.input, zero_grid_item.input).all()
+    assert np.equal(result.field, zero_grid_item.field).all()
+    assert np.equal(result.subject, zero_grid_item.subject).all()
+    assert np.equal(result.coils, zero_grid_item.coils).all()
+    assert np.equal(result.positions, zero_grid_item.positions).all()
+
+
+def test_mirror_transform_z_axis_for_pointcloud(random_pointcloud_item):
+    random_pointcloud_item = deepcopy(random_pointcloud_item)
+    random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_pointcloud_item)
+    
+    assert result.simulation == random_pointcloud_item.simulation
+    assert np.equal(result.phase, random_pointcloud_item.phase).all()
+    assert np.equal(result.mask, random_pointcloud_item.mask).all()
+    assert result.dtype == random_pointcloud_item.dtype
+    assert np.equal(result.truncation_coefficients, random_pointcloud_item.truncation_coefficients).all()
+
+
+def test_mirror_transform_not_inplace_processing_for_grid(random_grid_item):
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_grid_item)
+    
+    assert result is not random_grid_item
+
+
+def test_mirror_transform_not_inplace_processing_for_pointcloud(random_pointcloud_item):
+    random_pointcloud_item = deepcopy(random_pointcloud_item)
+    random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
+    aug = Mirror(mirror_axis="z", mirror_prob=1.0)
+    result = aug(random_pointcloud_item)
+    
     assert result is not random_pointcloud_item

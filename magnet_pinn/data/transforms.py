@@ -337,10 +337,16 @@ class Rotate(BaseTransform):
     ----------
     rot_angle : Literal['random', '90']
         Rotation angle [deg]
+    rot_plane: Tuple[int, int]
+        Plane of rotation. Spatial axis are expected at the end of the array in the order x, y, z.
+        So the rotation plane will mention stable axis excluding the rotating one.
+        Rotating around x corresponds to (-2, -1), y to (-3, -1), z to (-3, -2).
+        Default is z-axis rotation, (-3, -2).
     """
 
     def __init__(self, 
-                 rot_angle: Literal['random', '90'] = 'random'):
+                 rot_angle: Literal['random', '90'] = 'random',
+                 rot_axis: Literal["x", "y", "z"] = "z"):
         super().__init__()
 
         if rot_angle not in ['random', '90']:
@@ -348,6 +354,15 @@ class Rotate(BaseTransform):
 
         self.rot_angle = rot_angle
         self.n_rot = 0
+
+        if rot_axis not in ['x', 'y', 'z']:
+            raise ValueError("Rotation axis should be either 'x', 'y', or 'z'")
+        elif rot_axis == "z":
+            self.rot_plane = (-3, -2)
+        elif rot_axis == "y":
+            self.rot_plane = (-3, -1)
+        elif rot_axis == "x":
+            self.rot_plane = (-2, -1)
 
     def __call__(self, simulation: DataItem):
         """
@@ -386,22 +401,127 @@ class Rotate(BaseTransform):
             self.n_rot = 1
 
         return DataItem(
-            input=self._rot_array(simulation.input, plane=(-3, -2)),
-            subject=self._rot_array(simulation.subject, plane=(-3, -2)),
+            input=self._rot_array(simulation.input),
+            subject=self._rot_array(simulation.subject),
             simulation=simulation.simulation,
-            field=self._rot_array(simulation.field, plane=(-3, -2)),
+            field=self._rot_array(simulation.field),
             phase=simulation.phase,
             mask=simulation.mask,
-            coils=self._rot_array(simulation.coils, plane=(-3, -2)),
+            coils=self._rot_array(simulation.coils),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
-            positions=self._rot_array(simulation.positions, plane=(-3, -2)),
+            positions=self._rot_array(simulation.positions),
         )
     
     def _rot_array(self,
-                    array: npt.NDArray[np.float32],
-                    plane: tuple[int, int]) -> npt.NDArray[np.float32]:
-        return np.rot90(array, k=self.n_rot, axes=plane).copy()
+                   array: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        return np.rot90(array, k=self.n_rot, axes=self.rot_plane).copy()
+    
+
+class Mirror(BaseTransform):
+    """
+    Class for mirroring (flipping) the simulation data along a specified axis.
+
+    Parameters
+    ----------
+    mirror_axis : int
+        Axis along which to flip the data. Spatial axes are expected at the end of the array in the order x, y, z.
+        So for flipping around x-axis use -3, y-axis use -2, z-axis use -1.
+        Default is -1 (z-axis).
+    mirror_prob : float
+        Probability of applying the mirror transform. Should be between 0.0 and 1.0.
+        Default is 1.0 (always flip).
+    """
+
+    def __init__(self, 
+                 mirror_axis: Literal['x', 'y', 'z'] = 'z',
+                 mirror_prob: float = 1.0):
+        super().__init__()
+
+        if mirror_axis not in ['x', 'y', 'z']:
+            raise ValueError("Mirror axis should be either 'x', 'y', or 'z'")
+        
+        if not isinstance(mirror_prob, (float, int)):
+            raise ValueError("Mirror probability should be a float or int")
+        
+        if not 0.0 <= mirror_prob <= 1.0:
+            raise ValueError("Mirror probability should be between 0.0 and 1.0")
+
+        self.mirror_prob = mirror_prob
+
+        if mirror_axis == 'x':
+            self.mirror_axis = -3
+        elif mirror_axis == 'y':
+            self.mirror_axis = -2
+        elif mirror_axis == 'z':
+            self.mirror_axis = -1
+
+    def __call__(self, simulation: DataItem):
+        """
+        Mirror data along the specified axis based on the probability.
+        
+        Parameters
+        ----------
+        simulation : DataItem
+            DataItem object with the simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
+        
+        Returns
+        -------
+        DataItem
+            augmented DataItem object
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
+        """
+        self._check_data(simulation)
+        
+        apply_mirror = np.random.rand() < self.mirror_prob
+        
+        return DataItem(
+            input=self._mirror_array(simulation.input, apply_mirror),
+            subject=self._mirror_array(simulation.subject, apply_mirror),
+            simulation=simulation.simulation,
+            field=self._mirror_array(simulation.field, apply_mirror),
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=self._mirror_array(simulation.coils, apply_mirror),
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=self._mirror_array(simulation.positions, apply_mirror),
+        )
+    
+    def _mirror_array(self,
+                      array: npt.NDArray[np.float32], apply: bool = True) -> npt.NDArray[np.float32]:
+        """
+        Mirror (flip) the array along the specified axis.
+
+        Parameters
+        ----------
+        array : npt.NDArray[np.float32]
+            Array to be mirrored
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Mirrored array
+        """
+        if not apply:
+            return array.copy()
+        # check the copy creation 
+        return np.flip(array, axis=self.mirror_axis).copy()
 
 
 class PhaseShift(BaseTransform):
