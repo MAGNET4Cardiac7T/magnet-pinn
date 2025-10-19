@@ -415,7 +415,7 @@ class Rotate(BaseTransform):
     
     def _rot_array(self,
                    array: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
-        return np.rot90(array, k=self.n_rot, axes=self.rot_plane).copy()
+        return np.rot90(array, k=self.n_rot, axes=self.rot_plane)
     
 
 class Mirror(BaseTransform):
@@ -519,9 +519,8 @@ class Mirror(BaseTransform):
             Mirrored array
         """
         if not apply:
-            return array.copy()
-        # check the copy creation 
-        return np.flip(array, axis=self.mirror_axis).copy()
+            return array
+        return np.flip(array, axis=self.mirror_axis)
 
 
 class PhaseShift(BaseTransform):
