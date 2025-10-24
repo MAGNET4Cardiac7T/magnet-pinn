@@ -180,7 +180,7 @@ class Preprocessing(ABC):
             )
             self.field_dtype = np.dtype(f"f{field_dtype.itemsize // 2}")
         elif field_dtype.kind != FLOAT_DTYPE_KIND:
-            raise Exception("Unsupported field data type")
+            raise Exception(f'Unsupported field data type: {field_dtype.name}. Only float types are supported (e.g., np.float32, np.float64).')
         else:
             self.field_dtype = field_dtype
 
