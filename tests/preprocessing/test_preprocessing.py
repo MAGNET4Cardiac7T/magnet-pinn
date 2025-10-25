@@ -1632,3 +1632,194 @@ def test_point_preprocessing_check_mixed_simulations_value_from_different_batche
     )))
 
     assert expected == existing
+
+
+def test_grid_duplicate_simulations_warning(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that a warning is raised when duplicate simulation names exist in different batches for grid preprocessing
+    """
+    with pytest.warns(UserWarning, match=r"Simulation '.*' is not unique and will be overridden"):
+        preprop = GridPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.complex64,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+
+
+def test_grid_duplicate_simulations_only_one_saved(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that only one simulation file is saved when duplicate simulation names exist in different batches for grid preprocessing
+    """
+    with pytest.warns(UserWarning):
+        preprop = GridPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.complex64,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+        preprop.process_simulations()
+
+    out_simulations_dir = preprop.out_simulations_dir_path
+    existing_files = list(out_simulations_dir.iterdir())
+    
+    assert len(existing_files) == 2
+    
+    file_names = [f.name for f in existing_files]
+    assert TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME) in file_names
+    assert TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME) in file_names
+
+
+def test_grid_duplicate_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that preprocessing completes successfully and produces valid output when duplicate simulation names exist
+    """
+    with pytest.warns(UserWarning):
+        preprop = GridPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.complex64,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+        preprop.process_simulations()
+
+    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert sim_file.exists()
+
+    with File(sim_file) as f:
+        assert E_FIELD_OUT_KEY in f.keys()
+        assert H_FIELD_OUT_KEY in f.keys()
+        assert FEATURES_OUT_KEY in f.keys()
+        assert SUBJECT_OUT_KEY in f.keys()
+        
+        check_complex_fields(f)
+        check_central_subject_mask(f)
+        check_central_features(f)
+
+
+def test_grid_duplicate_simulations_with_explicit_names(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that only specified simulations are processed when duplicate names exist and explicit simulation list is provided
+    """
+    with pytest.warns(UserWarning):
+        preprop = GridPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+        preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+
+    out_simulations_dir = preprop.out_simulations_dir_path
+    existing_files = list(out_simulations_dir.iterdir())
+    
+    assert len(existing_files) == 1
+    assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+
+
+def test_point_duplicate_simulations_warning(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that a warning is raised when duplicate simulation names exist in different batches for point preprocessing
+    """
+    with pytest.warns(UserWarning, match=r"Simulation '.*' is not unique and will be overridden"):
+        preprop = PointPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.complex64
+        )
+
+
+def test_point_duplicate_simulations_only_one_saved(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that only one simulation file is saved when duplicate simulation names exist in different batches for point preprocessing
+    """
+    with pytest.warns(UserWarning):
+        preprop = PointPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32
+        )
+        preprop.process_simulations()
+
+    out_simulations_dir = preprop.out_simulations_dir_path
+    existing_files = list(out_simulations_dir.iterdir())
+    
+    assert len(existing_files) == 2
+    
+    file_names = [f.name for f in existing_files]
+    assert TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME) in file_names
+    assert TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME) in file_names
+
+
+def test_point_duplicate_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that preprocessing completes successfully and produces valid output when duplicate simulation names exist
+    """
+    with pytest.warns(UserWarning):
+        preprop = PointPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.complex64
+        )
+        preprop.process_simulations()
+
+    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert sim_file.exists()
+
+    with File(sim_file) as f:
+        assert E_FIELD_OUT_KEY in f.keys()
+        assert H_FIELD_OUT_KEY in f.keys()
+        assert FEATURES_OUT_KEY in f.keys()
+        assert SUBJECT_OUT_KEY in f.keys()
+        assert COORDINATES_OUT_KEY in f.keys()
+
+
+def test_point_duplicate_simulations_with_explicit_names(raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that only specified simulations are processed when duplicate names exist and explicit simulation list is provided
+    """
+    with pytest.warns(UserWarning):
+        preprop = PointPreprocessing(
+            [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32
+        )
+        preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+
+    out_simulations_dir = preprop.out_simulations_dir_path
+    existing_files = list(out_simulations_dir.iterdir())
+    
+    assert len(existing_files) == 1
+    assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
