@@ -27,7 +27,7 @@ def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -38,7 +38,7 @@ def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path
     )
     p.process_simulations()
 
-    case_name = "grid_voxel_size_1_data_type_complex64"
+    case_name = "grid_voxel_size_1_data_type_float32"
     expected_batch_case_dir = processed_batch_dir_path / case_name
 
     assert expected_batch_case_dir == p.out_antenna_dir_path.parent
@@ -62,7 +62,7 @@ def test_grid_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processe
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -99,7 +99,7 @@ def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_d
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -119,12 +119,12 @@ def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_d
         assert set(f.attrs.keys()) == {DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, VOXEL_SIZE_OUT_KEY}
 
 
-def test_grid_central_complex_one_simulation_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_central_float32_one_simulation_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -137,7 +137,7 @@ def test_grid_central_complex_one_simulation_valid_preprocessing(raw_central_bat
         [CENTRAL_SPHERE_SIM_NAME]
     )
 
-    case_name = f"grid_voxel_size_1_data_type_complex64"
+    case_name = f"grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
 
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
@@ -150,17 +150,17 @@ def test_grid_central_complex_one_simulation_valid_preprocessing(raw_central_bat
 
     with File(out_simulation_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
-        check_complex_fields(f)
+        check_float_fields(f)
         check_central_features(f)
         check_central_subject_mask(f)
 
 
-def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_central_float32_multiple_simulations_valid_preprocessing(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -173,7 +173,7 @@ def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_centr
         [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
     )
 
-    case_name = f"grid_voxel_size_1_data_type_complex64"
+    case_name = f"grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
 
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
@@ -186,7 +186,7 @@ def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_centr
 
     with File(out_simulation_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
-        check_complex_fields(f)
+        check_float_fields(f)
         check_central_features(f)
         check_central_subject_mask(f)
 
@@ -195,7 +195,7 @@ def test_grid_central_complex_multiple_simulations_valid_preprocessing(raw_centr
 
     with File(next_sim_file) as f:
         list(f.keys()) == [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY]
-        check_complex_fields(f)
+        check_float_fields(f)
         check_central_features(f)
         check_central_subject_mask(f)
 
@@ -310,7 +310,7 @@ def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_p
         raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -323,7 +323,7 @@ def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_p
         [SHIFTED_SPHERE_SIM_NAME]
     )
 
-    case_name = f"grid_voxel_size_1_data_type_complex64"
+    case_name = f"grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
 
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
@@ -338,26 +338,29 @@ def test_grid_shifted_one_simulation_valid_preprocessing(raw_shifted_batch_dir_p
         check_shifted_features(f)
 
 
-def check_complex_fields(f: File):
-    expected_field = np.concatenate(
+def check_float_re_im_fields(f: File):
+    expected_re_field = np.concatenate(
         [
-            np.zeros((1, 3, 9, 9, 9), dtype=np.complex64), 
-            np.ones((1, 3, 9, 9, 9), dtype=np.complex64),
-            np.full(fill_value=2, shape=(1, 3, 9, 9, 9), dtype=np.complex64),
-            np.full(fill_value=3, shape=(1, 3, 9, 9, 9), dtype=np.complex64)
+            np.zeros((1, 3, 9, 9, 9), dtype=np.float32), 
+            np.ones((1, 3, 9, 9, 9), dtype=np.float32),
+            np.full(fill_value=2, shape=(1, 3, 9, 9, 9), dtype=np.float32),
+            np.full(fill_value=3, shape=(1, 3, 9, 9, 9), dtype=np.float32)
         ],
         axis=0
     )
+    expected_im_field = np.zeros((4, 3, 9, 9, 9), dtype=np.float32)
 
     e_field = f[E_FIELD_OUT_KEY][:]
     assert e_field.shape == (4, 3, 9, 9, 9)
-    assert e_field.dtype == np.complex64
-    assert np.equal(e_field, expected_field).all()
+    assert e_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+    assert np.equal(e_field["re"], expected_re_field).all()
+    assert np.equal(e_field["im"], expected_im_field).all()
 
     h_field = f[H_FIELD_OUT_KEY][:]
     assert h_field.shape == (4, 3, 9, 9, 9)
-    assert h_field.dtype == np.complex64
-    assert np.equal(h_field, expected_field).all()
+    assert h_field.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
+    assert np.equal(h_field["re"], expected_re_field).all()
+    assert np.equal(h_field["im"], expected_im_field).all()
 
 
 def check_float_fields(f: File):
@@ -555,7 +558,7 @@ def test_grid_coordinates_voxel_size_1_central(raw_central_batch_dir_path, raw_a
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=x_min,
         x_max=x_max,
         y_min=y_min,
@@ -565,8 +568,8 @@ def test_grid_coordinates_voxel_size_1_central(raw_central_batch_dir_path, raw_a
         voxel_size=voxel_size
     )
     grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
-    
-    case_name = f"grid_voxel_size_{voxel_size}_data_type_complex64"
+
+    case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     out_simulation_file = out_dir / PROCESSED_SIMULATIONS_DIR_PATH / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     
@@ -617,7 +620,7 @@ def test_grid_coordinates_consistency_multiple_files(raw_central_batch_dir_path,
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=x_min,
         x_max=x_max,
         y_min=y_min,
@@ -628,7 +631,7 @@ def test_grid_coordinates_consistency_multiple_files(raw_central_batch_dir_path,
     )
     grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
     
-    case_name = f"grid_voxel_size_{voxel_size}_data_type_complex64"
+    case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     
@@ -661,18 +664,18 @@ def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_p
     assert out_case_dir.exists()
 
 
-def test_pointcloud_complex_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_float32_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64
+        field_dtype=np.float32
     )
     preprop.process_simulations([
         CENTRAL_SPHERE_SIM_NAME
     ])
 
-    out_case_dir = processed_batch_dir_path / "point_data_type_complex64"
+    out_case_dir = processed_batch_dir_path / "point_data_type_float32"
     assert out_case_dir.exists()
 
 
@@ -737,22 +740,22 @@ def test_pointcloud_general_structure_for_one_float_simulation(raw_central_batch
     assert exact_sim_file.exists()
 
 
-def test_pointcloud_general_structure_for_one_complex_simulation(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_general_structure_for_one_float32_simulation(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    This testcase checks creating general structure of directories and files for complex data type.
+    This testcase checks creating general structure of directories and files for float32 data type.
     """
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
         CENTRAL_SPHERE_SIM_NAME
     ])
 
-    out_case_dir = processed_batch_dir_path / "point_data_type_complex64"
+    out_case_dir = processed_batch_dir_path / "point_data_type_float32"
     out_sim_dir = out_case_dir / PROCESSED_SIMULATIONS_DIR_PATH
     preprop.out_simulations_dir_path == out_sim_dir
     assert out_sim_dir.exists()
@@ -841,12 +844,12 @@ def test_pointcloud_resulting_dtype_values_for_float(raw_central_batch_dir_path,
         assert dtype == "float32"
 
 
-def test_pointcloud_resulting_dtype_values_for_complex(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_resulting_dtype_values_for_float32(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -858,17 +861,17 @@ def test_pointcloud_resulting_dtype_values_for_complex(raw_central_batch_dir_pat
     ) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        assert efield.dtype == np.complex64
+        assert efield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert hfield.dtype == np.complex64
+        assert hfield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
 
         features = f[FEATURES_OUT_KEY][:]
         assert features.dtype == np.float32
 
         dtype = f.attrs[DTYPE_OUT_KEY]
         assert isinstance(dtype, str)
-        assert dtype == "complex64"
+        assert dtype == "float32"
 
 
 def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
@@ -879,7 +882,7 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(raw_central_batch_d
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -917,7 +920,7 @@ def test_pointcloud_squared_coils_sphere_central_object(raw_central_batch_dir_pa
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -930,19 +933,22 @@ def test_pointcloud_squared_coils_sphere_central_object(raw_central_batch_dir_pa
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
         
-        expected_field = np.concatenate(
+        expected_re_field = np.concatenate(
             [
-                np.zeros((1, 3, 729), dtype=np.complex64), 
-                np.ones((1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.complex64)
+                np.zeros((1, 3, 729), dtype=np.float32), 
+                np.ones((1, 3, 729), dtype=np.float32),
+                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.float32),
+                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.float32)
             ],
             axis=0
         )
-        assert np.equal(efield, expected_field).all()
+        expected_im_field = np.zeros((4, 3, 729), dtype=np.float32)
+        assert np.equal(efield["re"], expected_re_field).all()
+        assert np.equal(efield["im"], expected_im_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert np.equal(hfield, expected_field).all()
+        assert np.equal(hfield["re"], expected_re_field).all()
+        assert np.equal(hfield["im"], expected_im_field).all()
 
         features = f[FEATURES_OUT_KEY][:]
         assert len(np.where(features == 1)[0]) == 327
@@ -956,7 +962,7 @@ def test_pointcloud_squared_coils_central_box_object(raw_central_batch_dir_path,
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -968,19 +974,22 @@ def test_pointcloud_squared_coils_central_box_object(raw_central_batch_dir_path,
     ) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.concatenate(
+        expected_re_field = np.concatenate(
             [
-                np.zeros((1, 3, 729), dtype=np.complex64), 
-                np.ones((1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.complex64)
+                np.zeros((1, 3, 729), dtype=np.float32), 
+                np.ones((1, 3, 729), dtype=np.float32),
+                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.float32),
+                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.float32)
             ],
             axis=0
         )
-        assert np.equal(efield, expected_field).all()
+        expected_im_field = np.zeros((4, 3, 729), dtype=np.float32)
+        assert np.equal(efield["re"], expected_re_field).all()
+        assert np.equal(efield["im"], expected_im_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert np.equal(hfield, expected_field).all()
+        assert np.equal(hfield["re"], expected_re_field).all()
+        assert np.equal(hfield["im"], expected_im_field).all()
 
         features = f[FEATURES_OUT_KEY][:]
         assert len(np.where(features == 1)[0]) == 327
@@ -994,7 +1003,7 @@ def test_pointcloud_squared_coils_shifted_sphere_object(raw_shifted_batch_dir_pa
         raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -1006,19 +1015,22 @@ def test_pointcloud_squared_coils_shifted_sphere_object(raw_shifted_batch_dir_pa
     ) / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.concatenate(
+        expected_re_field = np.concatenate(
             [
-                np.zeros((1, 3, 729), dtype=np.complex64), 
-                np.ones((1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.complex64)
+                np.zeros((1, 3, 729), dtype=np.float32), 
+                np.ones((1, 3, 729), dtype=np.float32),
+                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.float32),
+                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.float32)
             ],
             axis=0
         )
-        assert np.equal(efield, expected_field).all()
+        expected_im_field = np.zeros((4, 3, 729), dtype=np.float32)
+        assert np.equal(efield["re"], expected_re_field).all()
+        assert np.equal(efield["im"], expected_im_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert np.equal(hfield, expected_field).all()
+        assert np.equal(hfield["re"], expected_re_field).all()
+        assert np.equal(hfield["im"], expected_im_field).all()
 
         features = f[FEATURES_OUT_KEY][:]
         assert len(np.where(features == 1)[0]) == 327
@@ -1032,7 +1044,7 @@ def test_pointcloud_squared_coils_shifted_box_object(raw_shifted_batch_dir_path,
         raw_shifted_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         coil_thick_coef=1.0
     )
     preprop.process_simulations([
@@ -1044,19 +1056,22 @@ def test_pointcloud_squared_coils_shifted_box_object(raw_shifted_batch_dir_path,
     ) / TARGET_FILE_NAME.format(name=SHIFTED_BOX_SIM_NAME)
     with File(sim_file) as f:
         efield = f[E_FIELD_OUT_KEY][:]
-        expected_field = np.concatenate(
+        expected_re_field = np.concatenate(
             [
-                np.zeros((1, 3, 729), dtype=np.complex64), 
-                np.ones((1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.complex64),
-                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.complex64)
+                np.zeros((1, 3, 729), dtype=np.float32), 
+                np.ones((1, 3, 729), dtype=np.float32),
+                np.full(fill_value=2, shape=(1, 3, 729), dtype=np.float32),
+                np.full(fill_value=3, shape=(1, 3, 729), dtype=np.float32)
             ],
             axis=0
         )
-        assert np.equal(efield, expected_field).all()
+        expected_im_field = np.zeros((4, 3, 729), dtype=np.float32)
+        assert np.equal(efield["re"], expected_re_field).all()
+        assert np.equal(efield["im"], expected_im_field).all()
 
         hfield = f[H_FIELD_OUT_KEY][:]
-        assert np.equal(hfield, expected_field).all()
+        assert np.equal(hfield["re"], expected_re_field).all()
+        assert np.equal(hfield["im"], expected_im_field).all()
 
         features = f[FEATURES_OUT_KEY][:]
         assert len(np.where(features == 1)[0]) == 327
@@ -1071,7 +1086,7 @@ def test_pointcloud_invalid_batch_path(raw_central_batch_dir_path, raw_antenna_d
             "invalid_batch_path",
             raw_antenna_dir_path,
             processed_batch_dir_path,
-            field_dtype=np.complex64,
+            field_dtype=np.float32,
             coil_thick_coef=1.0
         )
 
@@ -1083,7 +1098,7 @@ def test_pointcloud_with_empty_batch(raw_central_batch_short_term, raw_antenna_d
             raw_central_batch_short_term,
             raw_antenna_dir_path,
             processed_batch_dir_path,
-            field_dtype=np.complex64,
+            field_dtype=np.float32,
             coil_thick_coef=1.0
         )
 
@@ -1095,7 +1110,7 @@ def test_pointcloud_with_no_antenna_dir(raw_central_batch_short_term, raw_antenn
             raw_central_batch_short_term,
             raw_antenna_dir_path_short_term,
             processed_batch_dir_path,
-            field_dtype=np.complex64,
+            field_dtype=np.float32,
             coil_thick_coef=1.0
         )
 
@@ -1107,7 +1122,7 @@ def test_pointcloud_with_empty_antenna_dir(raw_central_batch_dir_path, raw_anten
             raw_central_batch_dir_path,
             raw_antenna_dir_path_short_term,
             processed_batch_dir_path,
-            field_dtype=np.complex64,
+            field_dtype=np.float32,
             coil_thick_coef=1.0
         )
 
@@ -1117,7 +1132,7 @@ def test_multiple_batch_dirs_grid(raw_central_batch_dir_path, raw_shifted_batch_
         [raw_central_batch_dir_path, raw_shifted_batch_dir_path],
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.complex64,
+        field_dtype=np.float32,
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -1128,7 +1143,7 @@ def test_multiple_batch_dirs_grid(raw_central_batch_dir_path, raw_shifted_batch_
     )
     grid_preprocessor.process_simulations()
 
-    case_name = f"grid_voxel_size_1_data_type_complex64"
+    case_name = f"grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     
     assert out_dir.exists()

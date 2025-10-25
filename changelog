@@ -75,7 +75,8 @@
 - Fix failing test for standardizer
 - Add `MetaNormalizer` to fit multiple normalizers in one pass, tests and examples
 
-## [0.0.12] -> 
+## [0.0.12] ->
 - Unify grid and point cloud shapes
+- deprecate complex dtypes in preprocessing
 - Duplicate simulations now raise warning instead of error
 - Add tests for duplicate simulations

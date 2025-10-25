@@ -170,7 +170,21 @@ class Preprocessing(ABC):
         coil_thick_coef : float | None
             colis are mostly flat, this parameters controlls thickering
         """
-        self.field_dtype = np.dtype(field_dtype)
+        field_dtype = np.dtype(field_dtype)
+        
+        if field_dtype.kind == COMPLEX_DTYPE_KIND:
+            warnings.warn(
+                f"Complex data types are deprecated and will be removed in a future version. "
+                f"The complex dtype '{field_dtype.name}' will be internally converted to "
+                f"its corresponding float type. Please use float types directly (e.g., np.float32 instead of np.complex64).",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            self.field_dtype = np.dtype(f"f{field_dtype.itemsize // 2}")
+        elif field_dtype.kind != FLOAT_DTYPE_KIND:
+            raise Exception(f'Unsupported field data type: {field_dtype.name}. Only float types are supported (e.g., np.float32, np.float64).')
+        else:
+            self.field_dtype = field_dtype
 
         if isinstance(batches_dir_paths, str) or isinstance(batches_dir_paths, Path):
             batches = [batches_dir_paths]
@@ -670,22 +684,18 @@ class Preprocessing(ABC):
         np.array:
             h-field data
         """
-        e_field, h_field = None, None
-        if self.field_dtype.kind == COMPLEX_DTYPE_KIND:
-            e_field = simulation.e_field.astype(self.field_dtype)
-            h_field = simulation.h_field.astype(self.field_dtype)
-        elif self.field_dtype.kind == FLOAT_DTYPE_KIND:
-            e_field = np.empty_like(simulation.e_field,
-                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
-            e_field["re"] = simulation.e_field.real
-            e_field["im"] = simulation.e_field.imag
-            
-            h_field = np.empty_like(simulation.h_field,
-                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
-            h_field["re"] = simulation.h_field.real
-            h_field["im"] = simulation.h_field.imag
-        else:
+        if self.field_dtype.kind != FLOAT_DTYPE_KIND:
             raise Exception("Unsupported field data type")
+        
+        e_field = np.empty_like(simulation.e_field,
+                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        e_field["re"] = simulation.e_field.real
+        e_field["im"] = simulation.e_field.imag
+        
+        h_field = np.empty_like(simulation.h_field,
+                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        h_field["re"] = simulation.h_field.real
+        h_field["im"] = simulation.h_field.imag
 
         return e_field, h_field
     
