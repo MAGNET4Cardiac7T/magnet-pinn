@@ -77,3 +77,4 @@
 
 ## [0.0.12] ->
 - Unify grid and point cloud shapes
+- deprecate complex dtypes in preprocessing
