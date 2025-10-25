@@ -5,7 +5,8 @@ from tests.preprocessing.helpers import (
     CENTRAL_BATCH_DIR_NAME, CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
     ANTENNA_SHORT_TERM_DIR_NAME, SHIFTED_SPHERE_SIM_NAME, SHIFTED_BOX_SIM_NAME, 
     CENTRAL_BATCH_SHORT_TERM_DIR_NAME,
-    create_central_batch, create_shifted_batch, create_antenna_test_data
+    create_central_batch, create_shifted_batch, create_antenna_test_data,
+    create_duplicate_batch
 )
 
 
@@ -80,3 +81,11 @@ def pointslist_simulation_path(tmp_path_factory):
     yield simulation_path
     if simulation_path.exists():
         rmtree(simulation_path)
+
+
+@pytest.fixture(scope='module')
+def raw_duplicate_batch_dir_path(data_dir_path):
+    batch_dir_path = create_duplicate_batch(data_dir_path)
+    yield batch_dir_path
+    if batch_dir_path.exists():
+        rmtree(batch_dir_path)

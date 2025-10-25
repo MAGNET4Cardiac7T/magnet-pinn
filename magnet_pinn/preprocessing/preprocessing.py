@@ -12,6 +12,7 @@ CLASSES
 """
 import warnings
 from pathlib import Path
+from collections import Counter
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional, Union
 
@@ -154,7 +155,8 @@ class Preprocessing(ABC):
         """
         The method checks the input and output directories, reads antenna data and 
         prepares the output directories. It also checks if simulations have unique names.
-
+        If simulation do not have unique names a warning is raised.    
+        
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -192,8 +194,12 @@ class Preprocessing(ABC):
             raise TypeError("Source/s should be a string/list of strings")
         
         self.all_sim_paths = self.__extract_simulations(batches)
-        if len(self.all_sim_paths) != len(set(map(lambda x: x.name, self.all_sim_paths))):
-            raise Exception("Simulation names should be unique")
+
+        # check for unique simulation names
+        unique_counted = Counter(map(lambda x: x.name, self.all_sim_paths))
+        for name, count in unique_counted.items():
+            if count > 1:
+                warnings.warn(f"Simulation '{name}' is not unique and will be overridden. Only one last instance will be kept", UserWarning)
 
         # create output directories
         target_dir_name = self._output_target_dir
