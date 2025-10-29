@@ -121,6 +121,7 @@ class Preprocessing(ABC):
 
     __dipoles_masks = None
     __dipoles_features = None
+    __dipoles_written = False
     coil_thick_coef = None
 
     @property
@@ -129,7 +130,7 @@ class Preprocessing(ABC):
         A getter for the dipoles masks, caclulates it when the user first needs it together with features.
         """
         if self.__dipoles_masks is None:
-            self.__dipoles_masks, self.__dipoles_features = self._get_features_and_mask(
+            self.__dipoles_features, self.__dipoles_masks = self._get_features_and_mask(
                 self.dipoles_properties, self.dipoles_meshes
             )
         return self.__dipoles_masks
@@ -281,6 +282,15 @@ class Preprocessing(ABC):
         """
         pass
 
+    @abstractmethod
+    def _can_write_dipoles_early(self) -> bool:
+        """
+        Checks if dipoles can be written before processing simulations.
+        For GridPreprocessing this is True (coordinates known from __init__).
+        For PointPreprocessing this is False (coordinates come from first simulation).
+        """
+        pass
+
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple[pd.DataFrame, List[Trimesh]]:
         """
         Reads properties file `materials.txt` as csv file and then 
@@ -312,13 +322,14 @@ class Preprocessing(ABC):
 
         The method works in 2 phases:
 
-        - check simulations for being in the batch
+        - save processed antenna data (dipoles) if possible
         - process each simulation
 
-        This method make iteration over all simulation directories found in the 
+        This method first tries to call `_write_dipoles` method to save processed 
+        antenna data before processing simulations (if coordinates are available). 
+        Otherwise, it saves dipoles after the first simulation is processed.
+        Then it makes iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
-        After the main work is done it also calls `_write_dipoles` method 
-        to save processed antenna data. 
 
         Simulation names in different batches can not be the same, 
         if they are we would choose a random one would be chosen to preprocess. 
@@ -334,13 +345,19 @@ class Preprocessing(ABC):
         if len(simulations) == 0:
             return
 
+        # Write dipoles early if possible (GridPreprocessing)
+        if self._can_write_dipoles_early():
+            self._write_dipoles()
+
         pbar = tqdm(total=len(simulations), desc="Simulations processing")
         for i in simulations:
             sim_res_path = self._process_simulation(i)           
             pbar.set_postfix({"done": sim_res_path}, refresh=True)
             pbar.update(1)
-        
-        self._write_dipoles()
+            
+            # Write dipoles after first simulation if not written early (PointPreprocessing)
+            if not self.__dipoles_written:
+                self._write_dipoles()
 
     def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
         """
@@ -718,13 +735,17 @@ class Preprocessing(ABC):
         """
         Write dipoles masks to the output directory.
         """
+        if self.__dipoles_written:
+            return
+            
         self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
+        
+        self.__dipoles_written = True
 
-            
 
 class GridPreprocessing(Preprocessing):
     """
@@ -825,6 +846,12 @@ class GridPreprocessing(Preprocessing):
         y_unique = np.arange(min_values[1], max_values[1] + voxel_size, voxel_size)
         z_unique = np.arange(min_values[2], max_values[2] + voxel_size, voxel_size)
         self.voxelizer = MeshVoxelizer(voxel_size, x_unique, y_unique, z_unique)
+
+    def _can_write_dipoles_early(self) -> bool:
+        """
+        For GridPreprocessing, coordinates are known from __init__, so dipoles can be written early.
+        """
+        return True
 
     @property
     def _output_target_dir(self) -> str:
@@ -1080,6 +1107,12 @@ class PointPreprocessing(Preprocessing):
         else:
             if not np.array_equal(self._coordinates, coordinates):
                 raise Exception("Different coordinate systems for simulations")
+
+    def _can_write_dipoles_early(self) -> bool:
+        """
+        For PointPreprocessing, coordinates come from first simulation, so dipoles cannot be written early.
+        """
+        return False
 
     @property
     def _output_target_dir(self) -> str:
