@@ -1,8 +1,8 @@
 import pytest
 from copy import deepcopy
+from unittest.mock import patch
 
 import numpy as np
-from einops import rearrange
 
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
@@ -875,12 +875,101 @@ def test_rotate_transform_random_angle_z_axis_for_grid(zero_grid_item):
     aug = Rotate(rot_angle="random", rot_axis="z")
     result = aug(zero_grid_item)
     
-    assert aug.n_rot in [0, 1, 2]
+    assert aug.n_rot in [0, 1, 2, 3]
     assert np.equal(result.input, np.rot90(zero_grid_item.input, k=aug.n_rot, axes=(-3, -2))).all()
     assert np.equal(result.field, np.rot90(zero_grid_item.field, k=aug.n_rot, axes=(-3, -2))).all()
     assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=aug.n_rot, axes=(-3, -2))).all()
     assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=aug.n_rot, axes=(-3, -2))).all()
     assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=aug.n_rot, axes=(-3, -2))).all()
+
+
+def test_rotate_transform_random_angle_correct_range_parameters(zero_grid_item):
+    """
+    Validates that np.random.randint is called with correct parameters (0, 4)
+    when rot_angle='random' to ensure all four rotation values are possible.
+    """
+    with patch('numpy.random.randint', return_value=2) as mock_randint:
+        aug = Rotate(rot_angle="random", rot_axis="z")
+        result = aug(zero_grid_item)
+        
+        mock_randint.assert_called_once_with(0, 4)
+        assert aug.n_rot == 2
+
+
+def test_rotate_transform_random_angle_k0_rotation(zero_grid_item):
+    """
+    Validates that rotation with k=0 (0 degrees) is correctly applied when sampled.
+    """
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    
+    with patch('numpy.random.randint', return_value=0):
+        aug = Rotate(rot_angle="random", rot_axis="z")
+        result = aug(zero_grid_item)
+        
+        assert aug.n_rot == 0
+        assert np.equal(result.input, zero_grid_item.input).all()
+        assert np.equal(result.field, zero_grid_item.field).all()
+        assert np.equal(result.subject, zero_grid_item.subject).all()
+        assert np.equal(result.coils, zero_grid_item.coils).all()
+        assert np.equal(result.positions, zero_grid_item.positions).all()
+
+
+def test_rotate_transform_random_angle_k1_rotation(zero_grid_item):
+    """
+    Validates that rotation with k=1 (90 degrees) is correctly applied when sampled.
+    """
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    
+    with patch('numpy.random.randint', return_value=1):
+        aug = Rotate(rot_angle="random", rot_axis="z")
+        result = aug(zero_grid_item)
+        
+        assert aug.n_rot == 1
+        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
+        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
+        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))).all()
+        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))).all()
+        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))).all()
+
+
+def test_rotate_transform_random_angle_k2_rotation(zero_grid_item):
+    """
+    Validates that rotation with k=2 (180 degrees) is correctly applied when sampled.
+    """
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    
+    with patch('numpy.random.randint', return_value=2):
+        aug = Rotate(rot_angle="random", rot_axis="z")
+        result = aug(zero_grid_item)
+        
+        assert aug.n_rot == 2
+        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=2, axes=(-3, -2))).all()
+        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=2, axes=(-3, -2))).all()
+        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=2, axes=(-3, -2))).all()
+        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=2, axes=(-3, -2))).all()
+        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=2, axes=(-3, -2))).all()
+
+
+def test_rotate_transform_random_angle_k3_rotation(zero_grid_item):
+    """
+    Validates that rotation with k=3 (270 degrees) is correctly applied when sampled.
+    """
+    zero_grid_item = deepcopy(zero_grid_item)
+    zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
+    
+    with patch('numpy.random.randint', return_value=3):
+        aug = Rotate(rot_angle="random", rot_axis="z")
+        result = aug(zero_grid_item)
+        
+        assert aug.n_rot == 3
+        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=3, axes=(-3, -2))).all()
+        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=3, axes=(-3, -2))).all()
+        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=3, axes=(-3, -2))).all()
+        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=3, axes=(-3, -2))).all()
+        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=3, axes=(-3, -2))).all()
 
 
 def test_rotate_transform_not_inplace_processing_for_grid(random_grid_item):

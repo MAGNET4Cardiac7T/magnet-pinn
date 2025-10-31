@@ -397,7 +397,7 @@ class Rotate(BaseTransform):
         self._check_data(simulation)
         
         if self.rot_angle == 'random':
-            self.n_rot = np.random.randint(0, 3)
+            self.n_rot = np.random.randint(0, 4)
         else:
             self.n_rot = 1
 
