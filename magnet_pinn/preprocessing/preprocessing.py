@@ -1088,7 +1088,7 @@ class PointPreprocessing(Preprocessing):
         field_dtype : np.dtype
             type of saving field data
         coil_thick_coef : float | None
-            colis are mostly flat, this parameters controlls thickering
+            coils are mostly flat, this parameter controls thickening
         """
         super().__init__(batches_dir_paths, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
         self._initialize_coordinates()
