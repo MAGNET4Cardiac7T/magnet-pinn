@@ -370,7 +370,7 @@ class Rotate(BaseTransform):
         Rotation parameters were given as `rot_angle` and `rot_plane`.
         Parameters
         ----------
-        data : DataItem
+        simulation : DataItem
             DataItem object with the simulation data
             Expected data shapes:
             - field: (h/e, re/im, coils, x/y/z, spatial_axis)
