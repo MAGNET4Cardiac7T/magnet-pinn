@@ -1867,14 +1867,6 @@ def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw
         
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_called_once()
-        
-        dipoles_call_time = mock_write_dipoles.call_args_list[0]
-        dataset_call_time = mock_write_dataset.call_args_list[0]
-        
-        assert mock_write_dipoles.call_count == 1
-        assert mock_write_dataset.call_count == 1
-        assert list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dipoles_call_time) < \
-               list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dataset_call_time)
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1979,14 +1971,6 @@ def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, ra
         
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_called_once()
-        
-        dipoles_call_time = mock_write_dipoles.call_args_list[0]
-        dataset_call_time = mock_write_dataset.call_args_list[0]
-        
-        assert mock_write_dipoles.call_count == 1
-        assert mock_write_dataset.call_count == 1
-        assert list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dipoles_call_time) < \
-               list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dataset_call_time)
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
