@@ -1,14 +1,13 @@
 from os import listdir
 from pathlib import Path
 from shutil import rmtree
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import numpy as np
 from h5py import File
 from natsort import natsorted
 
-from tests.preprocessing.conftest import ALL_SIM_NAMES
 from tests.preprocessing.helpers import (
     CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
     SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
@@ -1860,13 +1859,21 @@ def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw
         voxel_size=1
     )
     
+    manager = Mock()
+    
     with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
          patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
+        
+        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
+        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
         
         grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
         
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_called_once()
+        
+        assert manager.mock_calls[0][0] == '_write_dipoles'
+        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1927,21 +1934,22 @@ def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_
         voxel_size=1
     )
     
+    manager = Mock()
+    
     with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
          patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
+        
+        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
+        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
         
         grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
         
         mock_write_dipoles.assert_called_once()
         assert mock_write_dataset.call_count == 2
         
-        all_calls = mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list
-        dipoles_call_index = all_calls.index(mock_write_dipoles.call_args_list[0])
-        first_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[0])
-        second_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[1])
-        
-        assert dipoles_call_index < first_dataset_call_index
-        assert dipoles_call_index < second_dataset_call_index
+        assert manager.mock_calls[0][0] == '_write_dipoles'
+        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
+        assert manager.mock_calls[2][0] == '_format_and_write_dataset'
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1964,13 +1972,21 @@ def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, ra
         field_dtype=np.float32
     )
     
+    manager = Mock()
+    
     with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
          patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
+        
+        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
+        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
         
         preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
         
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_called_once()
+        
+        assert manager.mock_calls[0][0] == '_write_dipoles'
+        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -2017,21 +2033,22 @@ def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir
         field_dtype=np.float32
     )
     
+    manager = Mock()
+    
     with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
          patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
+        
+        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
+        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
         
         preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
         
         mock_write_dipoles.assert_called_once()
         assert mock_write_dataset.call_count == 2
         
-        all_calls = mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list
-        dipoles_call_index = all_calls.index(mock_write_dipoles.call_args_list[0])
-        first_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[0])
-        second_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[1])
-        
-        assert dipoles_call_index < first_dataset_call_index
-        assert dipoles_call_index < second_dataset_call_index
+        assert manager.mock_calls[0][0] == '_write_dipoles'
+        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
+        assert manager.mock_calls[2][0] == '_format_and_write_dataset'
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
