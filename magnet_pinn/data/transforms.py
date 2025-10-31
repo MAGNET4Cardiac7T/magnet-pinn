@@ -331,15 +331,15 @@ class Crop(BaseTransform):
 
 class Rotate(BaseTransform):
     """
-    Class for rotating the simulation data around the z-axis.
+    Class for rotating the simulation data around a specified axis (x, y, or z).
 
     Attributes
     ----------
     rot_angle : Literal['random', '90']
         Rotation angle [deg]
     rot_plane: Tuple[int, int]
-        Plane of rotation. Spatial axis are expected at the end of the array in the order x, y, z.
-        So the rotation plane will mention stable axis excluding the rotating one.
+        Plane of rotation. Spatial axes are expected at the end of the array in the order x, y, z.
+        So the rotation plane will mention stable axes excluding the rotating one.
         Rotating around x corresponds to (-2, -1), y to (-3, -1), z to (-3, -2).
         Default is z-axis rotation, (-3, -2).
     """
@@ -421,7 +421,7 @@ class Rotate(BaseTransform):
 
 class Mirror(BaseTransform):
     """
-    Class for mirroring (flipping) the simulation data along a specified axis.
+    Class for mirroring (flipping) the simulation data along a specified axis (x, y, or z).
 
     Attributes
     ----------
@@ -513,6 +513,8 @@ class Mirror(BaseTransform):
         ----------
         array : npt.NDArray[np.float32]
             Array to be mirrored
+        apply : bool
+            Whether to apply the mirror transform
 
         Returns
         -------

@@ -890,7 +890,7 @@ def test_rotate_transform_random_angle_correct_range_parameters(zero_grid_item):
     """
     with patch('numpy.random.randint', return_value=2) as mock_randint:
         aug = Rotate(rot_angle="random", rot_axis="z")
-        result = aug(zero_grid_item)
+        _ = aug(zero_grid_item)
         
         mock_randint.assert_called_once_with(0, 4)
         assert aug.n_rot == 2
