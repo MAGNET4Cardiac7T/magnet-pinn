@@ -282,15 +282,6 @@ class Preprocessing(ABC):
         """
         pass
 
-    @abstractmethod
-    def _can_write_dipoles_early(self) -> bool:
-        """
-        Checks if dipoles can be written before processing simulations.
-        For GridPreprocessing this is True (coordinates known from __init__).
-        For PointPreprocessing this is False (coordinates come from first simulation).
-        """
-        pass
-
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple[pd.DataFrame, List[Trimesh]]:
         """
         Reads properties file `materials.txt` as csv file and then 
@@ -322,12 +313,11 @@ class Preprocessing(ABC):
 
         The method works in 2 phases:
 
-        - save processed antenna data (dipoles) if possible
+        - save processed antenna data (dipoles)
         - process each simulation
 
-        This method first tries to call `_write_dipoles` method to save processed 
-        antenna data before processing simulations (if coordinates are available). 
-        Otherwise, it saves dipoles after the first simulation is processed.
+        This method first calls `_write_dipoles` method to save processed 
+        antenna data before processing simulations.
         Then it makes iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
 
@@ -342,22 +332,16 @@ class Preprocessing(ABC):
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
 
+        self._write_dipoles()
+
         if len(simulations) == 0:
             return
-
-        # Write dipoles early if possible (GridPreprocessing)
-        if self._can_write_dipoles_early():
-            self._write_dipoles()
 
         pbar = tqdm(total=len(simulations), desc="Simulations processing")
         for i in simulations:
             sim_res_path = self._process_simulation(i)           
             pbar.set_postfix({"done": sim_res_path}, refresh=True)
             pbar.update(1)
-            
-            # Write dipoles after first simulation if not written early (PointPreprocessing)
-            if not self.__dipoles_written:
-                self._write_dipoles()
 
     def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
         """
@@ -847,12 +831,6 @@ class GridPreprocessing(Preprocessing):
         z_unique = np.arange(min_values[2], max_values[2] + voxel_size, voxel_size)
         self.voxelizer = MeshVoxelizer(voxel_size, x_unique, y_unique, z_unique)
 
-    def _can_write_dipoles_early(self) -> bool:
-        """
-        For GridPreprocessing, coordinates are known from __init__, so dipoles can be written early.
-        """
-        return True
-
     @property
     def _output_target_dir(self) -> str:
         """
@@ -1090,6 +1068,45 @@ class PointPreprocessing(Preprocessing):
     """
     _coordinates = None
 
+    def __init__(self, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
+                 antenna_dir_path: Union[str, Path],
+                 output_dir_path: Union[str, Path],
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Optional[float] = 2.0) -> None:
+        """
+        Initializes the point preprocessing object and reads coordinates from the first simulation.
+        
+        Parameters
+        ----------
+        batches_dir_paths : str | Path | List[str] | List[Path]
+            Path to the batch directory or a list of paths to different batch directories
+        antenna_dir_path : str
+            Path to the antenna directory
+        output_dir_path : str
+            Path to the output directory. All processed data will be saved here.
+        field_dtype : np.dtype
+            type of saving field data
+        coil_thick_coef : float | None
+            colis are mostly flat, this parameters controlls thickering
+        """
+        super().__init__(batches_dir_paths, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
+        self._initialize_coordinates()
+
+    def _initialize_coordinates(self) -> None:
+        """
+        Initializes coordinates by reading them from the first available simulation.
+        This allows dipoles to be written before processing simulations.
+        """
+        if len(self.all_sim_paths) == 0:
+            return
+        
+        first_sim_path = self.all_sim_paths[0]
+        e_field_reader = FieldReaderFactory(
+            first_sim_path, E_FIELD_DATABASE_KEY
+        ).create_reader(False)
+        self._coordinates = e_field_reader.coordinates
+
     @property
     def coordinates(self):
         """
@@ -1100,19 +1117,13 @@ class PointPreprocessing(Preprocessing):
     @coordinates.setter
     def coordinates(self, coordinates):
         """
-        For point preprocessing there are no extent so we check each simulation coordinates if they are the same.
+        Validates that simulation coordinates match the initialized coordinates.
         """
         if self._coordinates is None:
             self._coordinates = coordinates
         else:
             if not np.array_equal(self._coordinates, coordinates):
                 raise Exception("Different coordinate systems for simulations")
-
-    def _can_write_dipoles_early(self) -> bool:
-        """
-        For PointPreprocessing, coordinates come from first simulation, so dipoles cannot be written early.
-        """
-        return False
 
     @property
     def _output_target_dir(self) -> str:
@@ -1123,7 +1134,7 @@ class PointPreprocessing(Preprocessing):
 
     def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
         """
-        Checks the coordinates of the fields
+        Validates that E and H field coordinates match and are consistent with initialized coordinates.
 
         Parameters
         ----------

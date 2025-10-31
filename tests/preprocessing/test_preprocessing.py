@@ -1,6 +1,7 @@
 from os import listdir
 from pathlib import Path
 from shutil import rmtree
+from time import sleep
 
 import pytest
 import numpy as np
@@ -1728,7 +1729,7 @@ def test_grid_duplicate_simulations_valid_preprocessing(raw_central_batch_dir_pa
         assert FEATURES_OUT_KEY in f.keys()
         assert SUBJECT_OUT_KEY in f.keys()
         
-        check_complex_fields(f)
+        check_float_re_im_fields(f)
         check_central_subject_mask(f)
         check_central_features(f)
 
@@ -1838,3 +1839,172 @@ def test_point_duplicate_simulations_with_explicit_names(raw_central_batch_dir_p
     
     assert len(existing_files) == 1
     assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+
+
+def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created before any simulation files for grid preprocessing.
+    """
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+    
+    sleep(0.01)
+    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+    
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    sim_file = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert sim_file.exists()
+    
+    antenna_mtime = antenna_file.stat().st_mtime
+    sim_mtime = sim_file.stat().st_mtime
+    
+    assert antenna_mtime <= sim_mtime
+
+
+def test_grid_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created even when no simulations are processed for grid preprocessing.
+    """
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+    grid_preprocessor.process_simulations([])
+    
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    assert len(list(grid_preprocessor.out_simulations_dir_path.iterdir())) == 0
+
+
+def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created before all simulation files for grid preprocessing.
+    """
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+    
+    sleep(0.01)
+    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    sim_file1 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file2 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    assert sim_file1.exists()
+    assert sim_file2.exists()
+    
+    antenna_mtime = antenna_file.stat().st_mtime
+    sim1_mtime = sim_file1.stat().st_mtime
+    sim2_mtime = sim_file2.stat().st_mtime
+    
+    assert antenna_mtime <= sim1_mtime
+    assert antenna_mtime <= sim2_mtime
+
+
+def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created before any simulation files for pointcloud preprocessing.
+    """
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    
+    sleep(0.01)
+    preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+    
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert sim_file.exists()
+    
+    antenna_mtime = antenna_file.stat().st_mtime
+    sim_mtime = sim_file.stat().st_mtime
+    
+    assert antenna_mtime <= sim_mtime
+
+
+def test_point_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created even when no simulations are processed for pointcloud preprocessing.
+    """
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    preprop.process_simulations([])
+    
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    assert len(list(preprop.out_simulations_dir_path.iterdir())) == 0
+
+
+def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles file is created before all simulation files for pointcloud preprocessing.
+    """
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    
+    sleep(0.01)
+    preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    sim_file1 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file2 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    assert sim_file1.exists()
+    assert sim_file2.exists()
+    
+    antenna_mtime = antenna_file.stat().st_mtime
+    sim1_mtime = sim_file1.stat().st_mtime
+    sim2_mtime = sim_file2.stat().st_mtime
+    
+    assert antenna_mtime <= sim1_mtime
+    assert antenna_mtime <= sim2_mtime
