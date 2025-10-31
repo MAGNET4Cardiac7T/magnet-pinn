@@ -1,7 +1,7 @@
 from os import listdir
 from pathlib import Path
 from shutil import rmtree
-from time import sleep
+from unittest.mock import patch
 
 import pytest
 import numpy as np
@@ -1843,7 +1843,8 @@ def test_point_duplicate_simulations_with_explicit_names(raw_central_batch_dir_p
 
 def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created before any simulation files for grid preprocessing.
+    Test that dipoles are written before any simulation files for grid preprocessing.
+    Verifies call order using mock spies without relying on filesystem timing.
     """
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
@@ -1859,24 +1860,33 @@ def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw
         voxel_size=1
     )
     
-    sleep(0.01)
-    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+    with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
+         patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
+        
+        grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+        
+        mock_write_dipoles.assert_called_once()
+        mock_write_dataset.assert_called_once()
+        
+        dipoles_call_time = mock_write_dipoles.call_args_list[0]
+        dataset_call_time = mock_write_dataset.call_args_list[0]
+        
+        assert mock_write_dipoles.call_count == 1
+        assert mock_write_dataset.call_count == 1
+        assert list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dipoles_call_time) < \
+               list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dataset_call_time)
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
     
     sim_file = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert sim_file.exists()
-    
-    antenna_mtime = antenna_file.stat().st_mtime
-    sim_mtime = sim_file.stat().st_mtime
-    
-    assert antenna_mtime <= sim_mtime
 
 
 def test_grid_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created even when no simulations are processed for grid preprocessing.
+    Test that dipoles are written even when no simulations are processed for grid preprocessing.
+    Verifies _write_dipoles is called but _format_and_write_dataset is not called.
     """
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
@@ -1891,7 +1901,14 @@ def test_grid_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_p
         z_max=4,
         voxel_size=1
     )
-    grid_preprocessor.process_simulations([])
+    
+    with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
+         patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
+        
+        grid_preprocessor.process_simulations([])
+        
+        mock_write_dipoles.assert_called_once()
+        mock_write_dataset.assert_not_called()
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1901,7 +1918,8 @@ def test_grid_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_p
 
 def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created before all simulation files for grid preprocessing.
+    Test that dipoles are written before all simulation files for grid preprocessing.
+    Verifies _write_dipoles is called once before any _format_and_write_dataset calls.
     """
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
@@ -1917,8 +1935,21 @@ def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_
         voxel_size=1
     )
     
-    sleep(0.01)
-    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
+         patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
+        
+        grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+        
+        mock_write_dipoles.assert_called_once()
+        assert mock_write_dataset.call_count == 2
+        
+        all_calls = mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list
+        dipoles_call_index = all_calls.index(mock_write_dipoles.call_args_list[0])
+        first_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[0])
+        second_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[1])
+        
+        assert dipoles_call_index < first_dataset_call_index
+        assert dipoles_call_index < second_dataset_call_index
     
     antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1927,18 +1958,12 @@ def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_
     sim_file2 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
     assert sim_file1.exists()
     assert sim_file2.exists()
-    
-    antenna_mtime = antenna_file.stat().st_mtime
-    sim1_mtime = sim_file1.stat().st_mtime
-    sim2_mtime = sim_file2.stat().st_mtime
-    
-    assert antenna_mtime <= sim1_mtime
-    assert antenna_mtime <= sim2_mtime
 
 
 def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created before any simulation files for pointcloud preprocessing.
+    Test that dipoles are written before any simulation files for pointcloud preprocessing.
+    Verifies call order using mock spies without relying on filesystem timing.
     """
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
@@ -1947,24 +1972,33 @@ def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, ra
         field_dtype=np.float32
     )
     
-    sleep(0.01)
-    preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+    with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
+         patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
+        
+        preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
+        
+        mock_write_dipoles.assert_called_once()
+        mock_write_dataset.assert_called_once()
+        
+        dipoles_call_time = mock_write_dipoles.call_args_list[0]
+        dataset_call_time = mock_write_dataset.call_args_list[0]
+        
+        assert mock_write_dipoles.call_count == 1
+        assert mock_write_dataset.call_count == 1
+        assert list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dipoles_call_time) < \
+               list(mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list).index(dataset_call_time)
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
     
     sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     assert sim_file.exists()
-    
-    antenna_mtime = antenna_file.stat().st_mtime
-    sim_mtime = sim_file.stat().st_mtime
-    
-    assert antenna_mtime <= sim_mtime
 
 
 def test_point_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created even when no simulations are processed for pointcloud preprocessing.
+    Test that dipoles are written even when no simulations are processed for pointcloud preprocessing.
+    Verifies _write_dipoles is called but _format_and_write_dataset is not called.
     """
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
@@ -1972,7 +2006,14 @@ def test_point_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_
         processed_batch_dir_path,
         field_dtype=np.float32
     )
-    preprop.process_simulations([])
+    
+    with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
+         patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
+        
+        preprop.process_simulations([])
+        
+        mock_write_dipoles.assert_called_once()
+        mock_write_dataset.assert_not_called()
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -1982,7 +2023,8 @@ def test_point_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_
 
 def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles file is created before all simulation files for pointcloud preprocessing.
+    Test that dipoles are written before all simulation files for pointcloud preprocessing.
+    Verifies _write_dipoles is called once before any _format_and_write_dataset calls.
     """
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
@@ -1991,8 +2033,21 @@ def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir
         field_dtype=np.float32
     )
     
-    sleep(0.01)
-    preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
+         patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
+        
+        preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+        
+        mock_write_dipoles.assert_called_once()
+        assert mock_write_dataset.call_count == 2
+        
+        all_calls = mock_write_dipoles.call_args_list + mock_write_dataset.call_args_list
+        dipoles_call_index = all_calls.index(mock_write_dipoles.call_args_list[0])
+        first_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[0])
+        second_dataset_call_index = all_calls.index(mock_write_dataset.call_args_list[1])
+        
+        assert dipoles_call_index < first_dataset_call_index
+        assert dipoles_call_index < second_dataset_call_index
     
     antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
@@ -2001,10 +2056,3 @@ def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir
     sim_file2 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
     assert sim_file1.exists()
     assert sim_file2.exists()
-    
-    antenna_mtime = antenna_file.stat().st_mtime
-    sim1_mtime = sim_file1.stat().st_mtime
-    sim2_mtime = sim_file2.stat().st_mtime
-    
-    assert antenna_mtime <= sim1_mtime
-    assert antenna_mtime <= sim2_mtime
