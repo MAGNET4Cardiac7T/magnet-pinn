@@ -121,7 +121,6 @@ class Preprocessing(ABC):
 
     __dipoles_masks = None
     __dipoles_features = None
-    __dipoles_written = False
     coil_thick_coef = None
 
     @property
@@ -718,17 +717,12 @@ class Preprocessing(ABC):
     def _write_dipoles(self) -> None:
         """
         Write dipoles masks to the output directory.
-        """
-        if self.__dipoles_written:
-            return
-            
+        """ 
         self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
-        
-        self.__dipoles_written = True
 
 
 class GridPreprocessing(Preprocessing):
@@ -1114,17 +1108,6 @@ class PointPreprocessing(Preprocessing):
         """
         return self._coordinates
 
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        """
-        Validates that simulation coordinates match the initialized coordinates.
-        """
-        if self._coordinates is None:
-            self._coordinates = coordinates
-        else:
-            if not np.array_equal(self._coordinates, coordinates):
-                raise Exception("Different coordinate systems for simulations")
-
     @property
     def _output_target_dir(self) -> str:
         """
@@ -1151,7 +1134,8 @@ class PointPreprocessing(Preprocessing):
         ):
             raise Exception("Different coordinate systems for E and H fields")
         
-        self.coordinates = e_coordinates
+        if not np.array_equal(self._coordinates, e_coordinates):
+            raise Exception("Different coordinate systems for simulations")
 
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
         """
