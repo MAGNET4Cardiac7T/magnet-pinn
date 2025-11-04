@@ -1728,7 +1728,7 @@ def test_grid_duplicate_simulations_valid_preprocessing(raw_central_batch_dir_pa
         assert FEATURES_OUT_KEY in f.keys()
         assert SUBJECT_OUT_KEY in f.keys()
         
-        check_complex_fields(f)
+        check_float_re_im_fields(f)
         check_central_subject_mask(f)
         check_central_features(f)
 
