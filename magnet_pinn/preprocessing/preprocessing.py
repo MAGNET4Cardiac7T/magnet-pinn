@@ -717,7 +717,7 @@ class Preprocessing(ABC):
     def _write_dipoles(self) -> None:
         """
         Write dipoles masks to the output directory.
-        """ 
+        """
         self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
         
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
