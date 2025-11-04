@@ -1840,48 +1840,6 @@ def test_point_duplicate_simulations_with_explicit_names(raw_central_batch_dir_p
     assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
 
 
-def test_grid_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
-    """
-    Test that dipoles are written before any simulation files for grid preprocessing.
-    Verifies call order using mock spies without relying on filesystem timing.
-    """
-    grid_preprocessor = GridPreprocessing(
-        raw_central_batch_dir_path,
-        raw_antenna_dir_path,
-        processed_batch_dir_path,
-        field_dtype=np.float32,
-        x_min=-4,
-        x_max=4,
-        y_min=-4,
-        y_max=4,
-        z_min=-4,
-        z_max=4,
-        voxel_size=1
-    )
-    
-    manager = Mock()
-    
-    with patch.object(grid_preprocessor, '_write_dipoles', wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles, \
-         patch.object(grid_preprocessor, '_format_and_write_dataset', wraps=grid_preprocessor._format_and_write_dataset) as mock_write_dataset:
-        
-        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
-        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
-        
-        grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME])
-        
-        mock_write_dipoles.assert_called_once()
-        mock_write_dataset.assert_called_once()
-        
-        assert manager.mock_calls[0][0] == '_write_dipoles'
-        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
-    
-    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
-    assert antenna_file.exists()
-    
-    sim_file = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
-    assert sim_file.exists()
-
-
 def test_grid_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
     Test that dipoles are written even when no simulations are processed for grid preprocessing.
@@ -1960,39 +1918,34 @@ def test_grid_dipoles_written_before_multiple_simulations(raw_central_batch_dir_
     assert sim_file2.exists()
 
 
-def test_point_dipoles_written_before_simulations(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_dipoles_written_even_when_first_simulation_fails(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
     """
-    Test that dipoles are written before any simulation files for pointcloud preprocessing.
-    Verifies call order using mock spies without relying on filesystem timing.
+    Test that dipoles are written even when first simulation processing fails for grid preprocessing.
+    Verifies _write_dipoles completes before any simulation processing and antenna file exists
+    despite the failure.
     """
-    preprop = PointPreprocessing(
+    grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_batch_dir_path,
-        field_dtype=np.float32
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
     )
     
-    manager = Mock()
+    with patch.object(grid_preprocessor, '_process_simulation', side_effect=Exception("Simulated failure")):
+        with pytest.raises(Exception, match="Simulated failure"):
+            grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
     
-    with patch.object(preprop, '_write_dipoles', wraps=preprop._write_dipoles) as mock_write_dipoles, \
-         patch.object(preprop, '_format_and_write_dataset', wraps=preprop._format_and_write_dataset) as mock_write_dataset:
-        
-        manager.attach_mock(mock_write_dipoles, '_write_dipoles')
-        manager.attach_mock(mock_write_dataset, '_format_and_write_dataset')
-        
-        preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
-        
-        mock_write_dipoles.assert_called_once()
-        mock_write_dataset.assert_called_once()
-        
-        assert manager.mock_calls[0][0] == '_write_dipoles'
-        assert manager.mock_calls[1][0] == '_format_and_write_dataset'
-    
-    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
     assert antenna_file.exists()
     
-    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
-    assert sim_file.exists()
+    assert len(list(grid_preprocessor.out_simulations_dir_path.iterdir())) == 0
 
 
 def test_point_dipoles_written_with_empty_simulation_list(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
@@ -2057,3 +2010,26 @@ def test_point_dipoles_written_before_multiple_simulations(raw_central_batch_dir
     sim_file2 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
     assert sim_file1.exists()
     assert sim_file2.exists()
+
+
+def test_point_dipoles_written_even_when_first_simulation_fails(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    """
+    Test that dipoles are written even when first simulation processing fails for pointcloud preprocessing.
+    Verifies _write_dipoles completes before any simulation processing and antenna file exists
+    despite the failure.
+    """
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+    
+    with patch.object(preprop, '_process_simulation', side_effect=Exception("Simulated failure")):
+        with pytest.raises(Exception, match="Simulated failure"):
+            preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    assert antenna_file.exists()
+    
+    assert len(list(preprop.out_simulations_dir_path.iterdir())) == 0
