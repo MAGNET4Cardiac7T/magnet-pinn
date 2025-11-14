@@ -104,8 +104,13 @@ class Compose(BaseTransform):
 class DefaultTransform(BaseTransform):
     """
     A default transform for the simulation data.
-    It supposed to be used if the PhaseShift transform is not used.
-    It changes field, coils, fully set phase to 0 and mask to 1.
+    It is supposed to be used if the PhaseShift transform is not used.
+    It changes the field, coils, and fully sets phase to 0 and mask to 1.
+
+    Parameters
+    ----------
+    simulation : DataItem
+        simulation data
     """
     def __init__(self):
         super().__init__()
@@ -120,21 +125,37 @@ class DefaultTransform(BaseTransform):
         ----------
         simulation : DataItem
             simulation data
-
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
+            
         Returns
         -------
         DataItem
             augmented simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, features, spatial_axis)
+            - input: (features, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (3, spatial_axis)
+            - coils: (re/im, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         """
         self._check_data(simulation)
 
-        num_coils = simulation.coils.shape[-1]
-        field = np.sum(simulation.field, axis=-1)
+        num_coils = simulation.coils.shape[0]
+        field = np.sum(simulation.field, axis=2)
 
         phase = np.zeros(num_coils, dtype=simulation.dtype)
         mask= np.ones(num_coils, dtype=np.bool_)
 
-        coils_re = np.sum(simulation.coils, axis=-1)
+        coils_re = np.sum(simulation.coils, axis=0)
         coils_im = np.zeros_like(coils_re)
         coils = np.stack((coils_re, coils_im), axis=0)
 
@@ -208,11 +229,27 @@ class Crop(BaseTransform):
         ----------
         data : DataItem
             DataItem object with the simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         
         Returns
         -------
         DataItem
             augmented DataItem object
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis_cropped)
+            - input: (cond/perm/dens, spatial_axis_cropped)
+            - subject: (spatial_axis_cropped)
+            - positions: (x/y/z, spatial_axis_cropped)
+            - coils: (coils, spatial_axis_cropped)
+            - phase: (coils,)
+            - mask: (coils,)
         """
         self._check_data(simulation)
         crop_size = self.crop_size
@@ -224,12 +261,13 @@ class Crop(BaseTransform):
             input=self._crop_array(simulation.input, crop_mask, 1),
             subject=self._crop_array(simulation.subject, crop_mask, 0),
             simulation=simulation.simulation,
-            field=self._crop_array(simulation.field, crop_mask, 3),
+            field=self._crop_array(simulation.field, crop_mask, 4),
             phase=simulation.phase,
             mask=simulation.mask,
-            coils=self._crop_array(simulation.coils, crop_mask, 0),
+            coils=self._crop_array(simulation.coils, crop_mask, 1),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
+            positions=self._crop_array(simulation.positions, crop_mask, 1),
         )
     
     def _crop_array(self, 
@@ -318,11 +356,27 @@ class Rotate(BaseTransform):
         ----------
         data : DataItem
             DataItem object with the simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         
         Returns
         -------
         DataItem
             augmented DataItem object
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         """
         self._check_data(simulation)
         
@@ -332,15 +386,16 @@ class Rotate(BaseTransform):
             self.n_rot = 1
 
         return DataItem(
-            input=self._rot_array(simulation.input, plane=(1,2)),
-            subject=self._rot_array(simulation.subject, plane=(0,1)),
+            input=self._rot_array(simulation.input, plane=(-3, -2)),
+            subject=self._rot_array(simulation.subject, plane=(-3, -2)),
             simulation=simulation.simulation,
-            field=self._rot_array(simulation.field, plane=(3,4)),
+            field=self._rot_array(simulation.field, plane=(-3, -2)),
             phase=simulation.phase,
             mask=simulation.mask,
-            coils=self._rot_array(simulation.coils, plane=(1,2)),
+            coils=self._rot_array(simulation.coils, plane=(-3, -2)),
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
+            positions=self._rot_array(simulation.positions, plane=(-3, -2)),
         )
     
     def _rot_array(self,
@@ -353,6 +408,14 @@ class PhaseShift(BaseTransform):
     """
     Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
     `exp(1 + phase * j) * mask` is used to calculate the shift coefficients.
+
+    Parameters
+    ----------
+    num_coils : int
+        Number of coils in the simulation data
+    sampling_method : Literal['uniform', 'binomial']
+        Method for sampling the phase and mask. If 'uniform', it samples the number of coils to be on and then randomly selects the coils.
+        If 'binomial', it samples the number of coils to be on based on the binomial distribution.
     """
     def __init__(self, 
                  num_coils: int,
@@ -373,11 +436,25 @@ class PhaseShift(BaseTransform):
         ----------
         simulation : DataItem
             DataItem object with the simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
         
         Returns
         -------
         DataItem
             augmented DataItem object
+            Expected data shapes:
+            - field: (h/e, re/im, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (re/im, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
         """
 
         self._check_data(simulation)
@@ -488,7 +565,7 @@ class PhaseShift(BaseTransform):
         coeffs_im = np.stack((im_phase, re_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
         coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einops.einsum(fields, coeffs, 'hf reim fieldxyz ... coils, hf reimout reim coils -> hf reimout fieldxyz ...')
+        field_shift = einops.einsum(fields, coeffs, 'hf reim coils fieldxyz ... , hf reimout reim coils -> hf reimout fieldxyz ...')
         return field_shift
 
 
@@ -507,7 +584,7 @@ class PhaseShift(BaseTransform):
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs = np.stack((re_phase, im_phase), axis=0)
-        coils_shift = einops.einsum(coils, coeffs, '... coils, reim coils -> reim ...')
+        coils_shift = einops.einsum(coils, coeffs, 'coils ... , reim coils -> reim ...')
         return coils_shift
     
 
@@ -520,6 +597,15 @@ class GridPhaseShift(PhaseShift):
 
 ## TODO move the coil enumerator logic to sample_phase and sample_mask methods, without modifying the _sample_phase_and_mask method
 class CoilEnumeratorPhaseShift(PhaseShift):
+    """
+    Class for augmenting the field and coil data. It uses a complex phase rotation augmentation for the field and coils data.
+    
+    Parameters
+    ----------
+    num_coils : int
+        Number of coils in the simulation data
+    
+    """
     def __init__(self, 
                  num_coils: int):
         super().__init__(num_coils=num_coils)
@@ -563,88 +649,15 @@ class CoilEnumeratorPhaseShift(PhaseShift):
 
 class PointPhaseShift(PhaseShift):
     """
-    Class is added for the reversed comparability, the PhaseShift itself works fine with point cloud simulations
-    TODO: standartize the order od axis `fieldxyz` and `...`(meant x/y/z in grid and positions in point cloud) in early 
-    stages of simulation preprocessing
+    Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
     """
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32], 
-                           ) -> npt.NDArray[np.float32]:
-        re_phase = np.cos(phase) * mask
-        im_phase = np.sin(phase) * mask
-        coeffs_real = np.stack((re_phase, -im_phase), axis=0)
-        coeffs_im = np.stack((im_phase, re_phase), axis=0)
-        coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einops.einsum(fields, coeffs, 'hf reim ... fieldxyz coils, hf reimout reim coils -> hf reimout fieldxyz ...')
-        return field_shift
-    
+    pass
 
-class PointFeatureRearrange(BaseTransform):
-    """
-    A class for changing the axis of the field and coils data. The pointscloud data has a different axis order than the grid data.
-    It is (positions, x/y/z, re/im parts, field_type).
-    """
-    def __init__(self, 
-                 num_coils: int):
-        super().__init__()
-        self.num_coils = num_coils
-
-    def __call__(self, simulation: DataItem):
-        """
-        This method changed the axis of the field and coils data.
-        Parameters
-        ----------
-        simulation : DataItem
-            DataItem object with the simulation data
-        
-        Returns
-        -------
-        DataItem
-            augmented DataItem object
-        """
-        self._check_data(simulation)
-        rearranged_field = self._rearrange_field(simulation.field, self.num_coils)
-        rearranged_coils = self._rearrange_coils(simulation.coils, self.num_coils)
-        return DataItem(
-            input=simulation.input,
-            subject=simulation.subject,
-            simulation=simulation.simulation,
-            field=rearranged_field,
-            phase=simulation.phase,
-            mask=simulation.mask,
-            coils=rearranged_coils,
-            dtype=simulation.dtype,
-            truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions
-        )
-
-    def _rearrange_field(self, 
-                         field: npt.NDArray[np.float32], 
-                         num_coils: int) -> npt.NDArray[np.float32]:
-        """
-        Changes the order of data axis for the field data. The input data would have axis of 
-        (field_type, re/im parts, x/y/z axis choice, values based on the position) and the output data would have change an order into 
-        (position values, axis x/y/z choice, re/im parts, field_type).
-        """
-        field = einops.rearrange(field, 'he reimout fieldxyz points -> points fieldxyz reimout he')
-        return field
-
-    def _rearrange_coils(self, 
-                         coils: npt.NDArray[np.float32], 
-                         num_coils: int) -> npt.NDArray[np.float32]:
-        """
-        Changes the order of data axis for the coils data. The input data has a shape of 
-        (re/im parts coils values for point) and the output data is the other way around
-        """
-        coils = einops.rearrange(coils, 'reim points -> points reim')
-        return coils
 
 class PointSampling(BaseTransform):
     """
     Class for sampling the points from the simulation data.
+    
     Parameters
     ----------
     points_sampled : Union[float, int]
@@ -661,20 +674,34 @@ class PointSampling(BaseTransform):
         self.points_sampled = points_sampled
 
     def __call__(self, simulation: DataItem):
+        """
+        Parameters
+        ----------
+        simulation : DataItem
+            DataItem object with the simulation data
+            Expected data shapes:
+            - field: (h/e, re/im, coils, x/y/z, spatial_axis)
+            - input: (cond/perm/dens, spatial_axis)
+            - subject: (spatial_axis,)
+            - positions: (x/y/z, spatial_axis)
+            - coils: (coils, spatial_axis)
+            - phase: (coils,)
+            - mask: (coils,)
+        """
         self._check_data(simulation)
-        total_num_points = simulation.positions.shape[0]
+        total_num_points = simulation.positions.shape[-1]
         point_indices = self._sample_point_indices(total_num_points=total_num_points)
         return DataItem(
-            input=simulation.input[point_indices],
+            input=simulation.input[:, point_indices],
             subject=simulation.subject[point_indices],
             simulation=simulation.simulation,
-            field=simulation.field[:, :, point_indices],
+            field=simulation.field[:, :, :, :, point_indices],
             phase=simulation.phase,
             mask=simulation.mask,
-            coils=simulation.coils[point_indices],
+            coils=simulation.coils[:, point_indices],
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions[point_indices]
+            positions=simulation.positions[:, point_indices]
         )
 
     def _sample_point_indices(self, total_num_points: int) -> npt.NDArray[np.int64]:

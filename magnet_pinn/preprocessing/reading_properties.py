@@ -29,7 +29,12 @@ class PropertyReader:
 
     | ./properties_dir_path
     |    ├── materials.txt
-    |    ├── *.stl
+    |    └── *.stl
+
+    Parameters
+    ----------
+    properties_dir_path : str
+        Directory path of the material properties
 
     Attributes
     ----------

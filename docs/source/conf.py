@@ -9,7 +9,7 @@
 project = 'magnet-pinn'
 copyright = '2024, Andrzej Dulny'
 author = 'Andrzej Dulny'
-release = '0.0.10'
+release = '0.0.11'
 
 # from importlib.metadata import version, PackageNotFoundError
 
@@ -25,7 +25,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
-    'numpydoc',
+    'sphinx.ext.napoleon',
     'sphinx_design',
     'sphinx_rtd_theme',
 ]
@@ -38,7 +38,9 @@ exclude_patterns = []
 
 autodoc_default_options = {
     'members': True,
-    'undoc-members': True,
+    "undoc-members": True,
+    'private-members': False,
+    "inherited-members": False,
     'show-inheritance': True,
     'special-members': False,
 }

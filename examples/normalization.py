@@ -1,3 +1,7 @@
+####################################
+# Example Script for Normalization #
+####################################
+
 from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Crop, GridPhaseShift, Compose
@@ -14,13 +18,10 @@ class Iterator:
                 GridPhaseShift(num_coils=8)
             ]
         )
-
-
-
         self.iterator = MagnetGridIterator(
             path,
             transforms=augmentation,
-            num_samples=1
+            num_samples=10
         )
 
     def __len__(self):
@@ -40,3 +41,7 @@ iterator = Iterator("data/processed/train/grid_voxel_size_4_data_type_float32")
 input_normalizer = StandardNormalizer()
 input_normalizer.fit_params(iterator, key='input', axis=0)
 input_normalizer.save_as_json("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/input_normalization.json")
+
+target_normalizer = StandardNormalizer()
+target_normalizer.fit_params(iterator, key='target', axis=0)
+target_normalizer.save_as_json("data/processed/train/grid_voxel_size_4_data_type_float32/normalization/target_normalization.json")

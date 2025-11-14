@@ -6,6 +6,9 @@ from .utils import MaskedLossReducer, DiffFilterFactory, ObjectMaskPadding
 
 # TODO Add dx dy dz as parameters in a clever way
 class BasePhysicsLoss(torch.nn.Module, ABC):
+    """
+    Base class for physics-based losses
+    """
     def __init__(self, 
                  feature_dims: Union[int, Tuple[int, ...]] = 1):
         super(BasePhysicsLoss, self).__init__()
@@ -39,6 +42,9 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
 # TODO Add different Lp norms for the divergence residual
 # TODO Calculate padding based on accuracy of the finite difference filter
 class DivergenceLoss(BasePhysicsLoss):
+    """
+    Divergence Loss
+    """
     def _base_physics_fn(self, pred, target):
         return torch.nn.functional.conv3d(pred, self.physics_filters, padding=1)**2
     

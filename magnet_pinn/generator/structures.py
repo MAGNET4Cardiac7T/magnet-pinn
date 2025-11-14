@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from trimesh import Trimesh, load_mesh
-from perlin_noise import PerlinNoise
+from ..utils import PerlinNoise
 
 from .utils import generate_fibonacci_points_on_sphere
 
@@ -241,7 +241,7 @@ class Tube(Structure3D):
         tubes by finding the distance between their central axes. This is used for
         collision detection and spatial relationship analysis between tubes.
         The calculation uses the formula for distance between two 3D lines:
-        for parallel tubes: d = ||p1 - p2||, for non-parallel tubes: d = |n · (p1 - p2)| / ||n||,
+        for parallel tubes: d = \|\|p1 - p2\|\|, for non-parallel tubes: d = \|n · (p1 - p2)\| / \|\|n\|\|,
         where n = d1 × d2 (cross product of direction vectors), p1, p2 are tube positions,
         and d1, d2 are direction vectors.
 

@@ -53,15 +53,14 @@ def create_processed_coils_file(path: Path, simulation: DataItem):
 
 def create_processed_simulation_file(path: Path, simulation: DataItem, additional_attributes: Callable):
     """
-    Considering that fact that grid/points datasets writing is shape-agnostic, we can unify it, just add additional functions
-    to write specific attributes
+    Considering that fact that grid/points datasets writing is shape-agnostic, we can unify it, just add additional functions.
     """
     efield, other_prop_field = format_field(simulation.field[0], simulation.dtype)
-    hfied, _ = format_field(simulation.field[1], simulation.dtype)
+    hfield, _ = format_field(simulation.field[1], simulation.dtype)
 
     with File(path, "w") as f:
         f.create_dataset(E_FIELD_OUT_KEY, data=efield)
-        f.create_dataset(H_FIELD_OUT_KEY, data=hfied)
+        f.create_dataset(H_FIELD_OUT_KEY, data=hfield)
         f.create_dataset(FEATURES_OUT_KEY, data=simulation.input.astype(other_prop_field))
         f.create_dataset(SUBJECT_OUT_KEY, data=simulation.subject.astype(np.bool_))
 
@@ -75,10 +74,11 @@ def add_grid_attribures_to_file(f: File, simulation: DataItem):
     f.attrs[VOXEL_SIZE_OUT_KEY] = 4
     f.attrs[MIN_EXTENT_OUT_KEY] = np.array([-40, -40, -40])
     f.attrs[MAX_EXTENT_OUT_KEY] = np.array([36, 36, 36])
+    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions)
 
 
 def add_pointcloud_attributes_to_file(f: File, simulation: DataItem):
-    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions.astype(np.float32))
+    f.create_dataset(COORDINATES_OUT_KEY, data=simulation.positions)
 
 
 def format_field(field: np.ndarray, dtype: str) -> np.ndarray:
@@ -86,8 +86,8 @@ def format_field(field: np.ndarray, dtype: str) -> np.ndarray:
     Method formats e/h field values and also returns the dtype of all other values
     """
     writing_type = np.dtype(dtype)
-    real = field[0]
-    im = field[1]
+    real = field[0]  # Shape: (coils, components, spatial...)
+    im = field[1]    # Shape: (coils, components, spatial...)
     if writing_type.kind == FLOAT_DTYPE_KIND:
         field_type = [("re", writing_type),("im", writing_type)]
         other_types = writing_type
@@ -118,31 +118,33 @@ def check_dtypes_between_iter_result_and_supposed_simulation(result: Dict, item:
 
 def check_shapes_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
     assert item.input.shape == result["input"].shape
-    assert item.field.shape[:-1] == result["field"].shape
-    assert item.subject.shape[:-1] == result["subject"].shape
+    expected_field_shape = (item.field.shape[0], item.field.shape[1], *item.field.shape[3:])
+    assert expected_field_shape == result["field"].shape
+    assert item.subject.shape[1:] == result["subject"].shape
     assert item.positions.shape == result["positions"].shape
     assert item.phase.shape == result["phase"].shape
     assert item.mask.shape == result["mask"].shape
-    assert tuple([2] + list(item.coils.shape[:-1])) == result["coils"].shape
+    assert tuple([2] + list(item.coils.shape[1:])) == result["coils"].shape
     assert len(item.dtype) == len(result["dtype"])
     assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
 
 
 def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(result: Dict, item: DataItem):
     """
-    During the testing we gonna use compose of `PointPhaseShift` and `PointFeatureRearrange` transforms so our dimensions will be mirrowed
-    for the field and coils properties.
+    Validates shapes for pointcloud data after applying PointPhaseShift transform.
     """
     assert item.input.shape == result["input"].shape
-    assert item.subject.shape[:-1] == result["subject"].shape
+    # Iterator reduces subject from (1, points) to (points,) via np.max(axis=0)
+    assert item.subject.shape[1:] == result["subject"].shape
     assert item.positions.shape == result["positions"].shape
     assert item.phase.shape == result["phase"].shape
     assert item.mask.shape == result["mask"].shape
     assert len(item.dtype) == len(result["dtype"])
     assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
 
-    assert tuple([item.field.shape[2], item.field.shape[-2], item.field.shape[1], item.field.shape[0]]) == result["field"].shape
-    assert tuple([item.coils.shape[0], 2]) == result["coils"].shape
+    expected_field_shape = (item.field.shape[0], item.field.shape[1], *item.field.shape[3:])
+    assert expected_field_shape == result["field"].shape
+    assert tuple([2] + list(item.coils.shape[1:])) == result["coils"].shape
 
 
 def check_values_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):

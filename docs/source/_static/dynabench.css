@@ -6,8 +6,30 @@
     margin-top: 10px;
   }
 
+/* Sidebar top section (logo + project name + search) */
 .wy-side-nav-search, .wy-nav-top {
-    background: #214478;
+    background: #162a49;          /* keep your blue background */
+    /*padding: 20px 15px;           /* add spacing inside */
+    text-align: center;             /* left-align contents */
+    min-height: 160px;            /* make this block taller */
+    position: relative;
+}
+
+/* Place logo image in top-left */
+.wy-side-nav-search::before {
+    content: "";
+    display: block;
+    background: url("https://magnet4cardiac7t.github.io/assets/img/magnet_logo_venn.svg") no-repeat center center;
+    background-size: contain;  /* adjust logo size */
+    width: 120px;                 /* must match background-size */
+    height: 120px;
+    margin: 0 auto 10px auto;
+}
+
+/* Optional: make search input wider and cleaner */
+.wy-side-nav-search input[type="text"] {
+    width: 90%;
+    margin-top: 10px;
 }
 
 .wy-side-scroll {

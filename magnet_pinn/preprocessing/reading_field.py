@@ -38,26 +38,30 @@ class FieldReaderFactory:
     This class checks the type of the files we have in the field directory
     and defines the reader we need
 
+    Assumed Directory structue:
+
+    |    simulation_dir/
+    |   ├── E_field/
+    |   │   └── e-field*(f=*) [AC*]*.h5
+    |   ├── H_field/
+    |   │   └── h-field*(f=*) [AC*]*.h5
+    |   └── SAR/
+    |       └── SAR*(f=*) [AC*]*.h5
+
     Parameters
+    ----------
+    simulation_dir_path: str
+        Path to the simulation directory
+    field_type: str
+        Field type ["E-Field", "H-Field"]
+
+    Attributes
     ----------
     field_type: str
         Type of the field we read and key of the field database in the h5 file.
         Also is used to define the field directory name.
     files_list: list
         The list of files paths with field values which has to be read.
-
-    Assumed Directory structue
-    --------------------------
-    The simulation directory consists of different field directories
-
-    simulation_dir/
-
-    |- E_field/
-    |  |- e-field*(f=*) [AC*]*.h5
-    |- H_field/
-    |  |- e-field*(f=*) [AC*]*.h5
-    |- SAR/
-    |  |- SAR*(f=*) [AC*]*.h5
 
     Methods
     -------
@@ -146,7 +150,14 @@ class FieldReader(ABC):
     """
     Abstract class for reading field values
 
-    The classs is fully responsible for extracting field values and point coordinates
+    Extract field values and point coordinates
+
+    Parameters
+    ----------
+    files_list: list
+        The list of files paths which should be processed
+    field_type: str
+        The type of the field we process
 
     Attributes
     ----------
@@ -156,6 +167,8 @@ class FieldReader(ABC):
         The type of the field we read
     _coordinates: np.ndarray
         The coordinates of the field points
+    TODO is_grid: bool -> might be good to have in all classes otherwise useless
+        Flag set to true, as the field values are given in the grid form
 
     Methods
     -------
@@ -287,7 +300,7 @@ class FieldReader(ABC):
 
         Parameters
         ----------
-        data: Tuple
+        data_shape: Tuple
             The field components
 
         Returns
@@ -319,6 +332,13 @@ class GridReader(FieldReader):
     """
         Class for reading field values in the grid form, i.e the field values are given on the mesh lines
 
+        Parameters
+        ----------
+        files_list: list
+            The list of files paths which should be processed
+        field_type: str
+            The type of the field we process
+
         Attributes
         ----------
         is_grid: bool
@@ -338,7 +358,7 @@ class GridReader(FieldReader):
             Extracts field values from the files
         
     """
-    is_grid = True
+    is_grid = True #TODO: why is this here and when is it changed?
 
     def _read_coordinates(self, file_path: str) -> Tuple:
         """
@@ -374,6 +394,11 @@ class GridReader(FieldReader):
         ----------
         other_coordinates: Tuple
             The coordinates to compare with
+
+        Returns
+        -------
+        bool
+            True if the coordinates are the same
         """
         x_default_bound, y_default_bound, z_default_bound = self._coordinates
         x_other_bound, y_other_bound, z_other_bound = other_coordinates
@@ -387,6 +412,7 @@ class GridReader(FieldReader):
     @property
     def coordinates(self):
         """
+        TODO: Rewrite description?
         It suppose just to give back the coordinates list. But if the grid trigger is 
         off, then we give the data back in the pointslist form, that is why we create
         a grid form and reshape it into the form of the pointslist.
@@ -405,6 +431,16 @@ class GridReader(FieldReader):
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
         """
         The grid data field is an array with 3d grid structure (x, y, z). It checks and fixes axis order.
+
+        Parameters
+        ----------
+        data_shape: Tuple
+            The shape of the field components
+
+        Returns
+        -------
+        str
+            The field array pattern
         """
         expected_shape = {
             "x": self._coordinates[0].shape[0],
@@ -444,12 +480,12 @@ class GridReader(FieldReader):
         if self.is_grid:
             result = rearrange(
                 field_components,
-                "components ax x y z -> ax x y z components"
+                "components ax x y z -> components ax x y z"
             )
         else:
             result = rearrange(
                 field_components,
-                "components ax x y z -> (x y z) ax components"
+                "components ax x y z -> components ax (x y z)"
             )
 
         return np.ascontiguousarray(result, dtype=np.complex64)
@@ -459,6 +495,13 @@ class PointReader(FieldReader):
     """
     Class for reading field values in the pointslist form, i.e the field values are given at arbitrary point locations.
 
+    Parameters
+    ----------
+    files_list: list
+        The list of files paths which should be processed
+    field_type: str
+        The type of the field we process
+        
     Attributes
     ----------
     files_list: list
@@ -476,12 +519,22 @@ class PointReader(FieldReader):
         Extracts field values from the files
     """
 
-    def _read_coordinates(self, file_path: str):
+    def _read_coordinates(self, file_path: str) -> np.array:
         """
         Read coordinates from the h5 file
 
         In the pointslist case coordinates have no structure so we just compose them 
         as a list of points.
+
+        Parameters
+        ----------
+        file_path: str
+            The path to the h5 file with field values
+
+        Returns
+        -------
+        np.array
+            The coordinates of the field points
         """
         with File(file_path) as f:
             x = f[POSITIONS_DATABASE_KEY]["x"][:]
@@ -514,9 +567,7 @@ class PointReader(FieldReader):
     
     @property
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
-        """
-        This method ignores the existing data because of assumption of 1d
-        """
+        # This property ignores the existing data because of assumption of 1d
         if data_shape[0] != self._coordinates.shape[0]:
             raise ValueError("Inconsistent data shape")
         
@@ -526,7 +577,7 @@ class PointReader(FieldReader):
         """
         Compose together field components from different files
 
-        Just return data as a lisst of points measurements.
+        Just return data as a list of points measurements.
 
         Parameters
         ----------
@@ -540,5 +591,5 @@ class PointReader(FieldReader):
         """
         return np.ascontiguousarray(rearrange(
             field_components,
-            "components batch ax -> batch ax components"
+            "components batch ax -> components ax batch"
         ), dtype=np.complex64)

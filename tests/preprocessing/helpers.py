@@ -24,6 +24,7 @@ ANTENNA_SHORT_TERM_DIR_NAME = "antenna_short_term"
 CENTRAL_BATCH_DIR_NAME = "central_batch"
 CENTRAL_BATCH_SHORT_TERM_DIR_NAME = "central_batch_short_term"
 SHIFTED_BATCH_DIR_NAME = "shifted_batch"
+DUPLICATE_BATCH_DIR_NAME = "duplicate_batch"
 CENTRAL_SPHERE_SIM_NAME = "children_0_tubes_0_id_0"
 CENTRAL_BOX_SIM_NAME = "children_0_tubes_0_id_1"
 SHIFTED_SPHERE_SIM_NAME = "children_0_tubes_0_id_2"
@@ -45,6 +46,15 @@ def create_shifted_batch(data_dir_path):
 
     create_simulation_data(batch_dir_path, SHIFTED_SPHERE_SIM_NAME, create_shifted_sphere_input_data)
     create_simulation_data(batch_dir_path, SHIFTED_BOX_SIM_NAME, create_shifted_box_input_data)
+
+    return batch_dir_path
+
+
+def create_duplicate_batch(data_dir_path):
+    batch_dir_path = data_dir_path / RAW_DATA_DIR_PATH / DUPLICATE_BATCH_DIR_NAME
+
+    create_simulation_data(batch_dir_path, CENTRAL_SPHERE_SIM_NAME)
+    create_simulation_data(batch_dir_path, CENTRAL_BOX_SIM_NAME, create_box_input_data)
 
     return batch_dir_path
 
@@ -155,9 +165,11 @@ def create_simulation_data(simulations_dir_path: str, sim_name: str, subject_fun
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 0)
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 1)
     create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 2)
+    create_field(simulation_dir_path, E_FIELD_DATABASE_KEY, (9, 9, 9), 3)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 0)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 1)
     create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 2)
+    create_field(simulation_dir_path, H_FIELD_DATABASE_KEY, (9, 9, 9), 3)
 
 
 def create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: int = 0):

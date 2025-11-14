@@ -10,10 +10,13 @@ CLASSES
     GridPreprocessing
     PointPreprocessing
 """
+import warnings
 from pathlib import Path
+from collections import Counter
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Optional, Union
 
+import einops
 import numpy as np
 import pandas as pd
 from h5py import File
@@ -71,6 +74,19 @@ class Preprocessing(ABC):
     First of all we check input and output directory structures and read antenna 
     data which will be used for the whole batch. The main method `process_simulations` 
     make some calculations and save processed data to the output directory.
+
+    Parameters
+    ----------
+    batches_dir_paths : str | Path | List[str] | List[Path]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory
+    output_dir_path : str
+        Path to the output directory. All processed data will be saved here.
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
 
     Attributes
     ----------
@@ -139,7 +155,8 @@ class Preprocessing(ABC):
         """
         The method checks the input and output directories, reads antenna data and 
         prepares the output directories. It also checks if simulations have unique names.
-
+        If simulation do not have unique names a warning is raised.    
+        
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -153,7 +170,21 @@ class Preprocessing(ABC):
         coil_thick_coef : float | None
             colis are mostly flat, this parameters controlls thickering
         """
-        self.field_dtype = np.dtype(field_dtype)
+        field_dtype = np.dtype(field_dtype)
+        
+        if field_dtype.kind == COMPLEX_DTYPE_KIND:
+            warnings.warn(
+                f"Complex data types are deprecated and will be removed in a future version. "
+                f"The complex dtype '{field_dtype.name}' will be internally converted to "
+                f"its corresponding float type. Please use float types directly (e.g., np.float32 instead of np.complex64).",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            self.field_dtype = np.dtype(f"f{field_dtype.itemsize // 2}")
+        elif field_dtype.kind != FLOAT_DTYPE_KIND:
+            raise Exception(f'Unsupported field data type: {field_dtype.name}. Only float types are supported (e.g., np.float32, np.float64).')
+        else:
+            self.field_dtype = field_dtype
 
         if isinstance(batches_dir_paths, str) or isinstance(batches_dir_paths, Path):
             batches = [batches_dir_paths]
@@ -163,8 +194,12 @@ class Preprocessing(ABC):
             raise TypeError("Source/s should be a string/list of strings")
         
         self.all_sim_paths = self.__extract_simulations(batches)
-        if len(self.all_sim_paths) != len(set(map(lambda x: x.name, self.all_sim_paths))):
-            raise Exception("Simulation names should be unique")
+
+        # check for unique simulation names
+        unique_counted = Counter(map(lambda x: x.name, self.all_sim_paths))
+        for name, count in unique_counted.items():
+            if count > 1:
+                warnings.warn(f"Simulation '{name}' is not unique and will be overridden. Only one last instance will be kept", UserWarning)
 
         # create output directories
         target_dir_name = self._output_target_dir
@@ -649,22 +684,18 @@ class Preprocessing(ABC):
         np.array:
             h-field data
         """
-        e_field, h_field = None, None
-        if self.field_dtype.kind == COMPLEX_DTYPE_KIND:
-            e_field = simulation.e_field.astype(self.field_dtype)
-            h_field = simulation.h_field.astype(self.field_dtype)
-        elif self.field_dtype.kind == FLOAT_DTYPE_KIND:
-            e_field = np.empty_like(simulation.e_field,
-                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
-            e_field["re"] = simulation.e_field.real
-            e_field["im"] = simulation.e_field.imag
-            
-            h_field = np.empty_like(simulation.h_field,
-                                    dtype=[("re", self.field_dtype),("im", self.field_dtype)])
-            h_field["re"] = simulation.h_field.real
-            h_field["im"] = simulation.h_field.imag
-        else:
+        if self.field_dtype.kind != FLOAT_DTYPE_KIND:
             raise Exception("Unsupported field data type")
+        
+        e_field = np.empty_like(simulation.e_field,
+                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        e_field["re"] = simulation.e_field.real
+        e_field["im"] = simulation.e_field.imag
+        
+        h_field = np.empty_like(simulation.h_field,
+                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        h_field["re"] = simulation.h_field.real
+        h_field["im"] = simulation.h_field.imag
 
         return e_field, h_field
     
@@ -700,6 +731,21 @@ class GridPreprocessing(Preprocessing):
     Class for preprocessing data for grid-based models.
 
     The class is responsible for reading and processing antennas and subjects data in a voxel grid manner.
+
+    Parameters
+    ----------
+    simulations_dir_path : str | List[str]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory.
+    output_dir_path : str
+        Path to the output directory
+    voxel_size : int
+        The size of the voxel for creating a grid
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
 
     Attributes
     ----------
@@ -879,7 +925,7 @@ class GridPreprocessing(Preprocessing):
         str
             an einops pattern
         """
-        return "component x y z -> x y z component"
+        return "component x y z -> component x y z"
     
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
         """
@@ -896,10 +942,10 @@ class GridPreprocessing(Preprocessing):
         """
         return np.ascontiguousarray(repeat(
             props,
-            "feature component -> feature x y z component",
-            x=masks.shape[0],
-            y=masks.shape[1],
-            z=masks.shape[2]
+            "feature component -> feature component x y z",
+            x=masks.shape[1],
+            y=masks.shape[2],
+            z=masks.shape[3]
         ))
     
     @property
@@ -907,14 +953,14 @@ class GridPreprocessing(Preprocessing):
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
-        return "x y z component -> feature x y z component"
+        return "component x y z -> feature component x y z"
     
     @property
     def _features_sum_pattern(self) -> str:
         """
         An einops pattern how to sum features over the component axis.
         """
-        return "feature x y z component -> feature x y z"
+        return "feature component x y z -> feature x y z"
     
     def _format_features(self, simulation: Simulation) -> np.array:
         """
@@ -941,6 +987,8 @@ class GridPreprocessing(Preprocessing):
 
         Grid preprocessing needs to save voxel size and coordinates
         extent as metadata.
+        Also writes coordinates as one more h5 dataset with a shape as 
+        (3, x, y, z).
 
         Parameters
         ----------
@@ -954,12 +1002,36 @@ class GridPreprocessing(Preprocessing):
         f.attrs[MIN_EXTENT_OUT_KEY] = self.positions_min
         f.attrs[MAX_EXTENT_OUT_KEY] = self.positions_max
 
+        x = len(self.voxelizer.x)
+        y = len(self.voxelizer.y)
+        z = len(self.voxelizer.z)
+        coordinates = np.ascontiguousarray(
+            einops.rearrange(
+                self.voxelizer.points, '(x y z) d -> d x y z',
+                x=x, y=y, z=z
+            )
+        ).astype(np.float32)
+        f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)
+
 
 class PointPreprocessing(Preprocessing):
     """
     Class for preprocessing data for point cloud-based models.
 
     The class is responsible for reading and processing antennas and subjects data in a point cloud manner.
+
+    Parameters
+    ----------
+    batches_dir_paths : str | Path | List[str] | List[Path]
+        Path to the batch directory or a list of paths to different batch directories
+    antenna_dir_path : str
+        Path to the antenna directory
+    output_dir_path : str
+        Path to the output directory. All processed data will be saved here.
+    field_dtype : np.dtype
+        type of saving field data
+    coil_thick_coef : float | None
+        colis are mostly flat, this parameters controlls thickering
 
     Attributes
     ----------
@@ -1057,8 +1129,8 @@ class PointPreprocessing(Preprocessing):
         """
         return np.ascontiguousarray(repeat(
             props,
-            "feature component -> points feature component",
-            points=masks.shape[0]
+            "feature component -> feature component points",
+            points=masks.shape[1]
         ))
     
     @property
@@ -1066,14 +1138,14 @@ class PointPreprocessing(Preprocessing):
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
-        return "points component -> points feature component"
+        return "component points -> feature component points"
     
     @property
     def _features_sum_pattern(self) -> str:
         """
         An einops pattern how to sum features over the component axis.
         """
-        return "points feature component -> points feature"
+        return "feature component points -> feature points"
 
     def _set_air_features(self, features: np.array) -> np.array:
         """
@@ -1091,14 +1163,14 @@ class PointPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extneded_air_prop = np.ascontiguousarray(repeat(
+        extended_air_prop = np.ascontiguousarray(repeat(
             AIR_FEATURE_VALUES,
-            "feature -> points feature",
-            points=features.shape[0]
+            "feature -> feature points",
+            points=features.shape[-1]
         ))
 
-        return features + extneded_air_prop * air_mask
-    
+        return features + extended_air_prop * air_mask
+
     def _get_mask(self, mesh: Trimesh) -> np.array:
         """
         A method returns mask for the mesh.
@@ -1139,7 +1211,7 @@ class PointPreprocessing(Preprocessing):
         """
         An einops pattern how to stack masks arrys axis.
         """
-        return "component points -> points component"
+        return "component points -> component points"
     
     def _format_features(self, simulation: Simulation) -> np.array:
         """
@@ -1156,7 +1228,7 @@ class PointPreprocessing(Preprocessing):
             features data
         """
         truncation_coefficients = self._feature_truncate_coefficients(simulation)
-        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=0)
+        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=-1)
         features = simulation.features / truncation_coefficients
         return features.astype(self.field_dtype.type(0).real)
     
@@ -1164,7 +1236,8 @@ class PointPreprocessing(Preprocessing):
         """
         Writes extra data to the output .h5 file.
 
-        Point preprocessing data needs to save coordinates.
+        Point preprocessing data needs to save coordinates. Coordinates are reformatted in the format as:
+        (3, number_of_points).
 
         Parameters
         ----------
@@ -1174,4 +1247,8 @@ class PointPreprocessing(Preprocessing):
             a h5 file descriptor
         """
         super()._write_extra_data(simulation, f)
-        f.create_dataset(COORDINATES_OUT_KEY, data=self.coordinates.astype(np.float32))
+        coordinates = np.ascontiguousarray(rearrange(
+            self.coordinates, 
+            "points axis -> axis points"
+        ))
+        f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)
