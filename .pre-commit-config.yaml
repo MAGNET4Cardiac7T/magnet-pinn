@@ -1,36 +1,49 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.13.2
+  # All linters as local hooks, using uv to run them in your project env (.venv)
+  - repo: local
     hooks:
       - id: isort
-        additional_dependencies: [toml]
-        exclude: ^.*/?setup\.py$
+        name: isort (uv)
+        language: system
+        entry: uv run isort
+        types: [python]
+        pass_filenames: true
+        args: [--settings-path, pyproject.toml, --diff]
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
-    hooks:
+      - id: black
+        name: black (uv)
+        language: system
+        entry: uv run black
+        types: [python]
+        pass_filenames: true
+        args: [--config, pyproject.toml, --diff]
+
       - id: flake8
+        name: flake8 (uv)
+        language: system
+        entry: uv run flake8
+        types: [python]
+        pass_filenames: true
+        # flake8-pyproject must be in your pyproject/uv deps now, not additional_dependencies
+        args: [--toml-config, pyproject.toml]
 
+      - id: mypy
+        name: mypy (uv)
+        language: system
+        entry: uv run mypy
+        types: [python]
+        pass_filenames: true
+        args: [--config-file, pyproject.toml]
+
+  # keep the generic pre-commit-hooks – they don’t care about your venv
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-json
       - id: pretty-format-json
         args: [--no-ensure-ascii]
       - id: check-yaml
-        exclude: ^tests/.*
       - id: trailing-whitespace
-        exclude: ^tests/.*/fixtures/.*
       - id: end-of-file-fixer
-        exclude: ^tests/.*/fixtures/.*
       - id: debug-statements
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
-    hooks:
-      - id: mypy
+        files: ^.*\.py$
