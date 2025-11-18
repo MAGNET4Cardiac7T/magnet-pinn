@@ -6,6 +6,10 @@ from typing import Optional, Union, Tuple
 from .utils import MaskedLossReducer, DiffFilterFactory, ObjectMaskPadding
 
 
+MRI_FREQUENCY_HZ = 297.2e6
+VACUUM_PERMEABILITY = 1.256637061e-6
+
+
 # TODO Add dx dy dz as parameters in a clever way
 class BasePhysicsLoss(torch.nn.Module, ABC):
     """
@@ -42,13 +46,13 @@ class BasePhysicsLoss(torch.nn.Module, ABC):
 
 
 # TODO Add different Lp norms for the divergence residual
-# TODO Calculate padding based on accuracy of the finite difference filter
 class DivergenceLoss(BasePhysicsLoss):
     """
     Divergence Loss
     """
     def _base_physics_fn(self, pred, target):
-        return torch.nn.functional.conv3d(pred, self.physics_filters, padding=1)**2
+        padding = self.diff_filter_factory.accuracy // 2
+        return torch.nn.functional.conv3d(pred, self.physics_filters, padding=padding)**2
 
     def _build_physics_filters(self):
         divergence_filter = self.diff_filter_factory.divergence()
@@ -92,11 +96,12 @@ class FaradaysLoss(BasePhysicsLoss):
         pred_e_re = pred[:, 0:3, :, :, :]
         pred_e_im = pred[:, 3:6, :, :, :]
 
+        padding = self.diff_filter_factory.accuracy // 2
         curl_pred_e_re = torch.nn.functional.conv3d(
-            pred_e_re, self.physics_filters, padding=1
+            pred_e_re, self.physics_filters, padding=padding
         )
         curl_pred_e_im = torch.nn.functional.conv3d(
-            pred_e_im, self.physics_filters, padding=1
+            pred_e_im, self.physics_filters, padding=padding
         )
 
         curl_pred_e = curl_pred_e_re + 1j * curl_pred_e_im
@@ -108,7 +113,7 @@ class FaradaysLoss(BasePhysicsLoss):
 
         faradays_pred = (
             curl_pred_e
-            + 1j * 2 * math.pi * 297.2e6 * 1.256637061e-6 * pred_h
+            + 1j * 2 * math.pi * MRI_FREQUENCY_HZ * VACUUM_PERMEABILITY * pred_h
         )
 
         return faradays_pred.abs() ** 2
