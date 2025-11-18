@@ -1,7 +1,9 @@
 import pytest
 import torch
-from magnet_pinn.losses.utils import DiffFilterFactory, MaskedLossReducer, ObjectMaskPadding
 import einops
+
+from magnet_pinn.losses.utils import DiffFilterFactory, MaskedLossReducer, ObjectMaskPadding, mask_padding
+from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLoss
 
 
 @pytest.fixture
@@ -129,7 +131,7 @@ def test_curl_components_on_linear_fields(diff_filter_factory, num_values):
     assert torch.allclose(
         curl1[0, 0, interior_slice, interior_slice, interior_slice],
         torch.full_like(curl1[0, 0, interior_slice, interior_slice, interior_slice], expected_curl_x),
-        rtol=0.02
+        rtol=0.01
     )
     assert torch.allclose(
         curl1[0, 1, interior_slice, interior_slice, interior_slice],
@@ -158,7 +160,7 @@ def test_curl_components_on_linear_fields(diff_filter_factory, num_values):
     assert torch.allclose(
         curl2[0, 1, interior_slice, interior_slice, interior_slice],
         torch.full_like(curl2[0, 1, interior_slice, interior_slice, interior_slice], expected_curl_y),
-        rtol=0.02
+        rtol=0.01
     )
     assert torch.allclose(
         curl2[0, 2, interior_slice, interior_slice, interior_slice],
@@ -187,7 +189,7 @@ def test_curl_components_on_linear_fields(diff_filter_factory, num_values):
     assert torch.allclose(
         curl3[0, 2, interior_slice, interior_slice, interior_slice],
         torch.full_like(curl3[0, 2, interior_slice, interior_slice, interior_slice], expected_curl_z),
-        rtol=0.02
+        rtol=0.01
     )
 
 
@@ -257,3 +259,120 @@ def test_diff_filter_factory_invalid_dim():
 def test_diff_filter_factory_mismatched_dim_names():
     with pytest.raises(ValueError, match="dim_names .* does not match num_dims"):
         DiffFilterFactory(num_dims=3, dim_names='xy')
+
+
+def test_mask_padding_convenience_function():
+    mask = torch.ones([1, 1, 10, 10, 10])
+    mask[:, :, 2:8, 2:8, 2:8] = 0
+
+    result = mask_padding(mask, padding=1)
+
+    assert result.shape[0] == 1
+    assert result.shape[1] == 1
+    assert result.dtype == torch.bool
+
+
+def test_mask_padding_default_padding():
+    mask = torch.ones([1, 1, 10, 10, 10])
+    mask[:, :, 3:7, 3:7, 3:7] = 0
+
+    result = mask_padding(mask)
+
+    assert result.dtype == torch.bool
+    assert result.shape == mask.shape
+
+
+def test_diff_filter_factory_with_non_default_dx():
+    """Test that DiffFilterFactory correctly scales derivatives with non-default dx."""
+    dx = 0.5
+    factory = DiffFilterFactory(dx=dx, num_dims=3)
+
+    num_values = 21
+    x_coords = torch.linspace(0, 10, num_values)
+    field = torch.zeros([1, 3, num_values, num_values, num_values])
+    field[0, 0, :, :, :] = x_coords.view(-1, 1, 1)
+
+    div_filter = factory.divergence()
+    div_result = torch.nn.functional.conv3d(field, div_filter, padding=1)
+
+    grid_dx = (x_coords[-1] - x_coords[0]) / (num_values - 1)
+    expected_divergence = grid_dx / dx
+
+    interior_slice = slice(2, -2)
+    interior = div_result[0, 0, interior_slice, interior_slice, interior_slice]
+
+    assert torch.allclose(interior, torch.full_like(interior, float(expected_divergence)), rtol=0.01)
+
+
+def test_diff_filter_factory_invalid_negative_dx():
+    """Test that DiffFilterFactory raises error for negative dx."""
+    with pytest.raises(ValueError):
+        DiffFilterFactory(dx=-1.0)
+
+
+def test_diff_filter_factory_invalid_zero_dx():
+    """Test that DiffFilterFactory raises error for zero dx."""
+    with pytest.raises(ValueError):
+        DiffFilterFactory(dx=0.0)
+
+
+def test_diff_filter_factory_invalid_accuracy():
+    """Test that DiffFilterFactory handles invalid accuracy values appropriately."""
+    with pytest.raises(ValueError):
+        DiffFilterFactory(accuracy=0)
+
+    with pytest.raises(ValueError):
+        DiffFilterFactory(accuracy=-2)
+
+
+def test_diff_filter_factory_padding_calculation():
+    """Test that padding calculation is correct for different accuracy levels."""
+    factory_acc2 = DiffFilterFactory(accuracy=2, num_dims=3)
+    div_filter_acc2 = factory_acc2.divergence()
+    assert div_filter_acc2.shape[-1] == 3
+    expected_padding_acc2 = 1
+    assert expected_padding_acc2 == factory_acc2.accuracy // 2
+
+    factory_acc4 = DiffFilterFactory(accuracy=4, num_dims=3)
+    div_filter_acc4 = factory_acc4.divergence()
+    assert div_filter_acc4.shape[-1] == 5
+    expected_padding_acc4 = 2
+    assert expected_padding_acc4 == factory_acc4.accuracy // 2
+
+
+def test_divergence_loss_uses_correct_padding():
+    """Test that DivergenceLoss uses dynamically calculated padding."""
+    loss_fn = DivergenceLoss()
+
+    assert loss_fn.diff_filter_factory.accuracy == 2
+
+    expected_padding = loss_fn.diff_filter_factory.accuracy // 2
+    assert expected_padding == 1
+
+    spatial_size = 16
+    batch_size = 1
+    pred = torch.randn(batch_size, 3, spatial_size, spatial_size, spatial_size)
+    target = torch.zeros_like(pred)
+
+    loss = loss_fn(pred, target)
+    assert loss.shape == torch.Size([])
+    assert torch.isfinite(loss)
+
+
+def test_faradays_loss_uses_correct_padding():
+    """Test that FaradaysLoss uses dynamically calculated padding."""
+    loss_fn = FaradaysLoss()
+
+    assert loss_fn.diff_filter_factory.accuracy == 2
+
+    expected_padding = loss_fn.diff_filter_factory.accuracy // 2
+    assert expected_padding == 1
+
+    spatial_size = 16
+    batch_size = 1
+    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size)
+    target = torch.zeros_like(pred)
+
+    loss = loss_fn(pred, target)
+    assert loss.shape == torch.Size([])
+    assert torch.isfinite(loss)
