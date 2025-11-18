@@ -129,7 +129,7 @@ class Preprocessing(ABC):
         A getter for the dipoles masks, caclulates it when the user first needs it together with features.
         """
         if self.__dipoles_masks is None:
-            self.__dipoles_masks, self.__dipoles_features = self._get_features_and_mask(
+            self.__dipoles_features, self.__dipoles_masks = self._get_features_and_mask(
                 self.dipoles_properties, self.dipoles_meshes
             )
         return self.__dipoles_masks
@@ -312,13 +312,13 @@ class Preprocessing(ABC):
 
         The method works in 2 phases:
 
-        - check simulations for being in the batch
+        - save processed antenna data (dipoles)
         - process each simulation
 
-        This method make iteration over all simulation directories found in the 
+        This method first calls `_write_dipoles` method to save processed 
+        antenna data before processing simulations.
+        Then it makes iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
-        After the main work is done it also calls `_write_dipoles` method 
-        to save processed antenna data. 
 
         Simulation names in different batches can not be the same, 
         if they are we would choose a random one would be chosen to preprocess. 
@@ -331,6 +331,8 @@ class Preprocessing(ABC):
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
 
+        self._write_dipoles()
+
         if len(simulations) == 0:
             return
 
@@ -339,8 +341,6 @@ class Preprocessing(ABC):
             sim_res_path = self._process_simulation(i)           
             pbar.set_postfix({"done": sim_res_path}, refresh=True)
             pbar.update(1)
-        
-        self._write_dipoles()
 
     def __resolve_simulations(self, simulations: List[Union[str, Path]]) -> List[Path]:
         """
@@ -724,7 +724,6 @@ class Preprocessing(ABC):
         with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
 
-            
 
 class GridPreprocessing(Preprocessing):
     """
@@ -1063,23 +1062,51 @@ class PointPreprocessing(Preprocessing):
     """
     _coordinates = None
 
+    def __init__(self, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
+                 antenna_dir_path: Union[str, Path],
+                 output_dir_path: Union[str, Path],
+                 field_dtype: np.dtype = np.complex64,
+                 coil_thick_coef: Optional[float] = 2.0) -> None:
+        """
+        Initializes the point preprocessing object and reads coordinates from the first simulation.
+        
+        Parameters
+        ----------
+        batches_dir_paths : str | Path | List[str] | List[Path]
+            Path to the batch directory or a list of paths to different batch directories
+        antenna_dir_path : str
+            Path to the antenna directory
+        output_dir_path : str
+            Path to the output directory. All processed data will be saved here.
+        field_dtype : np.dtype
+            type of saving field data
+        coil_thick_coef : float | None
+            coils are mostly flat, this parameter controls thickening
+        """
+        super().__init__(batches_dir_paths, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
+        self._initialize_coordinates()
+
+    def _initialize_coordinates(self) -> None:
+        """
+        Initializes coordinates by reading them from the first available simulation.
+        This allows dipoles to be written before processing simulations.
+        """
+        if len(self.all_sim_paths) == 0:
+            return
+        
+        first_sim_path = self.all_sim_paths[0]
+        e_field_reader = FieldReaderFactory(
+            first_sim_path, E_FIELD_DATABASE_KEY
+        ).create_reader(False)
+        self._coordinates = e_field_reader.coordinates
+
     @property
     def coordinates(self):
         """
         Getter for the coordinates
         """
         return self._coordinates
-
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        """
-        For point preprocessing there are no extent so we check each simulation coordinates if they are the same.
-        """
-        if self._coordinates is None:
-            self._coordinates = coordinates
-        else:
-            if not np.array_equal(self._coordinates, coordinates):
-                raise Exception("Different coordinate systems for simulations")
 
     @property
     def _output_target_dir(self) -> str:
@@ -1090,7 +1117,7 @@ class PointPreprocessing(Preprocessing):
 
     def _check_coordinates(self, e_reader: FieldReader, h_reader: FieldReader) -> None:
         """
-        Checks the coordinates of the fields
+        Validates that E and H field coordinates match and are consistent with initialized coordinates.
 
         Parameters
         ----------
@@ -1107,7 +1134,8 @@ class PointPreprocessing(Preprocessing):
         ):
             raise Exception("Different coordinate systems for E and H fields")
         
-        self.coordinates = e_coordinates
+        if not np.array_equal(self._coordinates, e_coordinates):
+            raise Exception("Different coordinate systems for simulations")
 
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
         """
