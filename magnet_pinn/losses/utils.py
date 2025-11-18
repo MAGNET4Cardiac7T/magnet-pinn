@@ -78,6 +78,13 @@ class DiffFilterFactory:
                  dx: float = 1.0,
                  num_dims: int = 3,
                  dim_names: str = 'xyz'):
+        if dx <= 0:
+            raise ValueError(f"dx must be positive, got {dx}")
+        if accuracy <= 0:
+            raise ValueError(f"accuracy must be positive, got {accuracy}")
+        if num_dims <= 0:
+            raise ValueError(f"num_dims must be positive, got {num_dims}")
+
         self.accuracy = accuracy
         self.dx = dx
         self.num_dims = num_dims
@@ -229,3 +236,25 @@ class DiffFilterFactory:
         curl_filter[2, 0] = -dy_padded
 
         return curl_filter
+
+
+def mask_padding(input_shape_mask: torch.Tensor, padding: int = 1) -> torch.Tensor:
+    """
+    Convenience function for ObjectMaskPadding.
+
+    Pads object mask to create a boundary region around objects.
+
+    Parameters
+    ----------
+    input_shape_mask : torch.Tensor
+        Input boolean mask tensor.
+    padding : int, optional
+        Padding distance in voxels, by default 1.
+
+    Returns
+    -------
+    torch.Tensor
+        Boolean tensor where True indicates all neighbors within
+        padding distance are filled.
+    """
+    return ObjectMaskPadding(padding=padding)(input_shape_mask)
