@@ -24,23 +24,27 @@ iterator = MagnetGridIterator(
 
 dataloader = DataLoader(iterator, batch_size=1, num_workers=1, worker_init_fn=worker_init_fn)
 
+item = next(iter(dataloader))
+
 loss_fn = DivergenceLoss()
 
-for item in dataloader:
-    properties, phase, field, subject_mask = item['input'], item['coils'], item['field'], item['subject']
-    efield_real = field[:, 1, 0]
-    efield_imag = field[:, 1, 1]
-    subject_padded = mask_padding(subject_mask, padding=2)
 
-    div = loss_fn(efield_real, None, subject_padded)
-    div = div * subject_padded
+properties, phase, field, subject_mask = item['input'], item['coils'], item['field'], item['subject']
+efield_real = field[:, 1, 0]
+efield_imag = field[:, 1, 1]
+hfield_real = field[:, 0, 0]
+hfield_imag = field[:, 0, 1]
+subject_padded = mask_padding(subject_mask, padding=2)
 
-    fig, ax = plt.subplots(1, 3)
-    ax[0].imshow(subject_mask[0, :, :, 60].detach().cpu().numpy())
-    ax[1].imshow(subject_padded[0, :, :, 60].detach().cpu().numpy())
-    im = ax[2].imshow(div[0, :, :, 60].detach().cpu().numpy())
-    fig.colorbar(im)
-    plt.savefig("divergence.png")
-    quit()
-    # div_space = loss_fn(efield_real, None, ~subject_mask).item()
-    # print(f"Divergence subject: {div_subject}, divergence space: {div_space}")
+div = loss_fn(hfield_imag, None, subject_padded)
+div = div * subject_padded
+
+fig, ax = plt.subplots(1, 3)
+ax[0].imshow(subject_mask[0, :, :, 60].detach().cpu().numpy())
+ax[1].imshow(subject_padded[0, :, :, 60].detach().cpu().numpy())
+im = ax[2].imshow(div[0, :, :, 50].detach().cpu().numpy())
+fig.colorbar(im)
+plt.savefig("divergence.png")
+quit()
+# div_space = loss_fn(efield_real, None, ~subject_mask).item()
+# print(f"Divergence subject: {div_subject}, divergence space: {div_space}")
