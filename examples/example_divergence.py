@@ -8,7 +8,8 @@ from magnet_pinn.losses.utils import mask_padding
 from magnet_pinn.data.transforms import GridPhaseShift, Compose, Crop
 
 
-BASE_DIR = "/home/alex/PycharmProjects/magnet-pinn/data/processed/train/grid_voxel_size_4.0_data_type_float32"
+# Set the base directory where the preprocessed data is stored
+BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
 transforms = Compose(
     [
         Crop(crop_size=(100, 100, 100)),
