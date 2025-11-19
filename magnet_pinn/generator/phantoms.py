@@ -249,7 +249,7 @@ class CustomPhantom(Phantom):
     points inside mesh to ensure children blobs are placed correctly inside the parental mesh.
     Tubes are generated with configurable radius ranges.
 
-        Attributes
+    Attributes
     ----------
     parent_structure : CustomMeshStructure
         The parent mesh structure loaded from the provided STL file path.

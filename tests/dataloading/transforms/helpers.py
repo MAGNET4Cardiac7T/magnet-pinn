@@ -52,7 +52,7 @@ def check_cropped_shapes(result):
     assert result.truncation_coefficients.shape == (3,)
 
 
-def check_items_shapes_suppsed_to_be_equal(result, input_item):
+def check_items_shapes_supposed_to_be_equal(result, input_item):
     assert result.input.shape == input_item.input.shape
     assert result.field.shape == input_item.field.shape
     assert result.subject.shape == input_item.subject.shape

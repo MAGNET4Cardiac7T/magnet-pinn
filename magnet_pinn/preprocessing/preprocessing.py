@@ -1019,7 +1019,7 @@ class PointPreprocessing(Preprocessing):
 
     The class is responsible for reading and processing antennas and subjects data in a point cloud manner.
 
-    Parameters
+    Attributes
     ----------
     batches_dir_paths : str | Path | List[str] | List[Path]
         Path to the batch directory or a list of paths to different batch directories
@@ -1031,9 +1031,6 @@ class PointPreprocessing(Preprocessing):
         type of saving field data
     coil_thick_coef : float | None
         colis are mostly flat, this parameters controlls thickering
-
-    Attributes
-    ----------
     field_dtype : np.dtype
         type of saving field data
     out_simulations_dir_path : str

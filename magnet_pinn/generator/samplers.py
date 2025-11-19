@@ -39,7 +39,7 @@ class PropertySampler:
         """
         Initialize the property sampler with configuration parameters.
 
-        Parameters
+        Attributes
         ----------
         properties_cfg : dict
             Configuration dictionary specifying property ranges.
