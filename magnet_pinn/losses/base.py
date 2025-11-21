@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import torch
 from typing import Optional, Union, Tuple
 
-from .utils import MaskedLossReducer
+from .utils import LossReducer
 
 
 class BaseRegressionLoss(torch.nn.Module, ABC):
@@ -13,7 +13,7 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
                  feature_dims: Union[int, Tuple[int, ...]] = 1):
         super(BaseRegressionLoss, self).__init__()
         self.feature_dims = feature_dims
-        self.masked_reduction = MaskedLossReducer()
+        self.masked_reduction = LossReducer()
 
     @abstractmethod
     def _base_loss_fn(self, pred, target):

@@ -6,23 +6,52 @@ from operator import mul
 from functools import reduce
 
 
-class MaskedLossReducer(torch.nn.Module):
-    def __init__(self):
-        super(MaskedLossReducer, self).__init__()
+class LossReducer(torch.nn.Module): 
+    """
+    Loss reducer with optional masking. It reduces the loss tensor using the specified aggregation function (mean, sum, or none).
+    Masking can be applied to consider only specific elements of the loss tensor during reduction.
+    
+    Parameters
+    ----------
+    agg : str, optional
+        Aggregation method to use: 'mean', 'sum', or 'none'. Default is 'mean'.
+    masking : bool, optional
+        Whether to apply masking during reduction. Default is True.
+    """
+    
+    def __init__(self,
+                 agg: str = 'mean', 
+                 masking: bool = True):
+        super(LossReducer, self).__init__()
+        if not agg in ['mean', 'sum', 'min', 'max']:
+            raise ValueError("Unknown aggregation method: {agg}")
+        self.agg = agg
+
+        self.masking = masking
 
     def forward(self, loss: torch.Tensor, mask: Optional[torch.Tensor]):
-        if mask is None:
-            mask = torch.ones_like(loss, dtype=torch.bool)
-        else:
+        if self.masking and mask is not None:
             if mask.shape != loss.shape:
-                raise ValueError(
-                    f"mask shape {mask.shape} does not match "
-                    f"loss shape {loss.shape}"
-                )
-        return torch.mean(loss[mask])
+                raise ValueError(f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}")
+            
+            return reduce(loss[mask], '... ->', self.agg)   # one scalar
+        else:
+            return reduce(loss, '... ->', self.agg)
 
 
-class ObjectMaskPadding:
+class ObjectMaskCropping:
+    """
+        Crop object mask to disregard boundary regions of the object. Useful for excluding areas
+        where finite difference calculations may be inaccurate due to discontinuities at object edges.
+        
+        Works by checking if all neighboring voxels within a specified padding distance are filled (i.e., part of the object).
+        
+        Parameters
+        ----------
+        padding : int, optional
+            Number of voxels to crop from the object boundaries, by default 1.
+    """
+    
     def __init__(self, padding: int = 1):
         self.padding = padding
         self.padding_filter = torch.ones(
