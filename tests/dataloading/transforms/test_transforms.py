@@ -6,8 +6,9 @@ import numpy as np
 
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.data.transforms import (
-    Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling, 
-    PhaseShift, BaseTransform, DefaultTransform, Rotate, Mirror
+    Compose, Crop, GridPhaseShift, PointPhaseShift, PointSampling,
+    PhaseShift, BaseTransform, DefaultTransform, Rotate, Mirror,
+    CoilEnumeratorPhaseShift, check_transforms
 )
 from tests.dataloading.transforms.helpers import (
     FirstAugmentation, SecondAugmentation, ThirdAugmentation, check_items_datatypes,
@@ -36,7 +37,13 @@ def test_compose_with_none_transformations():
     with pytest.raises(ValueError):
         _ = Compose([None, None])
 
-    
+
+def test_compose_with_mixed_none_transformation():
+    """Test that Compose raises ValueError when augmentation list contains None mixed with valid transforms."""
+    with pytest.raises(ValueError, match="Augmentation can not be None"):
+        _ = Compose([DefaultTransform(), None])
+
+
 def test_compose_with_invalid_type_transform():
     with pytest.raises(ValueError):
         _ = Compose(["transformation"])
@@ -454,7 +461,7 @@ def test_point_sampling_transform_check_invalid_simulation():
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=1)(None)
 
-    
+
 def test_point_sampling_transform_check_points_sampling_integer_equal_zero(random_pointcloud_item):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
@@ -783,14 +790,14 @@ def test_rotate_transform_invalid_rot_axis():
 
 def test_rotate_transform_check_properties_random_z():
     aug = Rotate(rot_angle="random", rot_axis="z")
-    
+
     assert aug.rot_angle == "random"
     assert aug.rot_plane == (-3, -2)
 
 
 def test_rotate_transform_check_properties_90_z():
     aug = Rotate(rot_angle="90", rot_axis="z")
-    
+
     assert aug.rot_angle == "90"
     assert aug.n_rot == 0
     assert aug.rot_plane == (-3, -2)
@@ -798,14 +805,14 @@ def test_rotate_transform_check_properties_90_z():
 
 def test_rotate_transform_check_properties_random_x():
     aug = Rotate(rot_angle="random", rot_axis="x")
-    
+
     assert aug.rot_angle == "random"
     assert aug.rot_plane == (-2, -1)
 
 
 def test_rotate_transform_check_properties_random_y():
     aug = Rotate(rot_angle="random", rot_axis="y")
-    
+
     assert aug.rot_angle == "random"
     assert aug.rot_plane == (-3, -1)
 
@@ -813,14 +820,14 @@ def test_rotate_transform_check_properties_random_y():
 def test_rotate_transform_check_datatypes_for_grid(random_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="z")
     result = aug(random_grid_item)
-    
+
     check_items_datatypes(result, random_grid_item)
 
 
 def test_rotate_transform_check_shapes_for_grid(random_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="z")
     result = aug(random_grid_item)
-    
+
     check_items_shapes_supposed_to_be_equal(result, random_grid_item)
 
 
@@ -829,13 +836,13 @@ def test_rotate_transform_90_degrees_z_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Rotate(rot_angle="90", rot_axis="z")
     result = aug(zero_grid_item)
-    
+
     assert result.simulation == zero_grid_item.simulation
     assert np.equal(result.phase, zero_grid_item.phase).all()
     assert np.equal(result.mask, zero_grid_item.mask).all()
     assert result.dtype == zero_grid_item.dtype
     assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
-    
+
     assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
     assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
     assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))).all()
@@ -848,7 +855,7 @@ def test_rotate_transform_90_degrees_x_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Rotate(rot_angle="90", rot_axis="x")
     result = aug(zero_grid_item)
-    
+
     assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-2, -1))).all()
     assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-2, -1))).all()
     assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-2, -1))).all()
@@ -861,7 +868,7 @@ def test_rotate_transform_90_degrees_y_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Rotate(rot_angle="90", rot_axis="y")
     result = aug(zero_grid_item)
-    
+
     assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -1))).all()
     assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -1))).all()
     assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -1))).all()
@@ -874,7 +881,7 @@ def test_rotate_transform_random_angle_z_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Rotate(rot_angle="random", rot_axis="z")
     result = aug(zero_grid_item)
-    
+
     assert aug.n_rot in [0, 1, 2, 3]
     assert np.equal(result.input, np.rot90(zero_grid_item.input, k=aug.n_rot, axes=(-3, -2))).all()
     assert np.equal(result.field, np.rot90(zero_grid_item.field, k=aug.n_rot, axes=(-3, -2))).all()
@@ -891,7 +898,7 @@ def test_rotate_transform_random_angle_correct_range_parameters(zero_grid_item):
     with patch('numpy.random.randint', return_value=2) as mock_randint:
         aug = Rotate(rot_angle="random", rot_axis="z")
         _ = aug(zero_grid_item)
-        
+
         mock_randint.assert_called_once_with(0, 4)
         assert aug.n_rot == 2
 
@@ -902,11 +909,11 @@ def test_rotate_transform_random_angle_k0_rotation(zero_grid_item):
     """
     zero_grid_item = deepcopy(zero_grid_item)
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
-    
+
     with patch('numpy.random.randint', return_value=0):
         aug = Rotate(rot_angle="random", rot_axis="z")
         result = aug(zero_grid_item)
-        
+
         assert aug.n_rot == 0
         assert np.equal(result.input, zero_grid_item.input).all()
         assert np.equal(result.field, zero_grid_item.field).all()
@@ -921,11 +928,11 @@ def test_rotate_transform_random_angle_k1_rotation(zero_grid_item):
     """
     zero_grid_item = deepcopy(zero_grid_item)
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
-    
+
     with patch('numpy.random.randint', return_value=1):
         aug = Rotate(rot_angle="random", rot_axis="z")
         result = aug(zero_grid_item)
-        
+
         assert aug.n_rot == 1
         assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
         assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
@@ -940,11 +947,11 @@ def test_rotate_transform_random_angle_k2_rotation(zero_grid_item):
     """
     zero_grid_item = deepcopy(zero_grid_item)
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
-    
+
     with patch('numpy.random.randint', return_value=2):
         aug = Rotate(rot_angle="random", rot_axis="z")
         result = aug(zero_grid_item)
-        
+
         assert aug.n_rot == 2
         assert np.equal(result.input, np.rot90(zero_grid_item.input, k=2, axes=(-3, -2))).all()
         assert np.equal(result.field, np.rot90(zero_grid_item.field, k=2, axes=(-3, -2))).all()
@@ -959,11 +966,11 @@ def test_rotate_transform_random_angle_k3_rotation(zero_grid_item):
     """
     zero_grid_item = deepcopy(zero_grid_item)
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
-    
+
     with patch('numpy.random.randint', return_value=3):
         aug = Rotate(rot_angle="random", rot_axis="z")
         result = aug(zero_grid_item)
-        
+
         assert aug.n_rot == 3
         assert np.equal(result.input, np.rot90(zero_grid_item.input, k=3, axes=(-3, -2))).all()
         assert np.equal(result.field, np.rot90(zero_grid_item.field, k=3, axes=(-3, -2))).all()
@@ -975,7 +982,7 @@ def test_rotate_transform_random_angle_k3_rotation(zero_grid_item):
 def test_rotate_transform_not_inplace_processing_for_grid(random_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="z")
     result = aug(random_grid_item)
-    
+
     assert result is not random_grid_item
 
 
@@ -1001,21 +1008,21 @@ def test_mirror_transform_invalid_mirror_prob_greater_than_one():
 
 def test_mirror_transform_check_properties_z_axis():
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
-    
+
     assert aug.mirror_axis == -1
     assert aug.mirror_prob == 1.0
 
 
 def test_mirror_transform_check_properties_x_axis():
     aug = Mirror(mirror_axis="x", mirror_prob=0.5)
-    
+
     assert aug.mirror_axis == -3
     assert aug.mirror_prob == 0.5
 
 
 def test_mirror_transform_check_properties_y_axis():
     aug = Mirror(mirror_axis="y", mirror_prob=0.8)
-    
+
     assert aug.mirror_axis == -2
     assert aug.mirror_prob == 0.8
 
@@ -1023,7 +1030,7 @@ def test_mirror_transform_check_properties_y_axis():
 def test_mirror_transform_check_datatypes_for_grid(random_grid_item):
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_grid_item)
-    
+
     check_items_datatypes(result, random_grid_item)
 
 
@@ -1032,14 +1039,14 @@ def test_mirror_transform_check_datatypes_for_pointcloud(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_pointcloud_item)
-    
+
     check_items_datatypes(result, random_pointcloud_item)
 
 
 def test_mirror_transform_check_shapes_for_grid(random_grid_item):
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_grid_item)
-    
+
     check_items_shapes_supposed_to_be_equal(result, random_grid_item)
 
 
@@ -1048,7 +1055,7 @@ def test_mirror_transform_check_shapes_for_pointcloud(random_pointcloud_item):
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_pointcloud_item)
-    
+
     check_items_shapes_supposed_to_be_equal(result, random_pointcloud_item)
 
 
@@ -1057,13 +1064,13 @@ def test_mirror_transform_z_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(zero_grid_item)
-    
+
     assert result.simulation == zero_grid_item.simulation
     assert np.equal(result.phase, zero_grid_item.phase).all()
     assert np.equal(result.mask, zero_grid_item.mask).all()
     assert result.dtype == zero_grid_item.dtype
     assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
-    
+
     assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-1)).all()
     assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-1)).all()
     assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-1)).all()
@@ -1076,7 +1083,7 @@ def test_mirror_transform_x_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Mirror(mirror_axis="x", mirror_prob=1.0)
     result = aug(zero_grid_item)
-    
+
     assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-3)).all()
     assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-3)).all()
     assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-3)).all()
@@ -1089,7 +1096,7 @@ def test_mirror_transform_y_axis_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Mirror(mirror_axis="y", mirror_prob=1.0)
     result = aug(zero_grid_item)
-    
+
     assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-2)).all()
     assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-2)).all()
     assert np.equal(result.subject, np.flip(zero_grid_item.subject, axis=-2)).all()
@@ -1102,7 +1109,7 @@ def test_mirror_transform_probability_zero_for_grid(zero_grid_item):
     zero_grid_item.subject = np.max(zero_grid_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=0.0)
     result = aug(zero_grid_item)
-    
+
     assert np.equal(result.input, zero_grid_item.input).all()
     assert np.equal(result.field, zero_grid_item.field).all()
     assert np.equal(result.subject, zero_grid_item.subject).all()
@@ -1115,7 +1122,7 @@ def test_mirror_transform_z_axis_for_pointcloud(random_pointcloud_item):
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_pointcloud_item)
-    
+
     assert result.simulation == random_pointcloud_item.simulation
     assert np.equal(result.phase, random_pointcloud_item.phase).all()
     assert np.equal(result.mask, random_pointcloud_item.mask).all()
@@ -1126,7 +1133,7 @@ def test_mirror_transform_z_axis_for_pointcloud(random_pointcloud_item):
 def test_mirror_transform_not_inplace_processing_for_grid(random_grid_item):
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_grid_item)
-    
+
     assert result is not random_grid_item
 
 
@@ -1135,5 +1142,205 @@ def test_mirror_transform_not_inplace_processing_for_pointcloud(random_pointclou
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     aug = Mirror(mirror_axis="z", mirror_prob=1.0)
     result = aug(random_pointcloud_item)
-    
+
     assert result is not random_pointcloud_item
+
+
+# Additional edge case tests for 100% coverage
+
+def test_check_transforms_with_default_transform():
+    """Test check_transforms passes for DefaultTransform without raising error."""
+    aug = DefaultTransform()
+    check_transforms(aug)
+
+
+def test_check_transforms_with_single_phase_shift():
+    """Test check_transforms passes for a single PhaseShift transform."""
+    aug = PhaseShift(num_coils=8)
+    check_transforms(aug)
+
+
+def test_check_transforms_with_compose_no_phase_shift():
+    """Test check_transforms raises error when Compose has no PhaseShift transform."""
+    aug = Compose([FirstAugmentation(), SecondAugmentation()])
+    with pytest.raises(ValueError, match="Exactly one of the composed transforms should be a PhaseShift transform"):
+        check_transforms(aug)
+
+
+def test_check_transforms_with_compose_multiple_phase_shifts():
+    """Test check_transforms raises error when Compose has multiple PhaseShift transforms."""
+    aug = Compose([PhaseShift(num_coils=8), PhaseShift(num_coils=8)])
+    with pytest.raises(ValueError, match="Exactly one of the composed transforms should be a PhaseShift transform"):
+        check_transforms(aug)
+
+
+def test_check_transforms_with_invalid_transform_type():
+    """Test check_transforms raises error for invalid transform types."""
+    with pytest.raises(ValueError, match="Transforms not valid"):
+        check_transforms(Crop(crop_size=(10, 10, 10)))
+
+
+def test_check_transforms_with_not_base_transform():
+    """Test check_transforms raises error when transform is not BaseTransform instance."""
+    with pytest.raises(ValueError, match="Transforms should be an instance of BaseTransform"):
+        check_transforms("not a transform")
+
+
+def test_base_transform_call_not_implemented():
+    """Test that BaseTransform raises NotImplementedError if __call__ is not properly overridden."""
+    class MinimalTransform(BaseTransform):
+        def __call__(self, simulation: DataItem):
+            # Call parent's abstract method directly
+            return super().__call__(simulation)
+
+    transform = MinimalTransform()
+    with pytest.raises(NotImplementedError):
+        transform(None)  # type: ignore[arg-type]
+
+
+def test_base_transform_repr():
+    """Test BaseTransform.__repr__ returns correct string representation."""
+    transform = FirstAugmentation()
+    repr_str = repr(transform)
+    assert repr_str == "FirstAugmentation{}"
+
+
+def test_base_transform_repr_with_kwargs():
+    """Test BaseTransform.__repr__ with kwargs."""
+    transform = PhaseShift(num_coils=8, sampling_method='uniform')
+    repr_str = repr(transform)
+    assert "PhaseShift" in repr_str
+
+
+def test_compose_repr():
+    """Test Compose.__repr__ returns correct string representation."""
+    aug = Compose([FirstAugmentation(), SecondAugmentation()])
+    repr_str = repr(aug)
+    assert "Compose" in repr_str
+    assert "FirstAugmentation" in repr_str
+    assert "SecondAugmentation" in repr_str
+
+
+def test_default_transform_check_if_valid():
+    """Test DefaultTransform.check_if_valid returns True."""
+    transform = DefaultTransform()
+    assert transform.check_if_valid() is True
+
+
+def test_crop_unknown_position_edge_case(zero_grid_item):
+    """Test Crop with manually set invalid crop_position raises error."""
+    crop = Crop(crop_size=(10, 10, 10), crop_position='center')
+    crop.crop_position = 'invalid_position'  # type: ignore[assignment]
+
+    with pytest.raises(ValueError, match="Unknown crop position"):
+        crop(zero_grid_item)
+
+
+def test_phase_shift_sample_mask_binomial_all_zeros_retry(random_grid_item):
+    """Test that _sample_mask_binomial retries when all zeros are sampled."""
+    transform = PhaseShift(num_coils=8, sampling_method='binomial')
+
+    with patch('numpy.random.choice') as mock_choice:
+        mock_choice.side_effect = [
+            np.array([0, 0, 0, 0, 0, 0, 0, 0]),  # All zeros - triggers retry
+            np.array([1, 0, 1, 0, 1, 0, 1, 0])   # Valid mask
+        ]
+
+        mask = transform._sample_mask_binomial()
+
+        assert mock_choice.call_count == 2
+        assert np.array_equal(mask, np.array([1, 0, 1, 0, 1, 0, 1, 0]))
+
+
+def test_phase_shift_unknown_sampling_method_edge_case(random_grid_item):
+    """Test PhaseShift with manually set invalid sampling_method raises error."""
+    transform = PhaseShift(num_coils=8, sampling_method='uniform')
+    transform.sampling_method = 'invalid_method'  # type: ignore[assignment]
+
+    with pytest.raises(ValueError, match="Unknown sampling method"):
+        transform._sample_phase_and_mask(dtype=random_grid_item.dtype)
+
+
+def test_coil_enumerator_phase_shift_init():
+    """Test CoilEnumeratorPhaseShift initialization."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    assert transform.num_coils == 8
+    assert transform.coil_on_index == 0
+
+
+def test_coil_enumerator_phase_shift_sample_phase_zero():
+    """Test CoilEnumeratorPhaseShift._sample_phase_zero returns zeros."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    phase = transform._sample_phase_zero(dtype='float32')
+
+    assert phase.shape == (8,)
+    assert phase.dtype == np.float32
+    assert np.all(phase == 0)
+
+
+def test_coil_enumerator_phase_shift_sample_mask_single():
+    """Test CoilEnumeratorPhaseShift._sample_mask_single cycles through coils."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    mask1 = transform._sample_mask_single()
+    expected1 = np.array([True, False, False, False, False, False, False, False])
+    assert np.array_equal(mask1, expected1)
+    assert transform.coil_on_index == 1
+
+    mask2 = transform._sample_mask_single()
+    expected2 = np.array([False, True, False, False, False, False, False, False])
+    assert np.array_equal(mask2, expected2)
+    assert transform.coil_on_index == 2
+
+    transform.coil_on_index = 7
+    mask_last = transform._sample_mask_single()
+    expected_last = np.array([False, False, False, False, False, False, False, True])
+    assert np.array_equal(mask_last, expected_last)
+    assert transform.coil_on_index == 0
+
+
+def test_coil_enumerator_phase_shift_sample_phase_and_mask():
+    """Test CoilEnumeratorPhaseShift._sample_phase_and_mask returns correct values."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    phase, mask = transform._sample_phase_and_mask(dtype='float32')
+
+    assert phase.shape == (8,)
+    assert mask.shape == (8,)
+    assert phase.dtype == np.float32
+    assert mask.dtype == np.bool_
+    assert np.all(phase == 0)
+    assert np.sum(mask) == 1
+
+
+def test_coil_enumerator_phase_shift_full_cycle(random_grid_item):
+    """Test CoilEnumeratorPhaseShift cycles through all coils correctly."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    for i in range(8):
+        result = transform(random_grid_item)
+
+        assert np.all(result.phase == 0)
+        assert np.sum(result.mask) == 1
+
+        if i == 7:
+            assert transform.coil_on_index == 0
+        else:
+            assert transform.coil_on_index == (i + 1)
+
+
+def test_coil_enumerator_phase_shift_integration(random_grid_item):
+    """Test CoilEnumeratorPhaseShift full integration with DataItem."""
+    transform = CoilEnumeratorPhaseShift(num_coils=8)
+
+    result = transform(random_grid_item)
+
+    assert isinstance(result, DataItem)
+    assert result.phase is not None and result.phase.shape == (8,)
+    assert result.mask is not None and result.mask.shape == (8,)
+    assert result.phase is not None and np.all(result.phase == 0)
+    assert result.mask is not None and np.sum(result.mask) == 1
+    assert result.field is not None and result.field.shape[2] == 3
+    assert result.coils is not None and result.coils.shape[0] == 2
