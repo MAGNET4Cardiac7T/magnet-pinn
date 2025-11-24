@@ -1,6 +1,9 @@
 import random
 
+import pytest
+
 from magnet_pinn.utils import PerlinNoise
+from magnet_pinn.utils._perlin_noise import dot, fade, product
 
 
 def test_perlin_noise_works_in_1D():
@@ -70,3 +73,29 @@ def test_tiles_seamless():
             assert -1 < noise < 1
             assert 0 <= abs(noise - prev) < 0.1
             prev = noise
+
+
+def test_vector_utils():
+    with pytest.raises(ValueError):
+        dot([1, 2], [1])
+    with pytest.raises(ValueError):
+        fade(-0.2)
+    assert product([3]) == 3
+    assert product([2, 3, 4]) == 24
+
+
+def test_perlin_noise_init_validation():
+    with pytest.raises(ValueError):
+        PerlinNoise(octaves=0)
+    with pytest.raises(ValueError):
+        PerlinNoise(seed=-0.5)
+
+
+def test_noise_input_validation():
+    noise = PerlinNoise()
+    with pytest.raises(TypeError):
+        noise({"x": 1})
+    with pytest.raises(TypeError):
+        noise([0.5, 0.5], tile_sizes=[1, 2.5])
+    with pytest.raises(ValueError):
+        noise([0.5, 0.5], tile_sizes=[1])
