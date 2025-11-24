@@ -2,6 +2,7 @@ from os import listdir
 from pathlib import Path
 from shutil import rmtree
 from unittest.mock import Mock, patch
+import importlib.util
 
 import pytest
 import numpy as np
@@ -13,13 +14,14 @@ from tests.preprocessing.helpers import (
     SHIFTED_BOX_SIM_NAME, SHIFTED_SPHERE_SIM_NAME
 )
 from magnet_pinn.preprocessing.preprocessing import (
-    GridPreprocessing, PointPreprocessing, 
+    GridPreprocessing, PointPreprocessing, Preprocessing,
     PROCESSED_ANTENNA_DIR_PATH, PROCESSED_SIMULATIONS_DIR_PATH, TARGET_FILE_NAME,
     ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, 
     SUBJECT_OUT_KEY, COORDINATES_OUT_KEY, DTYPE_OUT_KEY,
     TRUNCATION_COEFFICIENTS_OUT_KEY, COORDINATES_OUT_KEY,
     MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, VOXEL_SIZE_OUT_KEY
 )
+from magnet_pinn.preprocessing.simulation import Simulation
 
 
 def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
@@ -2033,3 +2035,418 @@ def test_point_dipoles_written_even_when_first_simulation_fails(raw_central_batc
     assert antenna_file.exists()
     
     assert len(list(preprop.out_simulations_dir_path.iterdir())) == 0
+
+
+def test_preprocessing_import_fallback(monkeypatch):
+    import builtins
+    import sys
+    import types
+    import magnet_pinn.preprocessing.preprocessing as preprocessing_module
+
+    preprocessing_path = Path(preprocessing_module.__file__)
+    original_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "igl" and "fast_winding_number" in fromlist:
+            raise ImportError("forced failure")
+        if name == "igl":
+            def fast_winding_number_for_meshes(*args, **kwargs):
+                return "fallback"
+
+            dummy = types.SimpleNamespace(fast_winding_number_for_meshes=fast_winding_number_for_meshes)
+            sys.modules.setdefault("igl", dummy)
+            return dummy
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    monkeypatch.delitem(sys.modules, "igl", raising=False)
+
+    spec = importlib.util.spec_from_file_location(
+        "magnet_pinn.preprocessing.preprocessing_without_igl",
+        preprocessing_path
+    )
+    module = importlib.util.module_from_spec(spec)
+    loader = spec.loader
+    assert loader is not None
+    loader.exec_module(module)
+
+    assert module.fast_winding_number.__name__ == "fast_winding_number_for_meshes"
+
+
+def test_dipoles_features_lazy_initialization(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    dipole_features = grid_preprocessor._dipoles_features
+
+    assert isinstance(dipole_features, np.ndarray)
+    assert dipole_features.size > 0
+
+
+def test_invalid_field_dtype_rejected(processed_batch_dir_path, tmp_path):
+    batches_dir = tmp_path / "batches"
+    antenna_dir = tmp_path / "antenna"
+
+    with pytest.raises(Exception, match="Unsupported field data type"):
+        GridPreprocessing(
+            batches_dir,
+            antenna_dir,
+            processed_batch_dir_path,
+            field_dtype=np.int32
+        )
+
+
+def test_batches_argument_type_validation(processed_batch_dir_path, tmp_path):
+    antenna_dir = tmp_path / "antenna"
+
+    with pytest.raises(TypeError, match="Source/s should be a string/list of strings"):
+        GridPreprocessing(
+            {"path": "value"},
+            antenna_dir,
+            processed_batch_dir_path,
+            field_dtype=np.float32
+        )
+
+
+def test_coil_thickness_positive(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    with pytest.raises(Exception, match="Coil thick coef should be greater than 0"):
+        GridPreprocessing(
+            raw_central_batch_dir_path,
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1,
+            coil_thick_coef=0
+        )
+
+
+def test_extract_simulations_rejects_file_path(raw_antenna_dir_path, processed_batch_dir_path, tmp_path):
+    file_path = tmp_path / "not_a_dir.txt"
+    file_path.write_text("data")
+
+    with pytest.raises(FileNotFoundError, match="is not a directory"):
+        GridPreprocessing(
+            [file_path],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+
+
+def test_extract_simulations_raises_when_empty(processed_batch_dir_path, raw_antenna_dir_path):
+    with pytest.raises(FileNotFoundError, match="No simulations found"):
+        GridPreprocessing(
+            [],
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32,
+            x_min=-4,
+            x_max=4,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=1
+        )
+
+
+def test_base_preprocessing_methods_can_be_called(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    assert Preprocessing._output_target_dir.__get__(grid_preprocessor, Preprocessing) is None
+    assert Preprocessing._check_coordinates(grid_preprocessor, Mock(coordinates=None), Mock(coordinates=None)) is None
+    assert Preprocessing._set_air_features(grid_preprocessor, np.array([])) is None
+    assert Preprocessing._get_mask(grid_preprocessor, None) is None
+    assert Preprocessing._masks_stack_pattern.__get__(grid_preprocessor, Preprocessing) is None
+    assert Preprocessing._extend_props(grid_preprocessor, np.array([]), np.array([])) is None
+    assert Preprocessing._extend_masks_pattern.__get__(grid_preprocessor, Preprocessing) is None
+    assert Preprocessing._features_sum_pattern.__get__(grid_preprocessor, Preprocessing) is None
+    assert Preprocessing._format_features(grid_preprocessor, Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0])) is None
+
+
+def test_resolve_simulation_rejects_unknown_path(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, tmp_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    with pytest.raises(Exception, match="Simulation is not in the batches"):
+        grid_preprocessor._Preprocessing__resolve_simulations([tmp_path])
+
+
+def test_resolve_simulation_rejects_unknown_name(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    with pytest.raises(Exception, match="Simulation is not in the batches"):
+        grid_preprocessor._Preprocessing__resolve_simulations(["unknown"])
+
+
+def test_resolve_simulation_validates_type(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    with pytest.raises(TypeError, match="Simulation should be a string or a path"):
+        grid_preprocessor._Preprocessing__resolve_simulations([123])
+
+
+def test_resolve_simulation_missing_directory(raw_central_batch_short_term, raw_antenna_dir_path_short_term, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_short_term,
+        raw_antenna_dir_path_short_term,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    missing_path = grid_preprocessor.all_sim_paths[0]
+    rmtree(missing_path)
+
+    with pytest.raises(FileNotFoundError, match="Simulation .* does not exist"):
+        grid_preprocessor._Preprocessing__resolve_simulations([missing_path])
+
+
+def test_format_fields_rejects_non_float_dtype(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+    grid_preprocessor.field_dtype = np.dtype(np.int32)
+
+    with pytest.raises(Exception, match="Unsupported field data type"):
+        grid_preprocessor._format_fields(Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0]))
+
+
+def test_feature_truncation_coefficients_float16(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float16,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    coefficients = grid_preprocessor._feature_truncate_coefficients(Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0]))
+
+    assert coefficients[0] == pytest.approx(1e4)
+
+
+def test_grid_extent_divisibility_validation(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    with pytest.raises(Exception, match="Extent not divisible by voxel size"):
+        GridPreprocessing(
+            raw_central_batch_dir_path,
+            raw_antenna_dir_path,
+            processed_batch_dir_path,
+            field_dtype=np.float32,
+            x_min=-4,
+            x_max=3,
+            y_min=-4,
+            y_max=4,
+            z_min=-4,
+            z_max=4,
+            voxel_size=2
+        )
+
+
+def test_grid_check_coordinates_mismatched_fields(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    e_reader = Mock(coordinates=(np.array([0, 1]), np.array([0]), np.array([0])))
+    h_reader = Mock(coordinates=(np.array([0]), np.array([0]), np.array([0])))
+
+    with pytest.raises(Exception, match="Different coordinate systems for E and H fields"):
+        grid_preprocessor._check_coordinates(e_reader, h_reader)
+
+
+def test_grid_check_coordinates_min_boundary(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    coordinates = (np.array([-5, -4]), np.array([-4]), np.array([-4]))
+    e_reader = Mock(coordinates=coordinates)
+    h_reader = Mock(coordinates=coordinates)
+
+    with pytest.raises(Exception, match="Min not satisfied"):
+        grid_preprocessor._check_coordinates(e_reader, h_reader)
+
+
+def test_grid_check_coordinates_max_boundary(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    grid_preprocessor = GridPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32,
+        x_min=-4,
+        x_max=4,
+        y_min=-4,
+        y_max=4,
+        z_min=-4,
+        z_max=4,
+        voxel_size=1
+    )
+
+    coordinates = (np.array([-4, 5]), np.array([-4]), np.array([-4]))
+    e_reader = Mock(coordinates=coordinates)
+    h_reader = Mock(coordinates=coordinates)
+
+    with pytest.raises(Exception, match="Max not satisfied"):
+        grid_preprocessor._check_coordinates(e_reader, h_reader)
+
+
+def test_point_initialize_coordinates_returns_with_empty_paths(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+
+    preprop.all_sim_paths = []
+    preprop._coordinates = None
+
+    assert preprop._initialize_coordinates() is None
+    assert preprop._coordinates is None
+
+
+def test_point_check_coordinates_mismatched_fields(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+
+    e_reader = Mock(coordinates=np.array([[0, 0, 0]]))
+    h_reader = Mock(coordinates=np.array([[1, 0, 0]]))
+
+    with pytest.raises(Exception, match="Different coordinate systems for E and H fields"):
+        preprop._check_coordinates(e_reader, h_reader)
+
+
+def test_point_check_coordinates_against_reference(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+    preprop = PointPreprocessing(
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.float32
+    )
+
+    original_coords = preprop.coordinates
+    preprop._coordinates = original_coords + 1
+
+    e_reader = Mock(coordinates=original_coords)
+    h_reader = Mock(coordinates=original_coords)
+
+    with pytest.raises(Exception, match="Different coordinate systems for simulations"):
+        preprop._check_coordinates(e_reader, h_reader)
