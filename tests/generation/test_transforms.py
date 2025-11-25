@@ -393,6 +393,10 @@ def test_meshes_tubes_clipping_successful_operation(complex_mesh_phantom):
     mock_clipped_tube.faces = np.array([[0, 1, 2]])
     mock_clipped_tube.volume = 1.0
     mock_clipped_tube.is_volume = True
+    mock_clipped_tube.remove_degenerate_faces = Mock()
+    mock_clipped_tube.remove_duplicate_faces = Mock()
+    mock_clipped_tube.remove_unreferenced_vertices = Mock()
+    mock_clipped_tube.fill_holes = Mock()
 
     with patch('trimesh.boolean.intersection', return_value=mock_clipped_tube) as mock_intersection:
         with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
@@ -426,6 +430,10 @@ def test_meshes_tubes_clipping_validates_input_meshes(complex_mesh_phantom):
                 mock_clipped.faces = np.array([[0, 1, 2]])
                 mock_clipped.volume = 1.0
                 mock_clipped.is_volume = True
+                mock_clipped.remove_degenerate_faces = Mock()
+                mock_clipped.remove_duplicate_faces = Mock()
+                mock_clipped.remove_unreferenced_vertices = Mock()
+                mock_clipped.fill_holes = Mock()
 
                 with patch('trimesh.boolean.intersection', return_value=mock_clipped):
                     clipping(complex_mesh_phantom, complex_mesh_phantom)
@@ -441,6 +449,10 @@ def test_meshes_children_cutout_successful_operation(complex_mesh_phantom):
     mock_cutout_child.faces = np.array([[0, 1, 2]])
     mock_cutout_child.volume = 1.0
     mock_cutout_child.is_volume = True
+    mock_cutout_child.remove_degenerate_faces = Mock()
+    mock_cutout_child.remove_duplicate_faces = Mock()
+    mock_cutout_child.remove_unreferenced_vertices = Mock()
+    mock_cutout_child.fill_holes = Mock()
 
     with patch('trimesh.boolean.difference', return_value=mock_cutout_child) as mock_difference:
         with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
@@ -471,6 +483,10 @@ def test_meshes_parent_cutout_with_children_successful_operation(complex_mesh_ph
     mock_parent.faces = np.array([[0, 1, 2]])
     mock_parent.volume = 1.0
     mock_parent.is_volume = True
+    mock_parent.remove_degenerate_faces = Mock()
+    mock_parent.remove_duplicate_faces = Mock()
+    mock_parent.remove_unreferenced_vertices = Mock()
+    mock_parent.fill_holes = Mock()
 
     with patch('trimesh.boolean.difference', return_value=mock_parent) as mock_difference:
         with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
@@ -501,6 +517,10 @@ def test_meshes_parent_cutout_with_tubes_successful_operation(complex_mesh_phant
     mock_parent.faces = np.array([[0, 1, 2]])
     mock_parent.volume = 1.0
     mock_parent.is_volume = True
+    mock_parent.remove_degenerate_faces = Mock()
+    mock_parent.remove_duplicate_faces = Mock()
+    mock_parent.remove_unreferenced_vertices = Mock()
+    mock_parent.fill_holes = Mock()
 
     with patch('trimesh.boolean.difference', return_value=mock_parent) as mock_difference:
         with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
@@ -531,6 +551,10 @@ def test_meshes_children_clipping_successful_operation(complex_mesh_phantom):
     mock_clipped_child.faces = np.array([[0, 1, 2]])
     mock_clipped_child.volume = 1.0
     mock_clipped_child.is_volume = True
+    mock_clipped_child.remove_degenerate_faces = Mock()
+    mock_clipped_child.remove_duplicate_faces = Mock()
+    mock_clipped_child.remove_unreferenced_vertices = Mock()
+    mock_clipped_child.fill_holes = Mock()
 
     with patch('trimesh.boolean.intersection', return_value=mock_clipped_child) as mock_intersection:
         with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
