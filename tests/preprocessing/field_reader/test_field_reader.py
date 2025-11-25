@@ -404,7 +404,7 @@ def test_field_reader_base_methods_are_noops():
             return "ax batch -> batch ax"
 
         def _compose_field_components(self, field_components):
-            FieldReader._compose_field_components(field_components)
+            FieldReader._compose_field_components(self, field_components)
             return np.array(field_components, dtype=np.complex64)
 
     reader = DummyFieldReader()
