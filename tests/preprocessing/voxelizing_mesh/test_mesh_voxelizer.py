@@ -4,6 +4,7 @@ from math import pi
 from types import SimpleNamespace
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
@@ -26,11 +27,13 @@ def test_unit_sphere_mesh_fills_grid(sphere_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(sphere_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(sphere_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[1, 1, 1] = 1
 
-    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    upper_bound = 4 / 3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3)
+    lower_bound = 4 / 3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert upper_bound > np.sum(np.power(result, 3)) > lower_bound
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == 1
     assert np.equal(result, supposed_voxels).all()
@@ -54,11 +57,13 @@ def test_unit_sphere_mesh_fills_center_of_grid(sphere_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(sphere_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(sphere_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[2, 2, 2] = 1
 
-    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    upper_bound = 4 / 3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3)
+    lower_bound = 4 / 3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert upper_bound > np.sum(np.power(result, 3)) > lower_bound
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == 1
     assert np.equal(result, supposed_voxels).all()
@@ -82,10 +87,12 @@ def test_unit_sphere_mesh_grid_is_smaller(sphere_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(sphere_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(sphere_unit_mesh)
     supposed_voxels = np.ones((steps, steps, steps))
 
-    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    upper_bound = 4 / 3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3)
+    lower_bound = 4 / 3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert upper_bound > np.sum(np.power(result, 3)) > lower_bound
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == steps ** 3
     assert np.equal(result, supposed_voxels).all()
@@ -109,11 +116,13 @@ def test_unit_sphere_mesh_grid_includes_object_in_the_center(sphere_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(sphere_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(sphere_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[steps // 2, steps // 2, steps // 2] = 1
 
-    assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    upper_bound = 4 / 3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3)
+    lower_bound = 4 / 3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
+    assert upper_bound > np.sum(np.power(result, 3)) > lower_bound
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == 1
     assert np.equal(result, supposed_voxels).all()
@@ -191,7 +200,7 @@ def test_unit_box_mesh_fills_grid(box_unit_mesh):
     grid_z = np.linspace(bounds[0][2], bounds[1][2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(box_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(box_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[1, 1, 1] = 1
 
@@ -218,7 +227,7 @@ def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(box_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(box_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[2, 2, 2] = 1
 
@@ -243,7 +252,7 @@ def test_unit_box_mesh_grid_is_smaller(box_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(box_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(box_unit_mesh)
     supposed_voxels = np.ones((steps, steps, steps))
 
     assert np.sum(result) == steps ** 3
@@ -267,7 +276,7 @@ def test_unit_box_mesh_grid_is_bigger(box_unit_mesh):
     grid_z = np.linspace(left_bound[2], right_bound[2], steps)
 
     voxelizer = MeshVoxelizer(voxel_size, grid_x, grid_y, grid_z)
-    result = voxelizer.process_mesh(box_unit_mesh)
+    result: npt.NDArray[np.float64] = voxelizer.process_mesh(box_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[1, 1, 1] = 1
 

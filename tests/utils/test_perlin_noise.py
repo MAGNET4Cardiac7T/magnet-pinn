@@ -1,4 +1,5 @@
 import random
+from typing import Any
 
 import pytest
 
@@ -10,7 +11,7 @@ def test_perlin_noise_works_in_1D():
     """Check if values in -1 1 range and changes slowly"""
     p_noise = PerlinNoise()
     lim = 2000
-    prev = 0
+    prev: float = 0
     for i in range(lim):
         noise = p_noise([i / lim])
         assert -1 < noise < 1
@@ -31,7 +32,7 @@ def test_perlin_noise_works_in_high_dimensions():
     """Checks if values in -1 1 in high dimensions."""
     n_dims = 10
     noise = PerlinNoise(octaves=3)
-    vec = []
+    vec: list[float] = []
     n_passes = 100
     for check in range(n_passes):
         vec = []
@@ -64,7 +65,7 @@ def test_tiles_works():
 def test_tiles_seamless():
     p_noise = PerlinNoise(octaves=2)
     lim = 400
-    prev = 0
+    prev: float = 0
     x_lim, y_lim = 5, 10
     for i in range(0, lim, 100):
         prev = p_noise([x_lim * i / lim, 0], tile_sizes=[2, 3])
@@ -88,13 +89,14 @@ def test_perlin_noise_init_validation():
     with pytest.raises(ValueError):
         PerlinNoise(octaves=0)
     with pytest.raises(ValueError):
-        PerlinNoise(seed=-0.5)
+        PerlinNoise(seed=-0.5)  # type: ignore[arg-type]
 
 
 def test_noise_input_validation():
     noise = PerlinNoise()
+    invalid_input: Any = {"x": 1}
     with pytest.raises(TypeError):
-        noise({"x": 1})
+        noise(invalid_input)
     with pytest.raises(TypeError):
         noise([0.5, 0.5], tile_sizes=[1, 2.5])
     with pytest.raises(ValueError):

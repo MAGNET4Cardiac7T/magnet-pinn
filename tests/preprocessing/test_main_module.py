@@ -1,6 +1,7 @@
 from argparse import Namespace
 from pathlib import Path
 import runpy
+from typing import Any
 from unittest.mock import Mock
 
 import numpy as np
@@ -23,7 +24,7 @@ def test_main_runs_grid_preprocessing(monkeypatch):
         voxel_size=4.0,
         simulations=[Path("sim_a"), Path("sim_b")]
     )
-    grid_calls = {}
+    grid_calls: dict[str, Any] = {}
 
     class DummyGrid:
         def __init__(
@@ -93,7 +94,7 @@ def test_main_runs_point_preprocessing(monkeypatch):
         field_dtype=np.float64,
         simulations=None
     )
-    point_calls = {}
+    point_calls: dict[str, Any] = {}
 
     class DummyPoint:
         def __init__(self, batches, antenna, output, field_dtype):

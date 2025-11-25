@@ -31,7 +31,7 @@ def test_custom_cli_check_default_output_value(monkeypatch, generation_output_di
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -97,7 +97,7 @@ def test_custom_cli_check_given_seed_value(monkeypatch, generation_output_dir_pa
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -117,7 +117,7 @@ def test_custom_cli_check_default_seed_value(monkeypatch, generation_output_dir_
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -719,7 +719,7 @@ def test_custom_cli_check_given_stl_mesh_path_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test_mesh.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -753,7 +753,7 @@ def test_custom_cli_check_sample_children_only_inside_flag(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -773,7 +773,7 @@ def test_custom_cli_check_default_sample_children_only_inside_value(monkeypatch,
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -792,7 +792,7 @@ def test_custom_cli_check_given_child_blobs_batch_size_value(monkeypatch, genera
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -812,7 +812,7 @@ def test_custom_cli_check_child_blobs_batch_size_invalid_value(monkeypatch, gene
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -832,7 +832,7 @@ def test_custom_cli_check_default_child_blobs_batch_size_value(monkeypatch, gene
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -851,7 +851,7 @@ def test_custom_cli_check_given_num_children_blobs_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -871,7 +871,7 @@ def test_custom_cli_check_default_num_children_blobs_value(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -890,7 +890,7 @@ def test_custom_cli_check_given_density_min_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -910,7 +910,7 @@ def test_custom_cli_check_default_density_min_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -929,7 +929,7 @@ def test_custom_cli_check_given_density_max_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -949,7 +949,7 @@ def test_custom_cli_check_default_density_max_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -968,7 +968,7 @@ def test_custom_cli_check_given_conductivity_min_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -988,7 +988,7 @@ def test_custom_cli_check_default_conductivity_min_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1007,7 +1007,7 @@ def test_custom_cli_check_given_conductivity_max_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1027,7 +1027,7 @@ def test_custom_cli_check_default_conductivity_max_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1046,7 +1046,7 @@ def test_custom_cli_check_given_permittivity_min_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1066,7 +1066,7 @@ def test_custom_cli_check_default_permittivity_min_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1085,7 +1085,7 @@ def test_custom_cli_check_given_permittivity_max_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1105,7 +1105,7 @@ def test_custom_cli_check_default_permittivity_max_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1124,7 +1124,7 @@ def test_custom_cli_check_given_blob_radius_decrease_value(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1144,7 +1144,7 @@ def test_custom_cli_check_default_blob_radius_decrease_value(monkeypatch, genera
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1163,7 +1163,7 @@ def test_custom_cli_check_given_num_tubes_value(monkeypatch, generation_output_d
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1183,7 +1183,7 @@ def test_custom_cli_check_default_num_tubes_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [

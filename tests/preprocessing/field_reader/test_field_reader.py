@@ -1,4 +1,7 @@
+from typing import Any, List, Tuple, Union, cast
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from magnet_pinn.preprocessing.reading_field import (
@@ -25,7 +28,8 @@ def test_valid_grid_e_field(e_field_grid_data):
     assert len(coordinates[1]) == 111
     assert len(coordinates[2]) == 126
 
-    data = reader.extract_data()
+    data = cast(npt.NDArray[np.complex64], reader.extract_data())
+    assert isinstance(data, np.ndarray)
     assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
@@ -43,7 +47,8 @@ def test_valid_grid_h_field(h_field_grid_data):
     assert len(coordinates[1]) == 111
     assert len(coordinates[2]) == 126
 
-    data = reader.extract_data()
+    data = cast(npt.NDArray[np.complex64], reader.extract_data())
+    assert isinstance(data, np.ndarray)
     assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
@@ -61,7 +66,8 @@ def test_valid_grid_e_field_with_mixed_axis_order(e_field_grid_data_with_mixed_a
     assert len(coordinates[1]) == 111
     assert len(coordinates[2]) == 126
 
-    data = reader.extract_data()
+    data = cast(npt.NDArray[np.complex64], reader.extract_data())
+    assert isinstance(data, np.ndarray)
     assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
@@ -79,7 +85,8 @@ def test_valid_grid_h_field_with_mixed_axis_order(h_field_grid_data_with_mixed_a
     assert len(coordinates[1]) == 111
     assert len(coordinates[2]) == 126
 
-    data = reader.extract_data()
+    data = cast(npt.NDArray[np.complex64], reader.extract_data())
+    assert isinstance(data, np.ndarray)
     assert data.shape == (2, 3, 121, 111, 126)
     assert data.dtype == np.complex64
 
@@ -349,7 +356,8 @@ def test_pointslist_compose_field_pattern_valid(e_field_pointslist_data):
         e_field_pointslist_data, E_FIELD_DATABASE_KEY
     ).create_reader()
 
-    pattern = PointReader._compose_field_pattern.fget(reader, (reader.coordinates.shape[0],))
+    compose_field_pattern_func = PointReader.__dict__["_compose_field_pattern"].fget
+    pattern = compose_field_pattern_func(reader, (reader.coordinates.shape[0],))
     assert pattern == "ax batch -> batch ax"
 
 
@@ -358,8 +366,9 @@ def test_pointslist_compose_field_pattern_invalid(e_field_pointslist_data):
         e_field_pointslist_data, E_FIELD_DATABASE_KEY
     ).create_reader()
 
+    compose_field_pattern_func = PointReader.__dict__["_compose_field_pattern"].fget
     with pytest.raises(ValueError):
-        PointReader._compose_field_pattern.fget(reader, (reader.coordinates.shape[0] - 1,))
+        compose_field_pattern_func(reader, (reader.coordinates.shape[0] - 1,))
 
 
 def test_pointslist_compose_field_components(e_field_pointslist_data):
@@ -382,36 +391,45 @@ def test_pointslist_compose_field_components(e_field_pointslist_data):
 
 def test_field_reader_base_methods_are_noops():
     class DummyFieldReader(FieldReader):
-        def __init__(self):
-            self.files_list = []
+        def __init__(self) -> None:
+            self.files_list: List[str] = []
             self.field_type = "dummy"
-            self._coordinates = np.zeros((1, 3))
+            self._test_coordinates: npt.NDArray[np.float64] = np.zeros((1, 3))
 
         @property
-        def coordinates(self):
-            return super().coordinates
+        def coordinates(self) -> Any:
+            base_coordinates = FieldReader.__dict__["coordinates"].fget
+            return base_coordinates(self)
 
-        def _read_coordinates(self, file_path):
-            super()._read_coordinates(file_path)
-            return self._coordinates
+        def _read_coordinates(
+            self, file_path: str
+        ) -> Union[Tuple[Any, ...], npt.NDArray[Any]]:
+            FieldReader._read_coordinates(self, file_path)
+            return self._test_coordinates
 
-        def _check_coordinates(self, other_coordinates):
-            super()._check_coordinates(other_coordinates)
+        def _check_coordinates(
+            self, other_coordinates: Union[Tuple[Any, ...], npt.NDArray[Any]]
+        ) -> bool:
+            FieldReader._check_coordinates(self, other_coordinates)
             return True
 
-        def _compose_field_pattern(self, data_shape):
-            super()._compose_field_pattern(data_shape)
+        def _compose_field_pattern(self, data_shape: Tuple[Any, ...]) -> str:
+            FieldReader._compose_field_pattern(self, data_shape)
             return "ax batch -> batch ax"
 
-        def _compose_field_components(self, field_components):
+        def _compose_field_components(
+            self, field_components: List[npt.NDArray[Any]]
+        ) -> npt.NDArray[np.complex64]:
             FieldReader._compose_field_components(self, field_components)
             return np.array(field_components, dtype=np.complex64)
 
     reader = DummyFieldReader()
 
     assert reader.coordinates is None
-    assert np.array_equal(reader._read_coordinates("any"), reader._coordinates)
-    assert reader._check_coordinates(reader._coordinates)
+    assert np.array_equal(
+        reader._read_coordinates("any"), reader._test_coordinates
+    )
+    assert reader._check_coordinates(reader._test_coordinates)
     assert reader._compose_field_pattern((1,)) == "ax batch -> batch ax"
     components = reader._compose_field_components([np.zeros((1, 3))])
     assert components.shape == (1, 1, 3)
