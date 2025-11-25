@@ -2,45 +2,9 @@ import pytest
 import torch
 import einops
 
-from magnet_pinn.losses.utils import DiffFilterFactory, MaskedLossReducer, ObjectMaskPadding, mask_padding
-from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLoss
+from magnet_pinn.losses.utils import DiffFilterFactory, LossReducer, ObjectMaskCropping
+from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLawLoss
 
-
-@pytest.fixture
-def diff_filter_factory(num_dims) -> DiffFilterFactory:
-    return DiffFilterFactory(num_dims=num_dims)
-
-
-@pytest.fixture
-def num_dims() -> int:
-    return 3
-
-
-@pytest.fixture
-def num_values() -> int:
-    return 100
-
-
-@pytest.fixture
-def alphabet() -> str:
-    return 'bcdefghijklmnopqrstuvwxyz'
-
-
-@pytest.fixture(params=[0, 1, 2])
-def tensor_values_changing_along_dim(request, num_dims, num_values, alphabet):
-    values = torch.linspace(0, 1, num_values)
-    dim = request.param
-    dims_before = ' '.join([alphabet[i] for i in range(dim)])
-    dims_after = ' '.join([alphabet[i] for i in range(dim+1, num_dims)])
-    repeat_pattern = 'a -> ' + dims_before + ' a ' + dims_after
-    repeats_dict = {alphabet[d]: len(values) for d in range(num_dims) if d != dim}
-    return einops.repeat(values, repeat_pattern, **repeats_dict), dim
-
-
-@pytest.fixture(params=[42, 43, 44])
-def tensor_random_ndim_field(request, num_dims, num_values):
-    torch.manual_seed(request.param)
-    return torch.rand([1, num_dims] + num_dims*[num_values])
 
 
 def test_single_derivatives(tensor_values_changing_along_dim, diff_filter_factory, num_dims):
@@ -219,16 +183,16 @@ def test_divergence_on_zero_divergence_field(diff_filter_factory):
 
 
 def test_masked_loss_reducer_shape_mismatch():
-    reducer = MaskedLossReducer()
+    reducer = LossReducer()
     loss = torch.randn(4, 8)
     mask = torch.ones(4, 6, dtype=torch.bool)
 
-    with pytest.raises(ValueError, match="mask shape .* does not match loss shape"):
+    with pytest.raises(ValueError, match="Loss shape and mask shape are different: .* != .*"):
         reducer(loss, mask)
 
 
 def test_masked_loss_reducer_with_none_mask():
-    reducer = MaskedLossReducer()
+    reducer = LossReducer()
     loss = torch.randn(4, 8)
 
     result = reducer(loss, None)
@@ -238,7 +202,7 @@ def test_masked_loss_reducer_with_none_mask():
 
 
 def test_object_mask_padding():
-    padding_fn = ObjectMaskPadding(padding=1)
+    padding_fn = ObjectMaskCropping(padding=1)
     mask = torch.ones([1, 1, 10, 10, 10])
     mask[:, :, 2:8, 2:8, 2:8] = 0
 
@@ -261,20 +225,12 @@ def test_diff_filter_factory_mismatched_dim_names():
         DiffFilterFactory(num_dims=3, dim_names='xy')
 
 
-def test_mask_padding_convenience_function():
-    mask = torch.ones([1, 1, 10, 10, 10])
-    mask[:, :, 2:8, 2:8, 2:8] = 0
-
-    result = mask_padding(mask, padding=1)
-
-    assert result.shape[0] == 1
-    assert result.shape[1] == 1
-    assert result.dtype == torch.bool
-
 
 def test_mask_padding_default_padding():
     mask = torch.ones([1, 1, 10, 10, 10])
     mask[:, :, 3:7, 3:7, 3:7] = 0
+    
+    mask_padding = ObjectMaskCropping()
 
     result = mask_padding(mask)
 
@@ -359,20 +315,15 @@ def test_divergence_loss_uses_correct_padding():
     assert torch.isfinite(loss)
 
 
-def test_faradays_loss_uses_correct_padding():
+def test_faradays_loss_uses_correct_padding(random_fields):
     """Test that FaradaysLoss uses dynamically calculated padding."""
-    loss_fn = FaradaysLoss()
+    loss_fn = FaradaysLawLoss()
 
     assert loss_fn.diff_filter_factory.accuracy == 2
 
     expected_padding = loss_fn.diff_filter_factory.accuracy // 2
     assert expected_padding == 1
 
-    spatial_size = 16
-    batch_size = 1
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size)
-    target = torch.zeros_like(pred)
-
-    loss = loss_fn(pred, target)
+    loss = loss_fn(random_fields)
     assert loss.shape == torch.Size([])
     assert torch.isfinite(loss)

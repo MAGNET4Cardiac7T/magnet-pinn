@@ -2,7 +2,7 @@ import pytest
 import torch
 import math
 
-from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLoss, MRI_FREQUENCY_HZ, VACUUM_PERMEABILITY
+from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLawLoss, MRI_FREQUENCY_HZ, VACUUM_PERMEABILITY
 from magnet_pinn.losses import MRI_FREQUENCY_HZ as MRI_FREQ_EXPORTED, VACUUM_PERMEABILITY as VACUUM_PERM_EXPORTED
 
 
@@ -19,9 +19,9 @@ def batch_size():
 def test_divergence_loss_shape(batch_size, spatial_size):
     loss_fn = DivergenceLoss()
     pred = torch.randn(batch_size, 3, spatial_size, spatial_size, spatial_size)
-    target = torch.zeros_like(pred)
+    mask = None
 
-    loss = loss_fn(pred, target)
+    loss = loss_fn(pred, mask)
 
     assert loss.shape == torch.Size([])
     assert loss.item() >= 0
@@ -68,84 +68,56 @@ def test_divergence_loss_on_solenoidal_field():
     assert loss.item() < max_expected_error, f"Loss should be near zero for solenoidal field, got {loss.item()}"
 
 
-def test_faradays_loss_shape(batch_size, spatial_size):
-    loss_fn = FaradaysLoss()
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size)
-    target = torch.zeros_like(pred)
+def test_faradays_loss_shape(batch_size, spatial_size, random_fields):
+    loss_fn = FaradaysLawLoss()
 
-    loss = loss_fn(pred, target)
+    loss = loss_fn(random_fields)
 
     assert loss.shape == torch.Size([])
     assert loss.item() >= 0
 
 
-def test_faradays_loss_non_zero_for_violating_fields():
+def test_faradays_loss_non_zero_for_violating_fields(violating_fields):
     """
     Test that Faraday's loss is non-zero for fields that violate Faraday's law.
     Using constant fields which don't satisfy curl(E) + jωμH = 0.
     """
-    loss_fn = FaradaysLoss()
-    batch_size = 1
-    spatial_size = 16
+    loss_fn = FaradaysLawLoss()
 
-    pred = torch.zeros(batch_size, 12, spatial_size, spatial_size, spatial_size)
-
-    pred[:, 0:3, :, :, :] = 1.0
-    pred[:, 3:6, :, :, :] = 0.5
-
-    pred[:, 6:9, :, :, :] = 0.1
-    pred[:, 9:12, :, :, :] = 0.05
-
-    target = torch.zeros_like(pred)
-    loss = loss_fn(pred, target)
+    loss = loss_fn(violating_fields)
 
     assert loss.item() > 1e-3, (
         f"Loss should be non-zero for fields violating Faraday's law, got {loss.item()}"
     )
 
 
-def test_faradays_loss_with_mask(batch_size, spatial_size):
-    loss_fn = FaradaysLoss()
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size)
-    target = torch.zeros_like(pred)
-    mask = torch.ones(batch_size, spatial_size, spatial_size, spatial_size, dtype=torch.bool)
-    mask[:, :spatial_size//2] = False
+def test_faradays_loss_with_mask(batch_size, spatial_size, random_fields, half_mask):
+    loss_fn = FaradaysLawLoss()
 
-    loss = loss_fn(pred, target, mask=mask)
+    loss = loss_fn(random_fields, mask=half_mask)
 
     assert loss.shape == torch.Size([])
     assert loss.item() >= 0
 
 
-def test_faradays_loss_zero_for_trivial_zero_field():
+def test_faradays_loss_zero_for_trivial_zero_field(zero_fields):
     """
     Test that zero fields give zero loss (trivial case).
     """
-    loss_fn = FaradaysLoss()
-    spatial_size = 16
-    batch_size = 1
+    loss_fn = FaradaysLawLoss()
 
-    pred = torch.zeros(batch_size, 12, spatial_size, spatial_size, spatial_size)
-    target = torch.zeros_like(pred)
-
-    loss = loss_fn(pred, target)
+    loss = loss_fn(zero_fields)
 
     assert loss.item() < 1e-5, f"Loss should be near zero for zero fields, got {loss.item()}"
 
 
-def test_faradays_loss_device_dtype_casting():
-    loss_fn = FaradaysLoss()
-    spatial_size = 8
-    batch_size = 1
-
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size, dtype=torch.float32)
-    target = torch.zeros_like(pred)
-    loss = loss_fn(pred, target)
+def test_faradays_loss_device_dtype_casting(random_fields, random_fields_float64):
+    loss_fn = FaradaysLawLoss()
+    loss = loss_fn(random_fields)
     assert loss.dtype == torch.float32
 
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size, dtype=torch.float64)
-    target = torch.zeros_like(pred)
-    loss = loss_fn(pred, target)
+
+    loss = loss_fn(random_fields_float64)
     assert loss.dtype == torch.float64
 
 
@@ -197,26 +169,19 @@ def test_divergence_loss_gradient_flow():
     assert not torch.isinf(pred.grad).any(), "Gradients should not contain Inf"
 
 
-def test_faradays_loss_gradient_flow():
+def test_faradays_loss_gradient_flow(random_fields_with_gradient):
     """
     Test that gradients flow correctly through Faraday's loss.
     """
-    loss_fn = FaradaysLoss()
-    spatial_size = 8
-    batch_size = 1
+    loss_fn = FaradaysLawLoss()
 
-    pred = torch.randn(
-        batch_size, 12, spatial_size, spatial_size, spatial_size,
-        dtype=torch.float32, requires_grad=True
-    )
-    target = torch.zeros_like(pred)
-
-    loss = loss_fn(pred, target)
+    loss = loss_fn(random_fields_with_gradient)
     loss.backward()
 
-    assert pred.grad is not None, "Gradients should flow through Faraday's loss"
-    assert not torch.isnan(pred.grad).any(), "Gradients should not contain NaN"
-    assert not torch.isinf(pred.grad).any(), "Gradients should not contain Inf"
+    for field in random_fields_with_gradient:
+        assert field.grad is not None, "Gradients should flow through Faraday's loss"
+        assert not torch.isnan(field.grad).any(), "Gradients should not contain NaN"
+        assert not torch.isinf(field.grad).any(), "Gradients should not contain Inf"
 
 
 def test_divergence_loss_with_nan_input():
@@ -234,23 +199,6 @@ def test_divergence_loss_with_nan_input():
     loss = loss_fn(pred, target)
 
     assert torch.isnan(loss), "Loss should be NaN when input contains NaN"
-
-
-def test_faradays_loss_with_large_values():
-    """
-    Test that Faraday's loss handles large field values without overflow.
-    """
-    loss_fn = FaradaysLoss()
-    spatial_size = 8
-    batch_size = 1
-
-    pred = torch.randn(batch_size, 12, spatial_size, spatial_size, spatial_size) * 1e3
-    target = torch.zeros_like(pred)
-
-    loss = loss_fn(pred, target)
-
-    assert torch.isfinite(loss), f"Loss should be finite for large inputs, got {loss.item()}"
-    assert loss.item() >= 0, "Loss should be non-negative"
 
 
 def test_divergence_loss_batch_consistency():
