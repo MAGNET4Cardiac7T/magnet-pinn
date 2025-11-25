@@ -6,6 +6,7 @@ from einops import pack, unpack
 from typing import Optional, Union, Tuple
 
 from .utils import LossReducer, DiffFilterFactory, ObjectMaskCropping
+from .base import BaseRegressionLoss
 
 
 MRI_FREQUENCY_HZ = 297.2e6
@@ -13,57 +14,68 @@ VACUUM_PERMEABILITY = 1.256637061e-6
 
 
 # TODO Add support for non-uniform grids (i.e., varying voxel sizes in different dimensions)
-class BasePhysicsLoss(torch.nn.Module, ABC):
+class BasePhysicsLoss(BaseRegressionLoss):
     """
     Base class for physics-based losses
     """
     def __init__(self, 
                  feature_dims: Union[int, Tuple[int, ...]] = 1,
-                 reduction: Union[str, LossReducer, None] = None,
+                 reduction: str = "mean",
                  dx: float = 1.0
                  ):
-        super(BasePhysicsLoss, self).__init__()
-        self.feature_dims = feature_dims
-        self.dx = dx
+        super(BasePhysicsLoss, self).__init__(feature_dims=feature_dims, reduction=reduction)
         
-        if type(reduction) == str:
-            if reduction == 'masked':
-                self.reduction = LossReducer(agg='mean', masking=True)
-            elif reduction == "full":
-                self.reduction = LossReducer(agg='mean', masking=False)
-            else:
-                raise ValueError(f"Unknown reduction type: {reduction}")
-        elif reduction is None:
-            self.reduction = lambda loss, mask: loss
-        else:
-            self.reduction = reduction
-
+        self.dx = dx
         self.diff_filter_factory = DiffFilterFactory(dx = self.dx)
-
         self.physics_filters = self._build_physics_filters()
 
     @abstractmethod
-    def _base_physics_fn(self, pred, target):
+    def _base_physics_fn(self, 
+                         field: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     @abstractmethod
     def _build_physics_filters(self):
         raise NotImplementedError
 
+    # TODO Add different Lp norms for the divergence residual
+    def _base_loss_fn(self, pred, target):
+        dtype, device = self._check_dtype_device(pred)
+        self._cast_physics_filter(dtype, device)
+        
+        residual_pred = self._base_physics_fn(pred)
+        if target is not None:
+            residual_target = self._base_physics_fn(target)
+        else:
+            residual_target = torch.zeros_like(residual_pred)
+            
+        loss = (residual_pred - residual_target).abs() ** 2
+        return loss
+
     def _cast_physics_filter(
         self, dtype: torch.dtype = torch.float32, device: torch.device = torch.device('cpu')
     ) -> None:
         if self.physics_filters.dtype != dtype or self.physics_filters.device != device:
             self.physics_filters = self.physics_filters.to(dtype=dtype, device=device)
+    
+    def _check_dtype_device(self, field: torch.Tensor) -> Tuple[torch.dtype, torch.device]:
+        if isinstance(field, torch.Tensor):
+            return field.dtype, field.device
+        elif isinstance(field, (list, tuple)):
+            return field[0].dtype, field[0].device
+        elif isinstance(field, dict):
+            first_value = next(iter(field.values()))
+            return first_value.dtype, first_value.device
+        else:
+            raise ValueError("Input field must be a torch.Tensor or a collection of torch.Tensors.")
+        
+    def forward(self, 
+                pred, 
+                target: Optional[torch.Tensor] = None, 
+                mask: Optional[torch.Tensor] = None):
+        return super().forward(pred, target, mask)
 
-    def forward(self, field, mask: Optional[torch.Tensor] = None):
-        self._cast_physics_filter(field.dtype, field.device)
-        loss = self._base_physics_fn(field)
-        loss = torch.mean(loss, dim=self.feature_dims)
-        return self.reduction(loss, mask)
 
-
-# TODO Add different Lp norms for the divergence residual
 class DivergenceLoss(BasePhysicsLoss):
     """
     Divergence loss for calculating the divergence of a physical field. Used to enforce
@@ -100,14 +112,14 @@ class DivergenceLoss(BasePhysicsLoss):
         divergence = torch.nn.functional.conv3d(
             field, self.physics_filters, padding=padding
         )
-        return divergence**2
+        return divergence
 
     def _build_physics_filters(self):
         divergence_filter = self.diff_filter_factory.divergence()
         return divergence_filter
 
 
-class FaradayLawLoss(BasePhysicsLoss):
+class FaradaysLawLoss(BasePhysicsLoss):
     """
     Faraday's Law Loss for electromagnetic field prediction.
 
@@ -118,8 +130,9 @@ class FaradayLawLoss(BasePhysicsLoss):
 
         \\nabla \\times \\mathbf{E} + j\\omega\\mu\\mathbf{H} = 0
         
-    In the forward pass, expects the predicted fields to be of shape
-    (b, 2, 2, 3, x, y, z), where the b is the batch dimension.
+    In the forward pass, expects a tuple of predicted fields:
+    (efield_real, efield_imag, hfield_real, hfield_imag),
+    each of shape (b, 3, x, y, z) or (3, x, y, z).
     
     The 2, 2, 3 correspond to (E/H), (real/imaginary), and (x/y/z) components, respectively.
 
@@ -129,15 +142,18 @@ class FaradayLawLoss(BasePhysicsLoss):
         Dimensions over which to average the loss before reduction,
         by default 1.
     """
-    def _base_physics_fn(self, pred, target):
+    vacuum_permeability: float = VACUUM_PERMEABILITY
+    mri_frequency_hz: float = MRI_FREQUENCY_HZ
+    
+    def _base_physics_fn(self, field):
         """
         Compute the Faraday's law residual.
 
         Parameters
         ----------
         pred : torch.Tensor
-            Predicted electromagnetic fields with shape
-            (batch, 12, x, y, z).
+            Tuple of predicted fields (efield_real, efield_imag, hfield_real, hfield_imag). 
+            Each tensor should have shape (b, 3, x, y, z) or (3, x, y, z).
         target : torch.Tensor
             Target fields (unused in physics loss computation).
 
@@ -146,8 +162,10 @@ class FaradayLawLoss(BasePhysicsLoss):
         torch.Tensor
             Squared magnitude of the Faraday's law residual.
         """
-        pred_e_re = pred[:, 0:3, :, :, :]
-        pred_e_im = pred[:, 3:6, :, :, :]
+        pred_e_re = field[0]
+        pred_e_im = field[1]
+        pred_h_re = field[2]
+        pred_h_im = field[3]
 
         padding = self.diff_filter_factory.accuracy // 2
         curl_pred_e_re = torch.nn.functional.conv3d(
@@ -158,18 +176,14 @@ class FaradayLawLoss(BasePhysicsLoss):
         )
 
         curl_pred_e = curl_pred_e_re + 1j * curl_pred_e_im
-
-        pred_h_re = pred[:, 6:9, :, :, :]
-        pred_h_im = pred[:, 9:12, :, :, :]
-
         pred_h = pred_h_re + 1j * pred_h_im
 
         faradays_pred = (
             curl_pred_e
-            + 1j * 2 * math.pi * MRI_FREQUENCY_HZ * VACUUM_PERMEABILITY * pred_h
+            + 1j * 2 * math.pi * self.mri_frequency_hz * self.vacuum_permeability * pred_h
         )
 
-        return faradays_pred.abs() ** 2
+        return faradays_pred
 
     def _build_physics_filters(self):
         """

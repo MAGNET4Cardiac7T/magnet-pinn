@@ -34,9 +34,9 @@ class LossReducer(torch.nn.Module):
             if mask.shape != loss.shape:
                 raise ValueError(f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}")
             
-            return reduce(loss[mask], '... ->', self.agg)   # one scalar
+            return einops.reduce(loss[mask], '... ->', self.agg)   # one scalar
         else:
-            return reduce(loss, '... ->', self.agg)
+            return einops.reduce(loss, '... ->', self.agg)
 
 
 class ObjectMaskCropping:

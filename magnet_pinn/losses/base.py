@@ -10,10 +10,15 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
     Base class for regression losses.
     """
     def __init__(self,
-                 feature_dims: Union[int, Tuple[int, ...]] = 1):
+                 feature_dims: Union[int, Tuple[int, ...]] = 1,
+                 reduction: str = "mean"):
         super(BaseRegressionLoss, self).__init__()
         self.feature_dims = feature_dims
-        self.masked_reduction = LossReducer()
+        
+        if reduction is None or reduction == 'none':
+            self.reduction = lambda loss, mask: loss
+        else: 
+            self.reduction = LossReducer(agg=reduction)
 
     @abstractmethod
     def _base_loss_fn(self, pred, target):
@@ -22,7 +27,7 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
     def forward(self, pred, target, mask: Optional[torch.Tensor] = None):
         loss = self._base_loss_fn(pred, target)
         loss = torch.mean(loss, dim=self.feature_dims)
-        return self.masked_reduction(loss, mask)
+        return self.reduction(loss, mask)
 
 
 class MSELoss(BaseRegressionLoss):
