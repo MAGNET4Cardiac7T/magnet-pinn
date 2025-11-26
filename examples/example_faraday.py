@@ -47,7 +47,8 @@ def prepare_data():
 item = prepare_data()
 
 
-div_loss_fn = DivergenceLoss(reduction=None, dx=0.004)
+faradayslaw_loss_fn = FaradaysLawLoss(reduction=None, dx=0.004)
+faradayslaw_loss_fn2 = FaradaysLawLoss(reduction=None, dx=1)
 
 field = item['field']
 field_dict = {
@@ -60,38 +61,29 @@ field_dict = {
 efield_abs = torch.linalg.norm(field_dict['efield_real'] + 1j*field_dict['efield_imag'], dim=1)
 hfield_abs = torch.linalg.norm(field_dict['hfield_real'] + 1j*field_dict['hfield_imag'], dim=1)
 
-divergence_dict = {
-    key: div_loss_fn(value, mask=item['subject']) for key, value in field_dict.items()
-}
+faradayslaw_residual = faradayslaw_loss_fn(tuple(field_dict.values()), None)
+faradayslaw_residual_cropped = faradayslaw_residual * item['subject']
 
-divergence_cropped_dict = {
-    key: divergence_dict[key]*item['subject'] for key in divergence_dict
-}
-hfield_divergence = divergence_cropped_dict['hfield_real'] + divergence_cropped_dict['hfield_imag']
-efield_divergence = divergence_cropped_dict['efield_real'] + divergence_cropped_dict['efield_imag'] 
+faradayslaw_residual2 = faradayslaw_loss_fn2(tuple(field_dict.values()), None)
+faradayslaw_residual_cropped2 = faradayslaw_residual2 * item['subject']
 
+fig, ax = plt.subplots(1, 3, figsize=(15, 45))
 
-fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+im0 = ax[0].imshow(efield_abs[0, :, :, 60], norm='log')
+cax0 = make_axes_locatable(ax[0]).append_axes("right", size="5%", pad=0.05)
+fig.colorbar(im0, cax=cax0)
+ax[0].set_title("E-field Magnitude")
 
-im00 = ax[0, 0].imshow(efield_abs[0, :, :, 60], norm='log')
-cax00 = make_axes_locatable(ax[0,0]).append_axes("right", size="5%", pad=0.05)
-fig.colorbar(im00, cax=cax00)
-ax[0,0].set_title("E-field Magnitude")
+im1 = ax[1].imshow(hfield_abs[0, :, :, 60], norm='log')
+cax1 = make_axes_locatable(ax[1]).append_axes("right", size="5%", pad=0.05)
+fig.colorbar(im1, cax=cax1)
+ax[1].set_title("H-field Magnitude")
 
-im01 = ax[0, 1].imshow(efield_divergence[0, :, :, 60], norm='log')
-cax01 = make_axes_locatable(ax[0, 1]).append_axes("right", size="5%", pad=0.05)
-fig.colorbar(im01, cax=cax01)
-ax[0, 1].set_title('E-Field Divergence')
+im2 = ax[2].imshow(faradayslaw_residual_cropped[0, :, :, 60], norm='log')
+cax2 = make_axes_locatable(ax[2]).append_axes("right", size="5%", pad=0.05)
+fig.colorbar(im2, cax=cax2)
+ax[2].set_title('Faraday\'s Law Residual')
 
-im10 = ax[1, 0].imshow(hfield_abs[0, :, :, 60], norm='log')
-cax10 = make_axes_locatable(ax[1,0]).append_axes("right", size="5%", pad=0.05)
-fig.colorbar(im10, cax=cax10)
-ax[1,0].set_title("H-field Magnitude")
-
-im11 = ax[1, 1].imshow(hfield_divergence[0, :, :, 60], norm='log')
-cax11 = make_axes_locatable(ax[1, 1]).append_axes("right", size="5%", pad=0.05)
-fig.colorbar(im11, cax=cax11)
-ax[1, 1].set_title('H-Field Divergence')
 
 plt.tight_layout()
-plt.savefig('divergence_example.png', bbox_inches='tight')
+plt.savefig('faraday_example.png', bbox_inches='tight')
