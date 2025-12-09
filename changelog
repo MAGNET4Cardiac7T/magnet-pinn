@@ -87,3 +87,6 @@
 - Implement physics loss functions: faraday's law, gauss's law for magnetism
 - Add tests for physics loss functions
 - Add examples for physics loss functions
+
+## [0.0.13] -> 
+- Fix: standard normalizer not applying nonlinearity
