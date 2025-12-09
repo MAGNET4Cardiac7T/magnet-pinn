@@ -190,16 +190,17 @@ def test_save_and_load_meta_normalizer(tmp_path, random_iterator):
     assert minmax_normalizer.params == loaded_minmax.params, "MinMaxNormalizer parameters do not match after loading"
     assert standard_normalizer.params == loaded_standard.params, "StandardNormalizer parameters do not match after loading"
 
+@pytest.mark.parametrize("normalizer_class", [StandardNormalizer, MinMaxNormalizer])
 @pytest.mark.parametrize("nonlinearity_class", [Identity, Power, Log, Tanh, Arcsinh])
 @pytest.mark.parametrize("nonlinearity_before", [True, False])
-def test_standard_normalizer_with_nonlinearity(random_iterator, random_batch, nonlinearity_class, nonlinearity_before):
-    """Test that StandardNormalizer correctly applies nonlinearity transformations."""
+def test_normalizer_with_nonlinearity(random_iterator, random_batch, normalizer_class, nonlinearity_class, nonlinearity_before):
+    """Test that normalizers correctly apply nonlinearity transformations."""
     if nonlinearity_class == Power:
         nonlinearity = nonlinearity_class(power=2.0)
     else:
         nonlinearity = nonlinearity_class()
     
-    normalizer = StandardNormalizer(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
+    normalizer = normalizer_class(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
     
@@ -209,28 +210,8 @@ def test_standard_normalizer_with_nonlinearity(random_iterator, random_batch, no
     
     # Should reconstruct original data
     assert torch.allclose(random_batch, denormalized, atol=1e-5), \
-        f"Failed to reconstruct with {nonlinearity_class.__name__}, before={nonlinearity_before}"
+        f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
 
-@pytest.mark.parametrize("nonlinearity_class", [Identity, Power, Log, Tanh, Arcsinh])
-@pytest.mark.parametrize("nonlinearity_before", [True, False])
-def test_minmax_normalizer_with_nonlinearity(random_iterator, random_batch, nonlinearity_class, nonlinearity_before):
-    """Test that MinMaxNormalizer correctly applies nonlinearity transformations."""
-    if nonlinearity_class == Power:
-        nonlinearity = nonlinearity_class(power=2.0)
-    else:
-        nonlinearity = nonlinearity_class()
-    
-    normalizer = MinMaxNormalizer(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
-    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
-    normalizer.fit_params(iterator, axis=1)
-    
-    # Test forward and inverse
-    normalized = normalizer.forward(random_batch, axis=1)
-    denormalized = normalizer.inverse(normalized, axis=1)
-    
-    # Should reconstruct original data
-    assert torch.allclose(random_batch, denormalized, atol=1e-5), \
-        f"Failed to reconstruct with {nonlinearity_class.__name__}, before={nonlinearity_before}"
 
 def test_standard_normalizer_nonlinearity_after_normalization(random_iterator, random_batch):
     """Test that nonlinearity is applied after normalization when nonlinearity_before=False."""
