@@ -8,6 +8,7 @@ DESCRIPTION
     (blobs with Perlin noise), cylindrical structures (tubes), and custom mesh-based
     structures loaded from external STL files used in MRI simulation phantoms.
 """
+
 from abc import ABC
 from pathlib import Path
 from dataclasses import dataclass
@@ -22,7 +23,7 @@ from .utils import generate_fibonacci_points_on_sphere
 class Structure3D(ABC):
     """
     Abstract base class for representing 3D geometric structures.
-    
+
     This class defines the common interface and properties for all 3D structures
     used in phantom generation. All concrete structure implementations must inherit
     from this class and provide their specific geometric characteristics.
@@ -36,10 +37,25 @@ class Structure3D(ABC):
         The characteristic radius of the structure, defining its overall size.
         Must be a positive float value.
     """
+
     position: np.ndarray
     radius: float
 
     def __init__(self, position: np.ndarray, radius: float):
+        """Initialize 3D structure with position and radius.
+
+        Parameters
+        ----------
+        position : np.ndarray
+            3D coordinates [x, y, z] of structure center.
+        radius : float
+            Radius of circumscribed sphere. Must be positive.
+
+        Raises
+        ------
+        ValueError
+            If position is not 3D or radius is not positive.
+        """
         self.__validate(position, radius)
         self.position = np.array(position, dtype=float)
         self.radius = float(radius)
@@ -70,7 +86,7 @@ class Structure3D(ABC):
 class Blob(Structure3D):
     """
     A deformable organic blob structure using Perlin noise for surface variation.
-    
+
     This class creates irregular, organic-looking 3D shapes by applying Perlin noise
     to a base spherical structure. The surface deformation creates realistic tissue-like
     geometries suitable for biological phantom generation in MRI simulations. The blob
@@ -95,6 +111,7 @@ class Blob(Structure3D):
     noise : PerlinNoise
         Perlin noise generator instance used for surface deformation calculations.
     """
+
     relative_disruption_strength: float
     empirical_max_offset: float
     empirical_min_offset: float
@@ -136,7 +153,7 @@ class Blob(Structure3D):
         """
         super().__init__(position=position, radius=radius)
         self.relative_disruption_strength = relative_disruption_strength
-        
+
         if perlin_scale == 0:
             raise ValueError("perlin_scale cannot be zero as it causes division by zero in offset calculations.")
         self.perlin_scale = perlin_scale
@@ -153,7 +170,7 @@ class Blob(Structure3D):
     def calculate_offsets(self, vertices: np.ndarray) -> np.ndarray:
         """
         Calculate surface offset values for given vertices using Perlin noise.
-        
+
         This method applies 3D Perlin noise to input vertices to create organic
         surface deformation. The noise values are scaled by the disruption strength
         and normalized by the Perlin scale factor to ensure consistent amplitude.
@@ -186,7 +203,7 @@ class Blob(Structure3D):
 class Tube(Structure3D):
     """
     A cylindrical tube structure for representing vascular or tubular phantoms.
-    
+
     This class creates infinite cylindrical structures defined by a center position,
     direction vector, and radius. Tubes are commonly used to represent blood vessels,
     airways, or other cylindrical anatomical structures in MRI phantom generation.
@@ -204,6 +221,7 @@ class Tube(Structure3D):
         the cylinder length relative to the radius. Default value of 10000 creates
         effectively infinite tubes for most practical purposes.
     """
+
     direction: np.ndarray
     height: float
 
@@ -236,12 +254,12 @@ class Tube(Structure3D):
     def distance_to_tube(tube_1: "Tube", tube_2: "Tube") -> float:
         """
         Calculate the minimum distance between two tube centerlines.
-        
+
         This method computes the shortest distance between two infinite cylindrical
         tubes by finding the distance between their central axes. This is used for
         collision detection and spatial relationship analysis between tubes.
         The calculation uses the formula for distance between two 3D lines:
-        for parallel tubes: d = \|\|p1 - p2\|\|, for non-parallel tubes: d = \|n · (p1 - p2)\| / \|\|n\|\|,
+        for parallel tubes: d = ||p1 - p2||, for non-parallel tubes: d = ||n · (p1 - p2)|| / ||n||,
         where n = d1 × d2 (cross product of direction vectors), p1, p2 are tube positions,
         and d1, d2 are direction vectors.
 
@@ -271,7 +289,7 @@ class Tube(Structure3D):
 class CustomMeshStructure(Structure3D):
     """
     A mesh-based structure loaded from external STL files for complex geometric phantoms.
-    
+
     This class represents 3D structures defined by externally created mesh geometries,
     typically loaded from STL files. It automatically computes the volume-weighted center
     of mass and circumscribed radius to integrate seamlessly with the phantom generation
@@ -287,9 +305,22 @@ class CustomMeshStructure(Structure3D):
         Loaded automatically from the specified STL file path during initialization.
         Provides access to mesh operations like containment testing and spatial queries.
     """
+
     mesh: Trimesh
 
     def __init__(self, mesh_path: str | Path):
+        """Initialize custom mesh structure from file.
+
+        Parameters
+        ----------
+        mesh_path : str or Path
+            Path to mesh file (e.g., STL format).
+
+        Notes
+        -----
+        Automatically computes position (center of mass) and radius
+        (circumscribed sphere) from the loaded mesh.
+        """
         self.mesh = load_mesh(Path(mesh_path))
         radius = self.__calc_circumscribed_radius()
         super().__init__(position=self.mesh.center_mass, radius=radius)
@@ -297,14 +328,14 @@ class CustomMeshStructure(Structure3D):
     def __calc_circumscribed_radius(self):
         """
         Calculate the circumscribed radius of the mesh from its center of mass.
-        
+
         This method computes the minimum radius of a sphere centered at the mesh's
         center of mass that completely encloses all mesh vertices. The circumscribed
         radius is calculated as the maximum Euclidean distance from the center of mass
         to any vertex in the mesh. This ensures that the bounding sphere fully contains
         the entire mesh geometry, making it suitable for collision detection, spatial
         queries, and geometric validation during phantom generation.
-        
+
         The calculation uses the center of mass rather than the geometric centroid to
         ensure that the bounding sphere represents the true volumetric center of the
         object, which is particularly important for anatomical meshes with non-uniform
@@ -316,7 +347,7 @@ class CustomMeshStructure(Structure3D):
             Circumscribed radius of the mesh in the same units as the mesh coordinates.
             Always positive and represents the minimum sphere radius needed to fully
             enclose the mesh when centered at the mesh's center of mass.
-            
+
         Notes
         -----
         The computation has O(n) complexity where n is the number of vertices.

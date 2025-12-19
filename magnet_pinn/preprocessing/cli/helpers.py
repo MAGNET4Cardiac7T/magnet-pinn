@@ -1,9 +1,20 @@
+"""Helper functions for preprocessing command-line interface."""
 from argparse import Namespace
 
 from magnet_pinn.preprocessing.preprocessing import Preprocessing, GridPreprocessing
 
 
 def print_report(args: Namespace, prep: Preprocessing):
+    """
+    Print preprocessing configuration report.
+
+    Parameters
+    ----------
+    args : Namespace
+        Parsed command-line arguments
+    prep : Preprocessing
+        Preprocessing instance (GridPreprocessing or PointPreprocessing)
+    """
     print("Preprocessing report:")
     print("Batches: ", len(args.batches))
     print("Overall simulations: ", len(prep.all_sim_paths))
@@ -18,6 +29,14 @@ def print_report(args: Namespace, prep: Preprocessing):
 
 
 def _print_grid_report(args: Namespace):
+    """
+    Print grid-specific preprocessing parameters.
+
+    Parameters
+    ----------
+    args : Namespace
+        Parsed command-line arguments containing grid parameters
+    """
     print("x_min: ", args.x_min)
     print("x_max: ", args.x_max)
     print("y_min: ", args.y_min)

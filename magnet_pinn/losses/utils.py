@@ -1,3 +1,4 @@
+"""Utility classes for loss computation and finite difference operators."""
 import torch
 from typing import Optional
 from findiff import coefficients
@@ -6,11 +7,11 @@ from operator import mul
 from functools import reduce
 
 
-class LossReducer(torch.nn.Module): 
+class LossReducer(torch.nn.Module):
     """
     Loss reducer with optional masking. It reduces the loss tensor using the specified aggregation function (mean, sum, or none).
     Masking can be applied to consider only specific elements of the loss tensor during reduction.
-    
+
     Parameters
     ----------
     agg : str, optional
@@ -18,10 +19,25 @@ class LossReducer(torch.nn.Module):
     masking : bool, optional
         Whether to apply masking during reduction. Default is True.
     """
-    
+
     def __init__(self,
-                 agg: str = 'mean', 
+                 agg: str = 'mean',
                  masking: bool = True):
+        """
+        Initialize LossReducer.
+
+        Parameters
+        ----------
+        agg : str, optional
+            Aggregation method: 'mean', 'sum', 'min', or 'max' (default: 'mean')
+        masking : bool, optional
+            Whether to apply masking during reduction (default: True)
+
+        Raises
+        ------
+        ValueError
+            If agg is not one of the supported methods
+        """
         super(LossReducer, self).__init__()
         if not agg in ['mean', 'sum', 'min', 'max']:
             raise ValueError("Unknown aggregation method: {agg}")
@@ -30,10 +46,30 @@ class LossReducer(torch.nn.Module):
         self.masking = masking
 
     def forward(self, loss: torch.Tensor, mask: Optional[torch.Tensor]):
+        """
+        Apply reduction to loss tensor with optional masking.
+
+        Parameters
+        ----------
+        loss : torch.Tensor
+            Loss tensor to reduce
+        mask : Optional[torch.Tensor]
+            Boolean mask indicating which elements to include
+
+        Returns
+        -------
+        torch.Tensor
+            Reduced loss value
+
+        Raises
+        ------
+        ValueError
+            If mask shape doesn't match loss shape
+        """
         if self.masking and mask is not None:
             if mask.shape != loss.shape:
                 raise ValueError(f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}")
-            
+
             return einops.reduce(loss[mask], '... ->', self.agg)   # one scalar
         else:
             return einops.reduce(loss, '... ->', self.agg)
@@ -43,22 +79,44 @@ class ObjectMaskCropping:
     """
         Crop object mask to disregard boundary regions of the object. Useful for excluding areas
         where finite difference calculations may be inaccurate due to discontinuities at object edges.
-        
+
         Works by checking if all neighboring voxels within a specified padding distance are filled (i.e., part of the object).
-        
+
         Parameters
         ----------
         padding : int, optional
             Number of voxels to crop from the object boundaries, by default 1.
     """
-    
+
     def __init__(self, padding: int = 1):
+        """
+        Initialize ObjectMaskCropping.
+
+        Parameters
+        ----------
+        padding : int, optional
+            Number of voxels to crop from object boundaries (default: 1)
+        """
         self.padding = padding
         self.padding_filter = torch.ones(
             [1, 1] + [self.padding*2 + 1]*3, dtype=torch.float32
         )
 
     def __call__(self, input_shape_mask: torch.Tensor) -> torch.Tensor:
+        """
+        Apply cropping to object mask.
+
+        Parameters
+        ----------
+        input_shape_mask : torch.Tensor
+            Input boolean mask tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Cropped mask where True indicates all neighbors within
+            padding distance are filled
+        """
         check_border = torch.nn.functional.conv3d(
             input_shape_mask.type(torch.float32),
             self.padding_filter,
@@ -107,6 +165,25 @@ class DiffFilterFactory:
                  dx: float = 1.0,
                  num_dims: int = 3,
                  dim_names: str = 'xyz'):
+        """
+        Initialize DiffFilterFactory.
+
+        Parameters
+        ----------
+        accuracy : int, optional
+            Order of accuracy for finite difference (default: 2)
+        dx : float, optional
+            Grid spacing (default: 1.0)
+        num_dims : int, optional
+            Number of spatial dimensions (default: 3)
+        dim_names : str, optional
+            Names of dimensions (default: 'xyz')
+
+        Raises
+        ------
+        ValueError
+            If parameters are invalid or dim_names length doesn't match num_dims
+        """
         if dx <= 0:
             raise ValueError(f"dx must be positive, got {dx}")
         if accuracy <= 0:

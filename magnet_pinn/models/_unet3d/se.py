@@ -38,6 +38,18 @@ class ChannelSELayer3D(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        """Apply channel-wise squeeze-and-excitation.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch, channels, D, H, W).
+
+        Returns
+        -------
+        torch.Tensor
+            Output with recalibrated channel activations.
+        """
         batch_size, num_channels, D, H, W = x.size()
         # Average along each channel
         squeeze_tensor = self.avg_pool(x)
@@ -94,9 +106,9 @@ class SpatialSELayer3D(nn.Module):
 
 class ChannelSpatialSELayer3D(nn.Module):
     """
-       3D extension of concurrent spatial and channel squeeze & excitation:
-           *Roy et al., Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks, arXiv:1803.02579*
-       """
+    3D extension of concurrent spatial and channel squeeze & excitation:
+        *Roy et al., Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks, arXiv:1803.02579*
+    """
 
     def __init__(self, num_channels, reduction_ratio=2):
         """
@@ -109,5 +121,17 @@ class ChannelSpatialSELayer3D(nn.Module):
         self.sSE = SpatialSELayer3D(num_channels)
 
     def forward(self, input_tensor):
+        """Apply combined channel and spatial squeeze-and-excitation.
+
+        Parameters
+        ----------
+        input_tensor : torch.Tensor
+            Input tensor of shape (batch, channels, D, H, W).
+
+        Returns
+        -------
+        torch.Tensor
+            Maximum of channel and spatial SE outputs (element-wise).
+        """
         output_tensor = torch.max(self.cSE(input_tensor), self.sSE(input_tensor))
         return output_tensor
