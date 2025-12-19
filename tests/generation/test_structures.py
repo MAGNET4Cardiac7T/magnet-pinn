@@ -59,7 +59,7 @@ def test_structure3d_rejects_wrong_dimensional_position_array():
 
 def test_structure3d_rejects_non_numpy_array_position():
     with pytest.raises(ValueError, match="Position must be a 3D numpy array"):
-        ConcreteStructure(position=[1.0, 2.0, 3.0], radius=1.0)
+        ConcreteStructure(position=[1.0, 2.0, 3.0], radius=1.0)  # type: ignore[arg-type]  # Testing invalid input
 
 
 def test_structure3d_rejects_zero_radius():
@@ -79,7 +79,10 @@ def test_structure3d_rejects_slightly_negative_radius():
 
 def test_structure3d_rejects_non_numeric_radius():
     with pytest.raises(ValueError, match="Radius must be a positive number"):
-        ConcreteStructure(position=np.array([1.0, 2.0, 3.0]), radius="invalid")
+        # Testing invalid input: intentionally passing string instead of float
+        ConcreteStructure(
+            position=np.array([1.0, 2.0, 3.0]), radius="invalid"  # type: ignore[arg-type]
+        )
 
 
 def test_blob_initialization_with_default_optional_parameters():
