@@ -1,25 +1,18 @@
 import numpy as np
-import h5py
 
-from magnet_pinn.preprocessing.preprocessing import (
-    GridPreprocessing,
-    PointPreprocessing,
-)
+from magnet_pinn.data._base import MagnetBaseIterator
 from magnet_pinn.data.transforms import (
     Compose,
     Crop,
     GridPhaseShift,
+    PointPhaseShift,
     PointSampling,
-    PointPhaseShift
 )
-from tests.preprocessing.conftest import (
-    raw_central_batch_dir_path,
-    raw_antenna_dir_path
+from magnet_pinn.preprocessing.preprocessing import (
+    GridPreprocessing,
+    PointPreprocessing,
 )
-from magnet_pinn.data._base import MagnetBaseIterator
 from tests.preprocessing.helpers import CENTRAL_SPHERE_SIM_NAME
-
-
 
 
 def test_grid_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_dir_path, processed_dir_path):
@@ -27,7 +20,7 @@ def test_grid_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_di
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_dir_path,
-        field_dtype=np.float32,
+        field_dtype=np.dtype(np.float32),
         x_min=-4,
         x_max=4,
         y_min=-4,
@@ -76,18 +69,18 @@ def test_point_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_d
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
         processed_dir_path,
-        field_dtype=np.float32,
+        field_dtype=np.dtype(np.float32),
     )
     p.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
     case_dir = p.out_simulations_dir_path.parent
 
     augmentation = Compose(
-    [
-        PointSampling(points_sampled=10),
-        PointPhaseShift(num_coils=4)
-    ]
-)
+        [
+            PointSampling(points_sampled=10),
+            PointPhaseShift(num_coils=4)
+        ]
+    )
 
     it = MagnetBaseIterator(case_dir, transforms=augmentation, num_samples=1)
 
