@@ -258,7 +258,7 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
     create_grid_field(
         field_path / "e-field (f=297.2) [AC1].h5",
         E_FIELD_DATABASE_KEY,
-        (121, 111, 126),
+        (10, 10, 10),
         bounds1,
         0
     )
@@ -266,7 +266,7 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
     create_grid_field(
         field_path / "e-field (f=297.2) [AC2].h5",
         E_FIELD_DATABASE_KEY,
-        (121, 111, 126),
+        (10, 10, 10),
         bounds2,
         0
     )
@@ -315,7 +315,7 @@ def test_grid_single_ac_file(tmp_path):
     create_grid_field(
         field_path / "e-field (f=297.2) [AC1].h5",
         E_FIELD_DATABASE_KEY,
-        (121, 111, 126),
+        (10, 10, 10),
         bounds,
         0
     )
@@ -325,7 +325,7 @@ def test_grid_single_ac_file(tmp_path):
     assert len(reader.files_list) == 1
 
     data = reader.extract_data()
-    assert data.shape == (1, 3, 121, 111, 126)
+    assert data.shape == (1, 3, 10, 10, 10)
     assert data.dtype == np.complex64
 
 
