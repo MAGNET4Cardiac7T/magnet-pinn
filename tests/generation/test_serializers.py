@@ -20,7 +20,7 @@ class UnsupportedStructure(Structure3D):
 def test_serializer_abstract_base_class_cannot_be_instantiated():
     serializer = Serializer()
     with pytest.raises(NotImplementedError):
-        serializer.serialize(None)
+        serializer.serialize(None)  # type: ignore[arg-type]  # Testing abstract base class
 
 
 def test_mesh_serializer_initialization():

@@ -216,7 +216,12 @@ def test_spheres_packable_numerical_precision_boundary():
 
 
 def test_spheres_packable_machine_epsilon_boundary():
-    assert not spheres_packable(radius_outer=1.0, radius_inner=1.0 + np.finfo(float).eps, num_inner=1, safety_margin=0.0)
+    assert not spheres_packable(
+        radius_outer=1.0,
+        radius_inner=1.0 + np.finfo(float).eps,
+        num_inner=1,
+        safety_margin=0.0
+    )
 
 
 def test_spheres_packable_large_negative_safety_margin():
@@ -224,7 +229,10 @@ def test_spheres_packable_large_negative_safety_margin():
 
 
 def test_spheres_packable_float_num_inner_treated_as_integer():
-    assert not spheres_packable(radius_outer=1.0, radius_inner=0.1, num_inner=2.5)
+    # Testing function behavior with float input (runtime coercion)
+    assert not spheres_packable(
+        radius_outer=1.0, radius_inner=0.1, num_inner=2.5  # type: ignore[arg-type]
+    )
 
 
 def test_spheres_packable_exact_zero_safety_margin_edge():
@@ -268,9 +276,9 @@ def test_generate_fibonacci_points_on_sphere_have_uniform_distribution():
     z_positive = np.sum(points[:, 2] > 0)
     z_negative = np.sum(points[:, 2] < 0)
 
-    assert abs(x_positive - x_negative) < 200
-    assert abs(y_positive - y_negative) < 200
-    assert abs(z_positive - z_negative) < 200
+    assert abs(int(x_positive) - int(x_negative)) < 200
+    assert abs(int(y_positive) - int(y_negative)) < 200
+    assert abs(int(z_positive) - int(z_negative)) < 200
 
 
 def test_generate_fibonacci_points_on_sphere_with_zero_points():

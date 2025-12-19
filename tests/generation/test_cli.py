@@ -2,8 +2,8 @@ import pytest
 
 from magnet_pinn.generator.cli.cli import parse_arguments
 from magnet_pinn.generator.cli.cli import (
-    OUTPUT_DIR, SEED, NUM_CHILDREN_BLOBS, NUM_TUBES, INITIAL_BLOB_RADIUS,
-    BLOB_RADIUS_DECREASE, RELATIVE_TUBE_MIN_RADIUS, RELATIVE_TUBE_MAX_RADIUS,
+    OUTPUT_DIR, SEED, NUM_CHILDREN_BLOBS, NUM_TUBES,
+    BLOB_RADIUS_DECREASE,
     X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX,
     DENSITY_MIN, DENSITY_MAX, CONDUCTIVITY_MIN, CONDUCTIVITY_MAX,
     PERMITTIVITY_MIN, PERMITTIVITY_MAX, SAMPLE_CHILDREN_ONLY_INSIDE,
@@ -440,6 +440,7 @@ def test_tissue_cli_check_default_num_tubes_value(monkeypatch):
     args = parse_arguments()
     assert args.num_tubes == NUM_TUBES
 
+
 def test_custom_cli_check_transforms_mode_default(monkeypatch, generation_output_dir_path):
     """
     Check default transforms_mode is 'all' for custom command
@@ -452,6 +453,7 @@ def test_custom_cli_check_transforms_mode_default(monkeypatch, generation_output
     )
     args = parse_arguments()
     assert args.transforms_mode == 'all'
+
 
 def test_custom_cli_check_transforms_mode_none(monkeypatch, generation_output_dir_path):
     """
@@ -466,6 +468,7 @@ def test_custom_cli_check_transforms_mode_none(monkeypatch, generation_output_di
     args = parse_arguments()
     assert args.transforms_mode == 'none'
 
+
 def test_custom_cli_check_transforms_mode_all(monkeypatch, generation_output_dir_path):
     """
     Check transforms_mode 'all' for custom command
@@ -478,6 +481,7 @@ def test_custom_cli_check_transforms_mode_all(monkeypatch, generation_output_dir
     )
     args = parse_arguments()
     assert args.transforms_mode == 'all'
+
 
 def test_custom_cli_check_transforms_mode_no_clipping(monkeypatch, generation_output_dir_path):
     """
@@ -492,6 +496,7 @@ def test_custom_cli_check_transforms_mode_no_clipping(monkeypatch, generation_ou
     args = parse_arguments()
     assert args.transforms_mode == 'no-clipping'
 
+
 def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output_dir_path):
     """
     Check invalid transforms_mode errors for custom command
@@ -505,6 +510,7 @@ def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output
     with pytest.raises(SystemExit):
         parse_arguments()
 
+
 def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     """
     Check transforms_mode 'no-clipping' for tissue command
@@ -516,6 +522,7 @@ def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     args = parse_arguments()
     assert args.transforms_mode == 'no-clipping'
 
+
 def test_tissue_cli_check_transforms_mode_invalid(monkeypatch):
     """
     Check invalid transforms_mode errors for tissue command
@@ -526,6 +533,7 @@ def test_tissue_cli_check_transforms_mode_invalid(monkeypatch):
     )
     with pytest.raises(SystemExit):
         parse_arguments()
+
 
 def test_tissue_cli_check_x_min_invalid_value(monkeypatch):
     """

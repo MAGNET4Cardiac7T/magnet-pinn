@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import trimesh
 
@@ -85,8 +85,9 @@ def test_writer_initialization_with_existing_directory(generation_output_dir_pat
 
 def test_writer_abstract_write_method_raises_not_implemented():
     writer = ConcreteWriter()
+    # Testing abstract method error handling with invalid input
     with pytest.raises(NotImplementedError):
-        Writer.write(writer, None)
+        Writer.write(writer, None)  # type: ignore[arg-type]
 
 
 def test_mesh_writer_initialization_inherits_from_writer(generation_output_dir_path):
@@ -268,7 +269,9 @@ def test_mesh_writer_save_mesh_private_method_exports_stl_file(generation_output
     assert result['density'] == prop.density
 
 
-def test_mesh_writer_save_mesh_private_method_preserves_original_property_values(generation_output_dir_path, simple_mesh):
+def test_mesh_writer_save_mesh_private_method_preserves_original_property_values(
+    generation_output_dir_path, simple_mesh
+):
     writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
     prop = create_property_item(conductivity=0.123, permittivity=45.67, density=890.0)
@@ -287,7 +290,9 @@ def test_mesh_writer_save_mesh_private_method_preserves_original_property_values
     assert result['file'] == filename
 
 
-def test_mesh_writer_write_handles_property_phantom_with_different_property_values(generation_output_dir_path, simple_mesh):
+def test_mesh_writer_write_handles_property_phantom_with_different_property_values(
+    generation_output_dir_path, simple_mesh
+):
     writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh_phantom = create_mesh_phantom(simple_mesh, num_children=2, num_tubes=1)
 
@@ -323,8 +328,6 @@ def test_mesh_writer_write_overwrites_existing_files(generation_output_dir_path,
     property_phantom = create_property_phantom(num_children=1, num_tubes=0)
 
     writer.write(mesh_phantom, property_phantom)
-    initial_parent_stat = (generation_output_dir_path / PARENT_BLOB_FILE_NAME).stat()
-    initial_materials_stat = (generation_output_dir_path / MATERIALS_FILE_NAME).stat()
 
     new_property_phantom = PropertyPhantom(
         parent=PropertyItem(conductivity=999.0, permittivity=999.0, density=999.0),
@@ -334,7 +337,6 @@ def test_mesh_writer_write_overwrites_existing_files(generation_output_dir_path,
 
     writer.write(mesh_phantom, new_property_phantom)
 
-    new_materials_stat = (generation_output_dir_path / MATERIALS_FILE_NAME).stat()
     df = pd.read_csv(generation_output_dir_path / MATERIALS_FILE_NAME)
     parent_row = df[df['file'] == PARENT_BLOB_FILE_NAME].iloc[0]
     assert parent_row['conductivity'] == 999.0
@@ -390,8 +392,9 @@ def test_mesh_writer_write_materials_csv_is_properly_formatted(generation_output
 
 
 def test_writer_initialization_with_none_directory_raises_error():
+    # Testing None validation in constructor
     with pytest.raises(TypeError):
-        ConcreteWriter(output_dir=None)
+        ConcreteWriter(output_dir=None)  # type: ignore[arg-type]
 
 
 def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir_path, simple_mesh):
@@ -405,8 +408,6 @@ def test_mesh_writer_write_with_mismatched_phantom_lengths(generation_output_dir
     df = pd.read_csv(generation_output_dir_path / MATERIALS_FILE_NAME)
     expected_rows = 1 + min(2, 1) + min(1, 2)
     assert len(df) == expected_rows
-
-
 
 
 def test_mesh_writer_private_save_mesh_method_preserves_original_property(generation_output_dir_path, simple_mesh):
@@ -498,10 +499,9 @@ def test_mesh_writer_write_preserves_mesh_geometry_in_export(generation_output_d
     writer.write(mesh_phantom, property_phantom)
 
     loaded_mesh = trimesh.load(generation_output_dir_path / PARENT_BLOB_FILE_NAME)
-    assert np.allclose(loaded_mesh.vertices, original_vertices, atol=1e-6)
-    assert np.array_equal(loaded_mesh.faces, original_faces)
-
-
+    # trimesh.load returns Geometry base class, but runtime type is Trimesh
+    assert np.allclose(loaded_mesh.vertices, original_vertices, atol=1e-6)  # type: ignore[attr-defined]
+    assert np.array_equal(loaded_mesh.faces, original_faces)  # type: ignore[attr-defined]
 
 
 def test_mesh_writer_write_with_corrupted_property_object(generation_output_dir_path, simple_mesh):
@@ -550,9 +550,6 @@ def test_mesh_writer_write_property_isolation(generation_output_dir_path, simple
     assert original_prop.density == 789.0
 
 
-
-
-
 def test_mesh_writer_save_mesh_with_property_dict_manipulation(generation_output_dir_path, simple_mesh):
     writer = MeshWriter(output_dir=generation_output_dir_path)
     mesh = simple_mesh
@@ -599,12 +596,6 @@ def test_mesh_writer_write_with_dataframe_creation_edge_case(generation_output_d
     assert len(df) == 2
     assert df.iloc[1]['extra_column'] == 'only_in_child'
     assert pd.isna(df.iloc[0]['extra_column'])
-
-
-
-
-
-
 
 
 def test_mesh_writer_save_mesh_with_existing_file_attribute_in_property(generation_output_dir_path, simple_mesh):

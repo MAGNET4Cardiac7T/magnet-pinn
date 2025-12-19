@@ -60,8 +60,9 @@ def complex_mesh_phantom(simple_sphere_mesh):
 
 
 def test_abstract_transform_cannot_be_instantiated():
+    # Testing that abstract Transform class cannot be instantiated
     with pytest.raises(TypeError):
-        Transform()
+        Transform()  # type: ignore[abstract]
 
 
 def test_mock_transform_repr_returns_class_name():
@@ -78,7 +79,8 @@ def test_compose_initialization_with_single_transform():
 
 def test_compose_initialization_with_multiple_transforms():
     transforms = [MockTransform(), MockTransform(), MockTransform()]
-    compose = Compose(transforms)
+    # Test fixture: list invariance, MockTransform is Transform subtype
+    compose = Compose(transforms)  # type: ignore[arg-type]
     assert len(compose.transforms) == 3
     assert compose.transforms == transforms
 
@@ -124,7 +126,8 @@ def test_compose_call_passes_additional_arguments(structure_phantom):
 
 def test_compose_repr_shows_component_transforms():
     transforms = [MockTransform(), MockTransform()]
-    compose = Compose(transforms)
+    # Test fixture: list invariance, MockTransform is Transform subtype
+    compose = Compose(transforms)  # type: ignore[arg-type]
     expected = "Compose(MockTransform(), MockTransform())"
     assert repr(compose) == expected
 
@@ -172,8 +175,9 @@ def test_validate_mesh_accepts_valid_mesh():
 
 
 def test_validate_mesh_rejects_none_mesh():
+    # Testing None validation in _validate_mesh
     with pytest.raises(ValueError, match="Mesh is None after test_operation"):
-        _validate_mesh(None, "test_operation")
+        _validate_mesh(None, "test_operation")  # type: ignore[arg-type]
 
 
 def test_validate_mesh_rejects_mesh_with_no_vertices():
@@ -198,8 +202,9 @@ def test_validate_mesh_rejects_mesh_with_zero_volume():
 
 def test_validate_input_meshes_rejects_none_in_list():
     mesh = trimesh.creation.icosphere(subdivisions=1, radius=1.0)
+    # Testing None validation in mesh list
     with pytest.raises(ValueError, match="Input mesh 1 is None for test_operation"):
-        _validate_input_meshes([mesh, None], "test_operation")
+        _validate_input_meshes([mesh, None], "test_operation")  # type: ignore[list-item]
 
 
 def test_validate_input_meshes_rejects_empty_vertices():
@@ -289,14 +294,16 @@ def test_abstract_transform_call_raises_not_implemented():
     class IncompleteTransform(Transform):
         pass
 
+    # Testing that incomplete abstract Transform subclass cannot be instantiated
     with pytest.raises(TypeError):
-        IncompleteTransform()
+        IncompleteTransform()  # type: ignore[abstract]
 
 
 def test_abstract_transform_call_method_raises_not_implemented():
     class IncompleteTransform(Transform):
         def __call__(self, *args, **kwargs):
-            return super().__call__(*args, **kwargs)
+            # Testing abstract method behavior via super() call
+            return super().__call__(*args, **kwargs)  # type: ignore[safe-super]
 
     transform = IncompleteTransform()
     with pytest.raises(NotImplementedError, match="Subclasses must implement `__call__` method"):
@@ -585,7 +592,8 @@ def test_transform_pipeline_composition():
         MeshesRemesh(max_len=10.0)
     ]
 
-    pipeline = Compose(transforms)
+    # Test fixture: list contains Transform subtypes
+    pipeline = Compose(transforms)  # type: ignore[arg-type]
     assert len(pipeline.transforms) == 3
     assert isinstance(pipeline.transforms[0], ToMesh)
     assert isinstance(pipeline.transforms[1], MeshesCleaning)

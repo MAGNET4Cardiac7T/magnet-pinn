@@ -333,11 +333,12 @@ def test_tissue_rejects_none_initial_blob_center_extent():
         "initial_blob_center_extent must be a 2d array-like structure with coordinate ranges, "
         "first X, then Y, then Z dimensions"
     )
+    # Testing None validation for initial_blob_center_extent
     with pytest.raises(ValueError, match=match_msg):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent=None,
+            initial_blob_center_extent=None,  # type: ignore[arg-type]
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2
@@ -349,11 +350,12 @@ def test_tissue_rejects_list_of_lists_initial_blob_center_extent():
         "initial_blob_center_extent must be a 2d array-like structure with coordinate ranges, "
         "first X, then Y, then Z dimensions"
     )
+    # Testing list-to-array coercion validation
     with pytest.raises(ValueError, match=match_msg):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
-            initial_blob_center_extent=[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+            initial_blob_center_extent=[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],  # type: ignore[arg-type]
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2
@@ -563,9 +565,6 @@ def test_tissue_generate_without_seed():
     assert isinstance(phantom.parent, Blob)
 
 
-
-
-
 def test_tissue_generate_tube_direction_vectors_normalized():
     tissue = Tissue(
         num_children_blobs=0,
@@ -578,8 +577,9 @@ def test_tissue_generate_tube_direction_vectors_normalized():
 
     phantom = tissue.generate(seed=42)
 
+    # Runtime type of phantom.tubes items is Tube, which has direction attribute
     for tube in phantom.tubes:
-        norm = np.linalg.norm(tube.direction)
+        norm = np.linalg.norm(tube.direction)  # type: ignore[attr-defined]
         assert np.isclose(norm, 1.0, rtol=1e-10)
 
 
@@ -595,8 +595,9 @@ def test_tissue_generate_uses_parent_inner_radius_for_tubes():
 
     phantom = tissue.generate(seed=42)
 
+    # Runtime type of phantom.parent is Blob, which has empirical_min_offset
     parent = phantom.parent
-    expected_max_distance = parent.radius * (1 + parent.empirical_min_offset)
+    expected_max_distance = parent.radius * (1 + parent.empirical_min_offset)  # type: ignore[attr-defined]
 
     for tube in phantom.tubes:
         distance_to_center = np.linalg.norm(tube.position - parent.position)
@@ -617,10 +618,14 @@ def test_tissue_generate_with_single_child_blob():
 
     assert len(phantom.children) == 1
     child = phantom.children[0]
+    # Runtime types are Blob, which have empirical_min_offset and empirical_max_offset
     parent = phantom.parent
 
     distance = np.linalg.norm(child.position - parent.position)
-    max_distance = parent.radius * (1 + parent.empirical_min_offset) - child.radius * (1 + child.empirical_max_offset)
+    max_distance = (
+        parent.radius * (1 + parent.empirical_min_offset)  # type: ignore[attr-defined]
+        - child.radius * (1 + child.empirical_max_offset)  # type: ignore[attr-defined]
+    )
     assert distance <= max_distance
 
 
@@ -663,9 +668,6 @@ def test_tissue_has_correct_sampler_configuration():
     assert tissue.blob_sampler.radius_decrease_factor == blob_decrease
     assert tissue.tube_sampler.tube_max_radius == max_tube_radius * initial_radius
     assert tissue.tube_sampler.tube_min_radius == min_tube_radius * initial_radius
-
-
-
 
 
 def test_tissue_inheritance_from_phantom():
@@ -978,9 +980,10 @@ def test_custom_phantom_generate_reproducible_with_same_seed(simple_stl_file):
         np.testing.assert_array_almost_equal(child1.position, child2.position)
         assert child1.radius == child2.radius
 
+    # Runtime type of tubes items is Tube, which has direction attribute
     for tube1, tube2 in zip(result1.tubes, result2.tubes):
         np.testing.assert_array_almost_equal(tube1.position, tube2.position)
-        np.testing.assert_array_almost_equal(tube1.direction, tube2.direction)
+        np.testing.assert_array_almost_equal(tube1.direction, tube2.direction)  # type: ignore[attr-defined]
         assert tube1.radius == tube2.radius
 
 
@@ -1001,11 +1004,14 @@ def test_custom_phantom_generate_different_results_with_different_seeds(simple_s
             children_different = True
             break
 
+    # Runtime type of tubes items is Tube, which has direction attribute
     tubes_different = False
     for tube1, tube2 in zip(result1.tubes, result2.tubes):
-        if (not np.allclose(tube1.position, tube2.position) or
-            not np.allclose(tube1.direction, tube2.direction) or
-            tube1.radius != tube2.radius):
+        if (
+            not np.allclose(tube1.position, tube2.position)
+            or not np.allclose(tube1.direction, tube2.direction)  # type: ignore[attr-defined]
+            or tube1.radius != tube2.radius
+        ):
             tubes_different = True
             break
 

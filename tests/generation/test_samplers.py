@@ -9,9 +9,14 @@ import trimesh
 from numpy.random import default_rng
 
 from magnet_pinn.generator import samplers as samplers_module
-from magnet_pinn.generator.samplers import PointSampler, BlobSampler, TubeSampler, PropertySampler, MeshBlobSampler, MeshTubeSampler
+from magnet_pinn.generator.samplers import (
+    PointSampler, BlobSampler, TubeSampler, PropertySampler,
+    MeshBlobSampler, MeshTubeSampler
+)
 from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
-from magnet_pinn.generator.typing import PropertyItem, PropertyPhantom, StructurePhantom, MeshPhantom
+from magnet_pinn.generator.typing import (
+    PropertyItem, PropertyPhantom, StructurePhantom, MeshPhantom
+)
 
 
 def test_samplers_import_fallback(monkeypatch):
@@ -21,7 +26,7 @@ def test_samplers_import_fallback(monkeypatch):
     def fast_winding_number_for_meshes(*args, **kwargs):
         return "fallback"
 
-    fake_igl.fast_winding_number_for_meshes = fast_winding_number_for_meshes
+    fake_igl.fast_winding_number_for_meshes = fast_winding_number_for_meshes  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "igl", fake_igl)
 
     reloaded = importlib.reload(samplers_module)
@@ -73,7 +78,7 @@ def test_point_sampler_initialization_with_list_center():
     center = [1.0, 2.0, 3.0]
     radius = 5.0
 
-    sampler = PointSampler(center=center, radius=radius)
+    sampler = PointSampler(center=np.array(center), radius=radius)
     assert np.array_equal(sampler.center, np.array(center))
     assert sampler.center.dtype == float
 
@@ -415,8 +420,13 @@ def test_blob_sampler_sample_children_blobs_children_within_parent():
     children = sampler.sample_children_blobs(parent_blob, 2, rng)
 
     for child in children:
-        distance_to_parent = np.linalg.norm(child.position - parent_blob.position)
-        max_allowed_distance = parent_blob.radius * (1 + parent_blob.empirical_min_offset) - child.radius * (1 + child.empirical_max_offset)
+        distance_to_parent = np.linalg.norm(
+            child.position - parent_blob.position
+        )
+        max_allowed_distance = (
+            parent_blob.radius * (1 + parent_blob.empirical_min_offset)
+            - child.radius * (1 + child.empirical_max_offset)
+        )
         assert distance_to_parent <= max_allowed_distance
 
 
@@ -761,7 +771,6 @@ def test_point_sampler_sample_points_with_zero_norm_handling():
 
 def test_blob_sampler_find_valid_positions_progressive_timeout():
     sampler = BlobSampler(radius_decrease_factor=0.5)
-    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=1.0)
     rng = default_rng(42)
 
     with pytest.raises(RuntimeError, match="Could not find 10 valid positions"):
@@ -901,7 +910,7 @@ def test_blob_sampler_malformed_points_array():
     try:
         result = sampler.check_points_distance(malformed_points, 1.0)
         assert isinstance(result, bool)
-    except (ValueError, IndexError, np.AxisError):
+    except (ValueError, IndexError):
         pass
 
 
@@ -1182,7 +1191,7 @@ def test_property_sampler_initialization_with_valid_multiple_properties_config()
 
 
 def test_property_sampler_initialization_with_empty_config():
-    properties_cfg = {}
+    properties_cfg: dict[str, dict[str, float]] = {}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1310,7 +1319,7 @@ def test_property_sampler_sample_with_empty_properties_list():
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
-    properties_list = []
+    properties_list: list[PropertyItem] = []
 
     with pytest.raises(TypeError):
         sampler._sample(rng, properties_list)
@@ -1339,7 +1348,7 @@ def test_property_sampler_sample_with_none_properties_list():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    property_item = sampler._sample(rng, None)
+    property_item = sampler._sample(rng, None)  # type: ignore[arg-type]  # Testing default None parameter behavior
 
     assert isinstance(property_item, PropertyItem)
     assert hasattr(property_item, "conductivity")
@@ -1418,7 +1427,10 @@ def test_property_sampler_sample_like_with_structure_phantom():
     tubes = [
         Tube(position=np.array([0., 0., 0.]), direction=np.array([1., 0., 0.]), radius=1.0)
     ]
-    structure_phantom = StructurePhantom(parent=parent_blob, children=child_blobs, tubes=tubes)
+    # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
+    structure_phantom = StructurePhantom(
+        parent=parent_blob, children=child_blobs, tubes=tubes  # type: ignore[arg-type]
+    )
 
     property_phantom = sampler.sample_like(structure_phantom, rng)
 
@@ -1447,7 +1459,10 @@ def test_property_sampler_sample_like_with_mesh_phantom():
     tube_meshes = [
         trimesh.primitives.Cylinder(radius=0.1, height=2.0)
     ]
-    mesh_phantom = MeshPhantom(parent=parent_mesh, children=child_meshes, tubes=tube_meshes)
+    # Test fixture: list invariance, Sphere/Cylinder are Trimesh subtypes
+    mesh_phantom = MeshPhantom(
+        parent=parent_mesh, children=child_meshes, tubes=tube_meshes  # type: ignore[arg-type]
+    )
 
     property_phantom = sampler.sample_like(mesh_phantom, rng)
 
@@ -1511,7 +1526,10 @@ def test_property_sampler_sample_like_with_none_properties_list():
     parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
     structure_phantom = StructurePhantom(parent=parent_blob, children=[], tubes=[])
 
-    property_phantom = sampler.sample_like(structure_phantom, rng, None)
+    # Testing default None parameter behavior
+    property_phantom = sampler.sample_like(
+        structure_phantom, rng, None  # type: ignore[arg-type]
+    )
 
     assert isinstance(property_phantom, PropertyPhantom)
     assert isinstance(property_phantom.parent, PropertyItem)
@@ -1536,7 +1554,10 @@ def test_property_sampler_sample_like_with_moderate_children_and_tubes():
     tubes = [
         Tube(position=np.array([i, 0., 0.]), direction=np.array([1., 0., 0.]), radius=0.5) for i in range(3)
     ]
-    structure_phantom = StructurePhantom(parent=parent_blob, children=child_blobs, tubes=tubes)
+    # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
+    structure_phantom = StructurePhantom(
+        parent=parent_blob, children=child_blobs, tubes=tubes  # type: ignore[arg-type]
+    )
 
     property_phantom = sampler.sample_like(structure_phantom, rng)
 
@@ -1685,7 +1706,10 @@ def test_property_sampler_sample_like_properties_independent_across_components()
         Blob(position=np.array([1., 1., 1.]), radius=3.0),
         Blob(position=np.array([2., 2., 2.]), radius=2.0)
     ]
-    structure_phantom = StructurePhantom(parent=parent_blob, children=child_blobs, tubes=[])
+    # Test fixture: list invariance, Blob is Structure3D subtype
+    structure_phantom = StructurePhantom(
+        parent=parent_blob, children=child_blobs, tubes=[]  # type: ignore[arg-type]
+    )
 
     property_phantom = sampler.sample_like(structure_phantom, rng)
 
@@ -1782,8 +1806,9 @@ def test_property_sampler_sample_like_with_invalid_phantom_type():
 
     invalid_phantom = "not_a_phantom"
 
+    # Testing error handling with invalid input type
     with pytest.raises(AttributeError):
-        sampler.sample_like(invalid_phantom, rng)
+        sampler.sample_like(invalid_phantom, rng)  # type: ignore[arg-type]
 
 
 def test_property_sampler_sample_with_zero_range_all_properties():
@@ -1851,7 +1876,8 @@ def test_property_sampler_sample_like_phantom_with_no_parent_attribute():
 
     invalid_phantom = InvalidPhantom()
 
-    result = sampler.sample_like(invalid_phantom, rng)
+    # Testing duck typing with custom phantom class
+    result = sampler.sample_like(invalid_phantom, rng)  # type: ignore[arg-type]
 
     assert isinstance(result, PropertyPhantom)
     assert len(result.children) == 0
@@ -1888,8 +1914,9 @@ def test_property_sampler_sample_like_with_invalid_phantom():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
+    # Testing error handling with invalid input type
     with pytest.raises(AttributeError):
-        sampler.sample_like("invalid_phantom", rng)
+        sampler.sample_like("invalid_phantom", rng)  # type: ignore[arg-type]
 
 
 def create_test_mesh():
@@ -2109,7 +2136,6 @@ def test_mesh_blob_sampler_batch_size_parameter(tmp_path):
     assert isinstance(children[0], Blob)
 
 
-
 def test_mesh_tube_sampler_initialization_with_valid_radii():
     tube_max_radius = 2.0
     tube_min_radius = 0.5
@@ -2319,7 +2345,11 @@ def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(t
     if len(tubes1) > 0 and len(tubes2) > 0:
         different = False
         t1, t2 = tubes1[0], tubes2[0]
-        if not np.allclose(t1.position, t2.position) or not np.allclose(t1.direction, t2.direction) or t1.radius != t2.radius:
+        if (
+            not np.allclose(t1.position, t2.position)
+            or not np.allclose(t1.direction, t2.direction)
+            or t1.radius != t2.radius
+        ):
             different = True
         assert different
 
@@ -2375,7 +2405,11 @@ def test_mesh_tube_sampler_initialization_with_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 150.0
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius
+    )
 
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
@@ -2397,7 +2431,11 @@ def test_mesh_tube_sampler_initialization_with_zero_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 0.0
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius
+    )
 
     assert sampler.parent_radius == 0.0
 
@@ -2407,7 +2445,11 @@ def test_mesh_tube_sampler_initialization_with_large_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 5000.0
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius
+    )
 
     assert sampler.parent_radius == parent_radius
 

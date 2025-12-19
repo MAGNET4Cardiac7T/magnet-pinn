@@ -15,8 +15,6 @@ def test_property_item_mutation_bug_protection():
     """Test that PropertyItem instances are protected from mutation through io.py operations."""
     original_props = PropertyItem(conductivity=0.5, permittivity=80.0, density=1000.0)
 
-    original_dict = original_props.__dict__.copy()
-
     original_props.__dict__.update({"new_field": "injected_value"})
 
     new_props = PropertyItem(conductivity=0.5, permittivity=80.0, density=1000.0)
@@ -111,7 +109,8 @@ def test_structure_phantom_with_realistic_mri_setup():
         Tube(position=np.array([0.0, 0.0, -20.0]), direction=np.array([0.0, 1.0, 0.0]), radius=1.5),
     ]
 
-    phantom = StructurePhantom(parent=parent, children=children, tubes=tubes)
+    # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
+    phantom = StructurePhantom(parent=parent, children=children, tubes=tubes)  # type: ignore[arg-type]
 
     assert phantom.parent.radius == 100.0
     assert len(phantom.children) == 2
@@ -219,14 +218,16 @@ def test_phantom_serialization_workflow():
     for phantom in all_phantoms:
         pickled = pickle.dumps(phantom)
         unpickled = pickle.loads(pickled)
-        assert type(unpickled) == type(phantom)
-        assert len(unpickled.children) == len(phantom.children)
-        assert len(unpickled.tubes) == len(phantom.tubes)
+        assert isinstance(unpickled, type(phantom))
+        # Testing pickling preserves structure
+        assert len(unpickled.children) == len(phantom.children)  # type: ignore[attr-defined]
+        assert len(unpickled.tubes) == len(phantom.tubes)  # type: ignore[attr-defined]
 
 
 def test_phantom_boundary_conditions():
     """Test phantom types with boundary conditions relevant to MRI simulation."""
-    empty_phantom = StructurePhantom(parent=None, children=[], tubes=[])
+    # Testing None parent boundary condition
+    empty_phantom = StructurePhantom(parent=None, children=[], tubes=[])  # type: ignore[arg-type]
     assert empty_phantom.parent is None
     assert len(empty_phantom.children) == 0
     assert len(empty_phantom.tubes) == 0
@@ -269,7 +270,8 @@ def test_phantom_types_integration_with_structures():
 
     assert np.linalg.norm(mixed_phantom.parent.position) == 0.0
     assert np.linalg.norm(mixed_phantom.children[0].position) == 20.0
-    assert np.allclose(mixed_phantom.tubes[0].direction, [0.0, 0.0, 1.0])
+    # Runtime type is Tube, which has direction attribute
+    assert np.allclose(mixed_phantom.tubes[0].direction, [0.0, 0.0, 1.0])  # type: ignore[attr-defined]
 
 
 def test_property_item_edge_cases_consolidated():
@@ -353,7 +355,7 @@ def test_phantom_item_union_type():
     )
 
     mesh_phantom = MeshPhantom(
-        parent=Trimesh(vertices=[[0,0,0], [1,0,0], [0,1,0]], faces=[[0,1,2]]),
+        parent=Trimesh(vertices=[[0, 0, 0], [1, 0, 0], [0, 1, 0]], faces=[[0, 1, 2]]),
         children=[],
         tubes=[]
     )
@@ -451,7 +453,8 @@ def test_property_phantom_mismatched_lengths():
 
 def test_phantom_with_none_components():
     """Test phantom behavior with None components (edge case handling)."""
-    none_parent_phantom = StructurePhantom(parent=None, children=[], tubes=[])
+    # Testing None parent boundary condition
+    none_parent_phantom = StructurePhantom(parent=None, children=[], tubes=[])  # type: ignore[arg-type]
     assert none_parent_phantom.parent is None
     assert len(none_parent_phantom.children) == 0
     assert len(none_parent_phantom.tubes) == 0
@@ -501,7 +504,8 @@ def test_phantom_component_count_edge_cases():
     assert len(minimal_phantom.tubes) == 0
 
     single_child = [Blob(position=np.array([10.0, 0.0, 0.0]), radius=5.0)]
-    single_phantom = StructurePhantom(parent=parent, children=single_child, tubes=[])
+    # Test fixture: list invariance, Blob is Structure3D subtype
+    single_phantom = StructurePhantom(parent=parent, children=single_child, tubes=[])  # type: ignore[arg-type]
     assert len(single_phantom.children) == 1
 
     few_children = [
@@ -513,10 +517,10 @@ def test_phantom_component_count_edge_cases():
         for i in range(3)
     ]
 
+    # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
     asymmetric_phantom = StructurePhantom(
         parent=parent,
-        children=few_children,
-        tubes=few_tubes
+        children=few_children, tubes=few_tubes  # type: ignore[arg-type]
     )
 
     assert len(asymmetric_phantom.children) == 5
@@ -567,10 +571,16 @@ def test_property_phantom_consistency_validation():
 
     consistent_phantom = PropertyPhantom(parent=parent, children=children, tubes=tubes)
 
-    assert all(child.conductivity > consistent_phantom.parent.conductivity
-              for child in consistent_phantom.children)
-    assert all(tube.conductivity > max(child.conductivity for child in consistent_phantom.children)
-              for tube in consistent_phantom.tubes)
+    assert all(
+        child.conductivity > consistent_phantom.parent.conductivity
+        for child in consistent_phantom.children
+    )
+    assert all(
+        tube.conductivity > max(child.conductivity for child in consistent_phantom.children)
+        for tube in consistent_phantom.tubes
+    )
 
-    assert all(tube.density >= max(child.density for child in consistent_phantom.children)
-              for tube in consistent_phantom.tubes)
+    assert all(
+        tube.density >= max(child.density for child in consistent_phantom.children)
+        for tube in consistent_phantom.tubes
+    )
