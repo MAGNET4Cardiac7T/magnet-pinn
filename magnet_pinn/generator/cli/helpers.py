@@ -22,33 +22,33 @@ def print_report(args: Namespace, output_path: Path = None):
     print("\n" + "="*60)
     print("Data Generation Report")
     print("="*60)
-    
+
     print(f"\nPhantom Type: {args.phantom_type}")
     print(f"Seed: {args.seed}")
     print(f"Output Directory: {args.output}")
-    
+
     if output_path:
         print(f"Saved to: {output_path.resolve()}")
-    
+
     print("\n" + "-"*60)
     print("Structure Configuration:")
     print("-"*60)
-    
+
     if args.phantom_type == "tissue":
         _print_tissue_report(args)
     elif args.phantom_type == "custom":
         _print_custom_report(args)
-    
+
     print("\n" + "-"*60)
     print("Physical Properties Configuration:")
     print("-"*60)
     _print_properties_report(args)
-    
+
     print("\n" + "-"*60)
     print("Workflow Configuration:")
     print("-"*60)
     _print_workflow_report(args)
-    
+
     print("\n" + "="*60 + "\n")
 
 
@@ -104,32 +104,32 @@ def validate_arguments(args: Namespace) -> None:
     """
     if args.density_min >= args.density_max:
         raise ValueError("density_min must be less than density_max")
-    
+
     if args.conductivity_min >= args.conductivity_max:
         raise ValueError("conductivity_min must be less than conductivity_max")
-    
+
     if args.permittivity_min >= args.permittivity_max:
         raise ValueError("permittivity_min must be less than permittivity_max")
-    
+
     # Validate common phantom structure arguments
     if hasattr(args, 'num_children_blobs') and args.num_children_blobs < 0:
         raise ValueError("num_children_blobs must be non-negative")
-    
+
     if hasattr(args, 'blob_radius_decrease') and (args.blob_radius_decrease <= 0 or args.blob_radius_decrease >= 1):
         raise ValueError("blob_radius_decrease must be in range (0, 1)")
-    
+
     if hasattr(args, 'num_tubes') and args.num_tubes < 0:
         raise ValueError("num_tubes must be non-negative")
-    
+
     if hasattr(args, 'relative_tube_min_radius') and args.relative_tube_min_radius <= 0:
         raise ValueError("relative_tube_min_radius must be positive")
-    
+
     if hasattr(args, 'relative_tube_max_radius') and (args.relative_tube_max_radius <= 0 or args.relative_tube_max_radius >= 1):
         raise ValueError("relative_tube_max_radius must be in range (0, 1)")
-    
+
     if hasattr(args, 'relative_tube_min_radius') and hasattr(args, 'relative_tube_max_radius') and args.relative_tube_min_radius >= args.relative_tube_max_radius:
         raise ValueError("relative_tube_min_radius must be less than relative_tube_max_radius")
-    
+
     # Validate phantom-specific arguments
     if args.phantom_type == "tissue":
         _validate_tissue_arguments(args)
@@ -141,13 +141,13 @@ def _validate_tissue_arguments(args: Namespace):
     """Validate tissue phantom-specific arguments."""
     if args.initial_blob_radius <= 0:
         raise ValueError("initial_blob_radius must be positive")
-    
+
     if args.x_min >= args.x_max:
         raise ValueError("x_min must be less than x_max")
-    
+
     if args.y_min >= args.y_max:
         raise ValueError("y_min must be less than y_max")
-    
+
     if args.z_min >= args.z_max:
         raise ValueError("z_min must be less than z_max")
 
@@ -156,9 +156,9 @@ def _validate_custom_arguments(args: Namespace):
     """Validate custom phantom-specific arguments."""
     if not args.stl_mesh_path.exists():
         raise ValueError(f"STL mesh file not found: {args.stl_mesh_path}")
-    
+
     if not args.stl_mesh_path.suffix.lower() == '.stl':
         raise ValueError(f"STL mesh file must have .stl extension: {args.stl_mesh_path}")
-    
+
     if args.child_blobs_batch_size < 1:
         raise ValueError("child_blobs_batch_size must be at least 1")

@@ -4,7 +4,7 @@ NAME
 
 DESCRIPTION
     This module provides file I/O functionality for mesh phantoms and their properties.
-    It contains writers for exporting mesh data and associated material properties to 
+    It contains writers for exporting mesh data and associated material properties to
     standard file formats used in MRI simulation workflows.
 """
 from pathlib import Path
@@ -25,7 +25,7 @@ MATERIALS_FILE_NAME = "materials.txt"
 class Writer(ABC):
     """
     Abstract base class for writing phantom data to persistent storage.
-    
+
     Provides the common interface for all phantom data writers, ensuring consistent
     output directory management and write operations across different output formats.
     """
@@ -66,7 +66,7 @@ class Writer(ABC):
 class MeshWriter(Writer):
     """
     Writer for exporting mesh phantoms and their material properties.
-    
+
     Exports 3D mesh data as STL files and creates a corresponding materials CSV file
     containing physical properties for each mesh component. The output follows the
     standard format expected by MRI simulation software.
@@ -74,7 +74,7 @@ class MeshWriter(Writer):
     def write(self, item: MeshPhantom, prop: PropertyPhantom):
         """
         Write mesh phantom and properties to files.
-        
+
         Exports all mesh components as individual STL files and creates a
         corresponding materials.txt CSV file that maps each mesh file to its
         material properties. The output follows the standard format expected
@@ -111,7 +111,7 @@ class MeshWriter(Writer):
     def _save_mesh(self, mesh: Trimesh, prop: PropertyItem, filename: str):
         """
         Save a mesh as STL file and return its properties with filename.
-        
+
         Exports the mesh to the specified STL file and augments the property
         dictionary with the filename for later use in the materials dataframe.
 
@@ -134,5 +134,5 @@ class MeshWriter(Writer):
 
         prop_dict = prop.__dict__.copy()
         prop_dict["file"] = filename
-        
+
         return prop_dict

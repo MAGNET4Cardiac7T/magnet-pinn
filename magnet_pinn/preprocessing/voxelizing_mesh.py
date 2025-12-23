@@ -44,7 +44,7 @@ class MeshVoxelizer:
     z: np.array
         z grid
     points: np.array
-        The points in the grid 
+        The points in the grid
 
     Methods
     -------
@@ -53,10 +53,10 @@ class MeshVoxelizer:
     process_mesh(mesh)
         Convert the mesh to a voxel grid.
     """
-    def __init__(self, 
-                 voxel_size: float, 
-                 x_unique: np.array, 
-                 y_unique: np.array, 
+    def __init__(self,
+                 voxel_size: float,
+                 x_unique: np.array,
+                 y_unique: np.array,
                  z_unique: np.array
         ):
         """
@@ -100,7 +100,7 @@ class MeshVoxelizer:
             The grid to validate.
         axis: str
             The axis of the grid (x, y, or z).
-        
+
         Raises
         ------
         ValueError
@@ -108,7 +108,7 @@ class MeshVoxelizer:
         """
         if grid[0] >= grid[-1]:
             raise ValueError("Grid must be sorted in ascending order.")
-        
+
         steps = ((grid[-1] - grid[0]) / self.voxel_size).astype(int) + 1
         supposed_grid = np.linspace(grid[0], grid[-1], steps)
 
@@ -136,8 +136,8 @@ class MeshVoxelizer:
         points = np.ascontiguousarray(self.points, dtype=vertices.dtype)
 
         winding_number = fast_winding_number(
-            vertices, 
-            faces, 
+            vertices,
+            faces,
             points
         )
 

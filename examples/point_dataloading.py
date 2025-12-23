@@ -23,4 +23,3 @@ iterator = MagnetPointIterator(
 
 for item in tqdm.tqdm(iterator):
     print(item['field'].shape)
-

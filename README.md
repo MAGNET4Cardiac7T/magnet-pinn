@@ -7,13 +7,13 @@
 
 [comment]: [![Docs](https://github.com/badulion/dynabench/actions/workflows/build_docs.yml/badge.svg)](https://dynabench.github.io)
 
-Heart failure is one of the main causes of death worldwide, and high-resolution imaging plays a very important role in diagnosing it. 
+Heart failure is one of the main causes of death worldwide, and high-resolution imaging plays a very important role in diagnosing it.
 Cardiac MRI at 7 Tesla (ultrahigh-field) provides excellent image quality because of its high signal-to-noise ratio (SNR) and spatial resolution.
 
-However, its wider use is limited by the safety concerns related to the complex distribution of electromagnetic (EM) fields inside the body. 
+However, its wider use is limited by the safety concerns related to the complex distribution of electromagnetic (EM) fields inside the body.
 These field distributions can lead to safety problems, such as localized tissue heating due to the radio frequency (RF) energy absorbed by the body during UHF MRI.
 
-The simulations to accuratly predict how the EM field behaves inside the human body are complex and tedious. 
+The simulations to accuratly predict how the EM field behaves inside the human body are complex and tedious.
 Therefore, a dataset was developed to immitate MRI images that can be used to train, validate, and test machine learning (ML) models, slashing the time for a good estimate of the EM field.
 
 This package contains functions that can be applied to the dataset to preprocess it and finally use it as input to an ML model.
@@ -254,7 +254,7 @@ writer.write(meshes, prop)
 This guide has been largely adapted from [the findiff contribution guide](https://github.com/maroba/findiff/blob/master/CONTRIBUTING.md)
 
 
-#### **Did you find a bug?** 
+#### **Did you find a bug?**
 
 * **Ensure the bug was not already reported** by searching on GitHub
   under [Issues](https://github.com/MAGNET4Cardiac7T/magnet-pinn/issues).

@@ -170,7 +170,7 @@ class RandVec:
             self.vec,
             self.dists_to(coordinates),
         )
-        
+
 
 class PerlinNoise:
     """Smooth random noise generator.

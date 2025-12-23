@@ -246,15 +246,15 @@ def test_normalizer_with_nonlinearity(random_iterator, random_batch, normalizer_
         nonlinearity = nonlinearity_class(power=2.0)
     else:
         nonlinearity = nonlinearity_class()
-    
+
     normalizer = normalizer_class(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
-    
+
     # Test forward and inverse
     normalized = normalizer.forward(random_batch, axis=1)
     denormalized = normalizer.inverse(normalized, axis=1)
-    
+
     # Should reconstruct original data
     assert torch.allclose(random_batch, denormalized, atol=1e-5), \
         f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
@@ -265,10 +265,10 @@ def test_standard_normalizer_nonlinearity_after_normalization(random_iterator, r
     normalizer = StandardNormalizer(nonlinearity=Tanh(), nonlinearity_before=False)
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
-    
+
     # Get normalized output
     normalized = normalizer.forward(random_batch, axis=1)
-    
+
     # With Tanh applied after normalization, all values should be in [-1, 1]
     assert (normalized >= -1.0).all() and (normalized <= 1.0).all(), \
         "Tanh nonlinearity should bound values to [-1, 1]"
@@ -280,16 +280,16 @@ def test_standard_normalizer_nonlinearity_before_normalization(random_iterator):
         torch.manual_seed(seed)
         for _ in range(num_batches):
             yield {"input": torch.rand(batch_size, num_features) + 0.1}  # Ensure positive
-    
+
     normalizer = StandardNormalizer(nonlinearity=Log(), nonlinearity_before=True)
     iterator = positive_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
-    
+
     # Test with positive data
     test_data = torch.rand(10, 3) + 0.1
     normalized = normalizer.forward(test_data, axis=1)
     denormalized = normalizer.inverse(normalized, axis=1)
-    
+
     # Should reconstruct original data
     assert torch.allclose(test_data, denormalized, atol=1e-5), \
         "Failed to reconstruct with Log nonlinearity before normalization"
