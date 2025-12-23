@@ -82,11 +82,12 @@
 - Add tests for duplicate simulations
 - Remove deprecated VirtualDirectory class
 - Save dipoles before processing simulations
-- Add additional transforms: random rotation (arbitrary axes), mirror 
+- Add additional transforms: random rotation (arbitrary axes), mirror
 - Fix trimesh deprecated functions
 - Implement physics loss functions: faraday's law, gauss's law for magnetism
 - Add tests for physics loss functions
 - Add examples for physics loss functions
 
-## [0.0.13] -> 
+## [0.0.13] ->
 - Fix: standard normalizer not applying nonlinearity
+- Add py.typed for linter checks

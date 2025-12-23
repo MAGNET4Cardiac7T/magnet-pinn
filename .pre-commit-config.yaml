@@ -3,34 +3,33 @@ repos:
   - repo: local
     hooks:
       - id: isort
-        name: isort (uv)
+        name: isort
         language: system
-        entry: uv run isort
+        entry: isort
         types: [python]
         pass_filenames: true
         args: [--settings-path, pyproject.toml, --diff]
 
       - id: black
-        name: black (uv)
+        name: black
         language: system
-        entry: uv run black
+        entry: black
         types: [python]
         pass_filenames: true
         args: [--config, pyproject.toml, --diff]
 
       - id: flake8
-        name: flake8 (uv)
+        name: flake8
         language: system
-        entry: uv run flake8
+        entry: flake8
         types: [python]
         pass_filenames: true
-        # flake8-pyproject must be in your pyproject/uv deps now, not additional_dependencies
-        args: [--toml-config, pyproject.toml]
+        # flake8-pyproject must be installed in your Poetry environment (via pyproject.toml), not via additional_dependencies
 
       - id: mypy
-        name: mypy (uv)
+        name: mypy
         language: system
-        entry: uv run mypy
+        entry: mypy
         types: [python]
         pass_filenames: true
         args: [--config-file, pyproject.toml]

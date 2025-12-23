@@ -48,6 +48,8 @@ sphinx-design = "^0.5.0"
 pandas = "^2.2.2"
 pytest = "^8.3.2"
 coverage = "^7.6.3"
+flake8-pyproject = "^1.2.4"
+autoflake = "^2.3.1"
 
 [tool.poetry.extras]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
@@ -69,3 +71,10 @@ addopts = [
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+
+[tool.black]
+line-length = 88
