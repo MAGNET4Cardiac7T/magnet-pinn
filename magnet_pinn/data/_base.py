@@ -69,8 +69,10 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     simulation_list: List[Path]
         List of simulation `.h5` file paths
     """
-
-    def __init__(self, data_dir: Union[str, Path], transforms: Optional[BaseTransform] = None, num_samples: int = 1):
+    def __init__(self,
+                 data_dir: Union[str, Path],
+                 transforms: Optional[BaseTransform] = None,
+                 num_samples: int = 1):
         """
         Parameters
         ----------
@@ -219,8 +221,6 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
                 Real and imaginary parts of the field.
             """
             field_val = f[field_key][:]
-            if field_val.dtype.names is None:
-                return field_val.real, field_val.imag
             return field_val["re"], field_val["im"]
 
         with h5py.File(simulation_path) as f:

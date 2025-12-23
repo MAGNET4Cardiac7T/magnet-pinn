@@ -1,5 +1,8 @@
+"""Fixtures for property reader tests."""
+
 import pytest
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from shutil import rmtree
 from trimesh import Trimesh
@@ -12,6 +15,7 @@ from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
 
 @pytest.fixture(scope='module')
 def property_data_invalid_columns(grid_simulation_path):
+    """Create property data with invalid column names."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
 
@@ -30,6 +34,7 @@ def property_data_invalid_columns(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def property_data_invalid_file_name(grid_simulation_path):
+    """Create property data with a non-existent file reference."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
 
@@ -49,6 +54,7 @@ def property_data_invalid_file_name(grid_simulation_path):
 
 
 def create_mesh(cols: int, rows: int) -> Trimesh:
+    """Create a simple planar mesh for testing."""
     x = np.linspace(0, 1, cols)
     y = np.linspace(0, 1, rows)
     xv, yv = np.meshgrid(x, y)
@@ -56,19 +62,20 @@ def create_mesh(cols: int, rows: int) -> Trimesh:
 
     vertices = np.column_stack((xv.flatten(), yv.flatten(), zv.flatten()))
 
-    faces = []
+    faces_list: list[list[int]] = []
     for i in range(rows - 1):
         for j in range(cols - 1):
             idx = i * cols + j
-            faces.append([idx, idx + 1, idx + cols + 1])
-            faces.append([idx, idx + cols + 1, idx + cols])
+            faces_list.append([idx, idx + 1, idx + cols + 1])
+            faces_list.append([idx, idx + cols + 1, idx + cols])
 
-    faces = np.array(faces)
+    faces: npt.NDArray[np.int_] = np.array(faces_list)
     return Trimesh(vertices=vertices, faces=faces)
 
 
 @pytest.fixture(scope='module')
 def property_data_valid(grid_simulation_path):
+    """Create valid property data with a mesh file."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
 

@@ -1,3 +1,8 @@
+"""Pytest configuration and shared fixtures for the test suite.
+
+This module provides common test fixtures including deterministic random seeds,
+temporary directory management, and cleanup utilities for the entire test suite.
+"""
 import random
 from shutil import rmtree
 from pathlib import Path
@@ -11,6 +16,12 @@ PROCESSED_DIR_PATH = "processed"
 
 @pytest.fixture(autouse=True)
 def deterministicity():
+    """Set random seeds for deterministic test execution.
+
+    This fixture automatically applies to all tests, ensuring reproducible
+    results by setting a fixed seed (42) for both NumPy and Python's random
+    number generators.
+    """
     seed = 42
     np.random.seed(seed)
     random.seed(seed)
@@ -30,6 +41,18 @@ def cleanup_basetemp(request):
 
 @pytest.fixture(scope='module')
 def data_dir_path(tmp_path_factory):
+    """Create a temporary data directory for module-scoped tests.
+
+    Parameters
+    ----------
+    tmp_path_factory : pytest.TempPathFactory
+        Pytest's temporary path factory for creating test directories.
+
+    Yields
+    ------
+    pathlib.Path
+        Path to the temporary data directory.
+    """
     data_path = tmp_path_factory.mktemp('data')
     yield data_path
     if data_path.exists():
@@ -38,6 +61,18 @@ def data_dir_path(tmp_path_factory):
 
 @pytest.fixture(scope='module')
 def processed_dir_path(data_dir_path):
+    """Create a processed data subdirectory within the data directory.
+
+    Parameters
+    ----------
+    data_dir_path : pathlib.Path
+        Parent data directory path from the data_dir_path fixture.
+
+    Yields
+    ------
+    pathlib.Path
+        Path to the temporary processed data subdirectory.
+    """
     processed_dir = data_dir_path / PROCESSED_DIR_PATH
     processed_dir.mkdir()
     yield processed_dir

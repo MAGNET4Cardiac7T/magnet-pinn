@@ -310,7 +310,7 @@ class FieldReader(ABC):
         pass
 
     @abstractmethod
-    def _compose_field_components(field_components: List) -> np.array:
+    def _compose_field_components(self, field_components: List) -> np.array:
         """
         Here we compose together field components from different files.
 

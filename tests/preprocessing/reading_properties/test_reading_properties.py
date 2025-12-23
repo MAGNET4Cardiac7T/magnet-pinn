@@ -8,16 +8,12 @@ from magnet_pinn.preprocessing.reading_properties import (
 
 def test_materials_file_absense(grid_simulation_path):
     with pytest.raises(FileNotFoundError):
-        reader = PropertyReader(
-            grid_simulation_path
-        )
+        PropertyReader(grid_simulation_path)
 
 
 def test_properties_frame_without_valid_columns(property_data_invalid_columns):
     with pytest.raises(ValueError):
-        reader = PropertyReader(
-            property_data_invalid_columns
-        )
+        PropertyReader(property_data_invalid_columns)
 
 
 def test_properties_frame_with_invalid_file(property_data_invalid_file_name):
