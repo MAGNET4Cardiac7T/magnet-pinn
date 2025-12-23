@@ -262,13 +262,23 @@ class StandardNormalizer(Normalizer):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
         params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
-        return (x - params['x_mean']) / params['x_var']**0.5
+        if self.nonlinearity_before:
+            x_nl = self.nonlinearity(x)
+            return (x_nl - params['x_mean']) / params['x_var']**0.5
+        else:
+            x_norm = (x - params['x_mean']) / params['x_var']**0.5
+            return self.nonlinearity(x_norm)
     
     def _denormalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
         params["x_var"] = params["x_mean_sq"] - params["x_mean"]**2
-        return x * params['x_var']**0.5 + params['x_mean']
+        if self.nonlinearity_before:
+            x_denorm = x * params['x_var']**0.5 + params['x_mean']
+            return self.nonlinearity.inverse(x_denorm)
+        else:
+            x_nl = self.nonlinearity.inverse(x)
+            return x_nl * params['x_var']**0.5 + params['x_mean']
     
     def _reset_params(self):
         self._params["x_mean"] = [0]

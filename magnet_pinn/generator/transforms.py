@@ -227,9 +227,10 @@ class MeshesTubesClipping(Transform):
             clipped_tubes = []
             for i, tube in enumerate(original_phantom.tubes):
                 clipped_tube = trimesh.boolean.intersection([tube, original_phantom.parent], engine='manifold')
-                clipped_tube.remove_degenerate_faces()
-                # collapse duplicate or nearly‑duplicate faces/edges
-                clipped_tube.remove_duplicate_faces()
+                clipped_tube.update_faces(
+                    clipped_tube.nondegenerate_faces()
+                )
+                clipped_tube.update_faces(clipped_tube.unique_faces())
                 clipped_tube.remove_unreferenced_vertices()
                 # stitch small holes
                 clipped_tube.fill_holes()
@@ -269,9 +270,10 @@ class MeshesChildrenCutout(Transform):
             cutouts = []
             for i, child in enumerate(target_phantom.children):
                 cutout = trimesh.boolean.difference([child, *original_phantom.tubes], engine='manifold')
-                cutout.remove_degenerate_faces()
-                # collapse duplicate or nearly‑duplicate faces/edges
-                cutout.remove_duplicate_faces()
+                cutout.update_faces(
+                    cutout.nondegenerate_faces()
+                )
+                cutout.update_faces(cutout.unique_faces())
                 cutout.remove_unreferenced_vertices()
                 # stitch small holes
                 cutout.fill_holes()
@@ -312,10 +314,10 @@ class MeshesParentCutoutWithChildren(Transform):
                 [target_phantom.parent, *original_phantom.children],
                 engine='manifold'
             )
-
-            parent.remove_degenerate_faces()
-            # collapse duplicate or nearly‑duplicate faces/edges
-            parent.remove_duplicate_faces()
+            parent.update_faces(
+                parent.nondegenerate_faces()
+            )
+            parent.update_faces(parent.unique_faces())
             parent.remove_unreferenced_vertices()
             # stitch small holes
             parent.fill_holes()
@@ -358,9 +360,10 @@ class MeshesParentCutoutWithTubes(Transform):
                 engine='manifold'
             )
 
-            parent.remove_degenerate_faces()
-            # collapse duplicate or nearly‑duplicate faces/edges
-            parent.remove_duplicate_faces()
+            parent.update_faces(
+                parent.nondegenerate_faces()
+            )
+            parent.update_faces(parent.unique_faces())
             parent.remove_unreferenced_vertices()
             # stitch small holes
             parent.fill_holes()
@@ -400,9 +403,10 @@ class MeshesChildrenClipping(Transform):
             clipped_children = []
             for i, child in enumerate(target_phantom.children):
                 clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine='manifold')
-                clipped_child.remove_degenerate_faces()
-                # collapse duplicate or nearly‑duplicate faces/edges
-                clipped_child.remove_duplicate_faces()
+                clipped_child.update_faces(
+                    clipped_child.nondegenerate_faces()
+                )
+                clipped_child.update_faces(clipped_child.unique_faces())
                 clipped_child.remove_unreferenced_vertices()
                 # stitch small holes
                 clipped_child.fill_holes()

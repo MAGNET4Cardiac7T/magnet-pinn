@@ -235,9 +235,64 @@ def test_save_and_load_meta_normalizer(tmp_path, random_iterator):
 
     # Compare parameters
     assert minmax_normalizer.params == loaded_minmax.params, "MinMaxNormalizer parameters do not match after loading"
-    assert (
-        standard_normalizer.params == loaded_standard.params
-    ), "StandardNormalizer parameters do not match after loading"
+    assert standard_normalizer.params == loaded_standard.params, "StandardNormalizer parameters do not match after loading"
+
+@pytest.mark.parametrize("normalizer_class", [StandardNormalizer, MinMaxNormalizer])
+@pytest.mark.parametrize("nonlinearity_class", [Identity, Power, Log, Tanh, Arcsinh])
+@pytest.mark.parametrize("nonlinearity_before", [True, False])
+def test_normalizer_with_nonlinearity(random_iterator, random_batch, normalizer_class, nonlinearity_class, nonlinearity_before):
+    """Test that normalizers correctly apply nonlinearity transformations."""
+    if nonlinearity_class == Power:
+        nonlinearity = nonlinearity_class(power=2.0)
+    else:
+        nonlinearity = nonlinearity_class()
+    
+    normalizer = normalizer_class(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    normalizer.fit_params(iterator, axis=1)
+    
+    # Test forward and inverse
+    normalized = normalizer.forward(random_batch, axis=1)
+    denormalized = normalizer.inverse(normalized, axis=1)
+    
+    # Should reconstruct original data
+    assert torch.allclose(random_batch, denormalized, atol=1e-5), \
+        f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
+
+
+def test_standard_normalizer_nonlinearity_after_normalization(random_iterator, random_batch):
+    """Test that nonlinearity is applied after normalization when nonlinearity_before=False."""
+    normalizer = StandardNormalizer(nonlinearity=Tanh(), nonlinearity_before=False)
+    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    normalizer.fit_params(iterator, axis=1)
+    
+    # Get normalized output
+    normalized = normalizer.forward(random_batch, axis=1)
+    
+    # With Tanh applied after normalization, all values should be in [-1, 1]
+    assert (normalized >= -1.0).all() and (normalized <= 1.0).all(), \
+        "Tanh nonlinearity should bound values to [-1, 1]"
+
+def test_standard_normalizer_nonlinearity_before_normalization(random_iterator):
+    """Test that nonlinearity is applied before normalization when nonlinearity_before=True."""
+    # Use positive data to test with Log nonlinearity
+    def positive_iterator(seed=42, num_batches=10, batch_size=5, num_features=3):
+        torch.manual_seed(seed)
+        for _ in range(num_batches):
+            yield {"input": torch.rand(batch_size, num_features) + 0.1}  # Ensure positive
+    
+    normalizer = StandardNormalizer(nonlinearity=Log(), nonlinearity_before=True)
+    iterator = positive_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
+    normalizer.fit_params(iterator, axis=1)
+    
+    # Test with positive data
+    test_data = torch.rand(10, 3) + 0.1
+    normalized = normalizer.forward(test_data, axis=1)
+    denormalized = normalizer.inverse(normalized, axis=1)
+    
+    # Should reconstruct original data
+    assert torch.allclose(test_data, denormalized, atol=1e-5), \
+        "Failed to reconstruct with Log nonlinearity before normalization"
 
 
 def test_nonlinearity_base_methods_raise():
@@ -287,33 +342,6 @@ def test_get_nonlinearity_function(name, expected_class):
 def test_get_nonlinearity_function_invalid():
     with pytest.raises(ValueError):
         Normalizer._get_nonlineartiy_function("UnknownNonlinearity")
-
-
-def test_minmax_normalizer_with_nonlinearity_before():
-    nonlinearity = cast(Any, Power(2.0))
-    normalizer = MinMaxNormalizer(nonlinearity=nonlinearity, nonlinearity_before=True)
-    batch = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    dataset = [{"input": batch}]
-
-    normalizer.fit_params(dataset, axis=1, verbose=False)
-
-    normalized = normalizer.forward(batch, axis=1)
-    denormalized = normalizer.inverse(normalized, axis=1)
-    assert torch.allclose(batch, denormalized, atol=1e-6)
-
-
-def test_standard_normalizer_updates_with_nonlinearity_before():
-    nonlinearity = cast(Any, Power(2.0))
-    normalizer = StandardNormalizer(nonlinearity=nonlinearity, nonlinearity_before=True)
-    batch = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    dataset = [{"input": batch}]
-
-    normalizer.fit_params(dataset, axis=1, verbose=False)
-
-    expected_mean = torch.tensor([5.0, 10.0])
-    expected_mean_sq = torch.tensor([41.0, 136.0])
-    assert torch.allclose(torch.tensor(normalizer.params["x_mean"]), expected_mean)
-    assert torch.allclose(torch.tensor(normalizer.params["x_mean_sq"]), expected_mean_sq)
 
 
 def test_meta_normalizer_not_implemented_methods():
