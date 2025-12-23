@@ -8,6 +8,7 @@ DESCRIPTION
     (structures to meshes) and applying geometric operations like boolean mesh cutting,
     cleaning, and remeshing to produce simulation-ready outputs.
 """
+
 import logging
 from typing import Union, List
 from abc import ABC, abstractmethod
@@ -26,16 +27,16 @@ def _validate_mesh(mesh: Trimesh, operation_name: str) -> None:
     """Validate mesh quality after boolean operations."""
     if mesh is None:
         raise ValueError(f"Mesh is None after {operation_name}")
-    
+
     if len(mesh.vertices) == 0:
         raise ValueError(f"Mesh has no vertices after {operation_name}")
-    
+
     if len(mesh.faces) == 0:
         raise ValueError(f"Mesh has no faces after {operation_name}")
-    
+
     if not mesh.is_volume:
         logging.warning(f"Mesh is not a valid volume after {operation_name}")
-    
+
     if mesh.volume <= 0:
         raise ValueError(f"Mesh has invalid volume {mesh.volume} after {operation_name}")
 
@@ -54,7 +55,7 @@ def _validate_input_meshes(meshes: list[Trimesh], operation_name: str) -> None:
 class Transform(ABC):
     """
     Abstract base class for phantom transformation operations.
-    
+
     Provides the interface for composable transformation components that can
     be chained together to build complex phantom processing pipelines.
     """
@@ -63,7 +64,7 @@ class Transform(ABC):
     def __call__(self, *args, **kwds):
         """
         Apply the transformation to input data.
-        
+
         This method defines the core transformation logic that must be implemented
         by all concrete transform subclasses. It should process the input data
         and return the transformed result, maintaining the composable interface
@@ -82,7 +83,7 @@ class Transform(ABC):
             Must be implemented by concrete subclasses.
         """
         raise NotImplementedError("Subclasses must implement `__call__` method")
-    
+
     def __repr__(self):
         """
         Return string representation of the transform.
@@ -98,7 +99,7 @@ class Transform(ABC):
 class Compose(Transform):
     """
     Composite transform for chaining multiple transformation operations.
-    
+
     Applies a sequence of transforms in order, passing the output of each
     transform as input to the next, enabling complex processing pipelines
     to be built from simple components.
@@ -107,7 +108,7 @@ class Compose(Transform):
     def __init__(self, transforms: list[Transform], *args, **kwargs):
         """
         Initialize composite transform with a sequence of transforms.
-        
+
         Creates a pipeline that applies each transform in the specified order,
         passing the output of each transform as input to the next. This enables
         the construction of complex processing workflows from simple, reusable
@@ -127,7 +128,7 @@ class Compose(Transform):
     def __call__(self, original_phantom: PhantomType, *args, **kwargs):
         """
         Apply all transforms in sequence to the input phantom.
-        
+
         Executes each transform in the pipeline order, passing the output of
         each transform as input to the next. This creates a processing chain
         where complex operations can be built from simple components.
@@ -164,15 +165,16 @@ class Compose(Transform):
 class ToMesh:
     """
     Transform for converting structure phantoms to mesh phantoms.
-    
+
     Serializes abstract geometric structures (blobs, tubes) into concrete
     triangular mesh representations using the configured mesh serializer,
     preparing phantoms for geometric processing operations.
     """
+
     def __init__(self):
         """
         Initialize the structure-to-mesh converter.
-        
+
         Sets up the mesh serializer that will be used to convert abstract
         geometric structures into concrete triangular mesh representations.
         The serializer handles different structure types and applies appropriate
@@ -188,7 +190,7 @@ class ToMesh:
     def __call__(self, tissue: StructurePhantom) -> MeshPhantom:
         """
         Convert a structure phantom to a mesh phantom.
-        
+
         Transforms all geometric structures (parent blob, child blobs, tubes)
         into triangular mesh representations using the configured mesh serializer.
         This conversion prepares the phantom for subsequent geometric processing
@@ -209,12 +211,33 @@ class ToMesh:
         return MeshPhantom(
             parent=self.serializer.serialize(tissue.parent),
             children=[self.serializer.serialize(c) for c in tissue.children],
-            tubes=[self.serializer.serialize(t) for t in tissue.tubes]
+            tubes=[self.serializer.serialize(t) for t in tissue.tubes],
         )
 
 
 class MeshesTubesClipping(Transform):
+    """Clip tubes to fit within parent mesh boundaries using boolean intersection."""
+
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwds) -> MeshPhantom:
+        """Clip tubes using boolean intersection with parent mesh.
+
+        Parameters
+        ----------
+        target_phantom : MeshPhantom
+            Phantom to modify (provides structure).
+        original_phantom : MeshPhantom
+            Source phantom (provides geometry for operations).
+
+        Returns
+        -------
+        MeshPhantom
+            Phantom with clipped tubes.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean intersection operation fails.
+        """
         try:
             logging.debug("Attempting tubes clipping with manifold engine")
 
@@ -226,10 +249,8 @@ class MeshesTubesClipping(Transform):
 
             clipped_tubes = []
             for i, tube in enumerate(original_phantom.tubes):
-                clipped_tube = trimesh.boolean.intersection([tube, original_phantom.parent], engine='manifold')
-                clipped_tube.update_faces(
-                    clipped_tube.nondegenerate_faces()
-                )
+                clipped_tube = trimesh.boolean.intersection([tube, original_phantom.parent], engine="manifold")
+                clipped_tube.update_faces(clipped_tube.nondegenerate_faces())
                 clipped_tube.update_faces(clipped_tube.unique_faces())
                 clipped_tube.remove_unreferenced_vertices()
                 # stitch small holes
@@ -238,13 +259,9 @@ class MeshesTubesClipping(Transform):
                 trimesh.repair.fix_normals(clipped_tube)
                 _validate_mesh(clipped_tube, f"tube {i} clipping")
                 clipped_tubes.append(clipped_tube)
-            
+
             logging.info("Tubes clipping successful")
-            return MeshPhantom(
-                parent=target_phantom.parent,
-                children=target_phantom.children,
-                tubes=clipped_tubes
-            )
+            return MeshPhantom(parent=target_phantom.parent, children=target_phantom.children, tubes=clipped_tubes)
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for tubes clipping. "
@@ -254,10 +271,31 @@ class MeshesTubesClipping(Transform):
                 f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesChildrenCutout(Transform):
+    """Create cutouts in children meshes using boolean difference with tubes."""
+
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwds):
+        """Apply boolean difference to create cutouts in children.
+
+        Parameters
+        ----------
+        target_phantom : MeshPhantom
+            Phantom to modify.
+        original_phantom : MeshPhantom
+            Source phantom for geometry.
+
+        Returns
+        -------
+        MeshPhantom
+            Phantom with modified children meshes.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean difference operation fails.
+        """
         try:
             logging.debug("Attempting children cutout with manifold engine")
 
@@ -269,10 +307,8 @@ class MeshesChildrenCutout(Transform):
 
             cutouts = []
             for i, child in enumerate(target_phantom.children):
-                cutout = trimesh.boolean.difference([child, *original_phantom.tubes], engine='manifold')
-                cutout.update_faces(
-                    cutout.nondegenerate_faces()
-                )
+                cutout = trimesh.boolean.difference([child, *original_phantom.tubes], engine="manifold")
+                cutout.update_faces(cutout.nondegenerate_faces())
                 cutout.update_faces(cutout.unique_faces())
                 cutout.remove_unreferenced_vertices()
                 # stitch small holes
@@ -283,11 +319,7 @@ class MeshesChildrenCutout(Transform):
                 cutouts.append(cutout)
 
             logging.info("Children cutout successful")
-            return MeshPhantom(
-                parent=target_phantom.parent,
-                children=cutouts,
-                tubes=target_phantom.tubes
-            )
+            return MeshPhantom(parent=target_phantom.parent, children=cutouts, tubes=target_phantom.tubes)
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for children cutout. "
@@ -297,26 +329,47 @@ class MeshesChildrenCutout(Transform):
                 f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesParentCutoutWithChildren(Transform):
+    """Cut out child blob regions from parent mesh using boolean difference."""
+
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+        """Remove child regions from parent mesh.
+
+        Parameters
+        ----------
+        target_phantom : MeshPhantom
+            Phantom with parent to modify.
+        original_phantom : MeshPhantom
+            Source phantom with children geometry.
+
+        Returns
+        -------
+        MeshPhantom
+            Phantom with parent mesh containing child cutouts.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean difference operation fails.
+        """
         try:
             logging.debug("Attempting parent cutout with children using manifold engine")
 
-            _validate_input_meshes([original_phantom.parent] + original_phantom.children + original_phantom.tubes, "parent cutout with children")
-            _validate_input_meshes([target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout with children")
+            _validate_input_meshes(
+                [original_phantom.parent] + original_phantom.children + original_phantom.tubes,
+                "parent cutout with children",
+            )
+            _validate_input_meshes(
+                [target_phantom.parent] + target_phantom.children + target_phantom.tubes, "parent cutout with children"
+            )
 
             if len(target_phantom.children) == 0:
                 return target_phantom
 
-            parent = trimesh.boolean.difference(
-                [target_phantom.parent, *original_phantom.children],
-                engine='manifold'
-            )
-            parent.update_faces(
-                parent.nondegenerate_faces()
-            )
+            parent = trimesh.boolean.difference([target_phantom.parent, *original_phantom.children], engine="manifold")
+            parent.update_faces(parent.nondegenerate_faces())
             parent.update_faces(parent.unique_faces())
             parent.remove_unreferenced_vertices()
             # stitch small holes
@@ -326,12 +379,8 @@ class MeshesParentCutoutWithChildren(Transform):
 
             _validate_mesh(parent, f"parent cutout with children result")
 
-            return MeshPhantom(
-                parent=parent,
-                children=target_phantom.children,
-                tubes=target_phantom.tubes
-            )
-        
+            return MeshPhantom(parent=parent, children=target_phantom.children, tubes=target_phantom.tubes)
+
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for parent cutout with children. "
@@ -342,10 +391,31 @@ class MeshesParentCutoutWithChildren(Transform):
                 f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesParentCutoutWithTubes(Transform):
+    """Cut out tube regions from parent mesh using boolean difference."""
+
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+        """Remove tube regions from parent mesh.
+
+        Parameters
+        ----------
+        target_phantom : MeshPhantom
+            Phantom with parent to modify.
+        original_phantom : MeshPhantom
+            Source phantom with tubes geometry.
+
+        Returns
+        -------
+        MeshPhantom
+            Phantom with parent mesh containing tube cutouts.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean difference operation fails.
+        """
         try:
             logging.debug("Attempting parent cutout with tubes using manifold engine")
 
@@ -355,14 +425,9 @@ class MeshesParentCutoutWithTubes(Transform):
             if len(target_phantom.tubes) == 0:
                 return target_phantom
 
-            parent = trimesh.boolean.difference(
-                [target_phantom.parent, *original_phantom.tubes],
-                engine='manifold'
-            )
+            parent = trimesh.boolean.difference([target_phantom.parent, *original_phantom.tubes], engine="manifold")
 
-            parent.update_faces(
-                parent.nondegenerate_faces()
-            )
+            parent.update_faces(parent.nondegenerate_faces())
             parent.update_faces(parent.unique_faces())
             parent.remove_unreferenced_vertices()
             # stitch small holes
@@ -372,12 +437,8 @@ class MeshesParentCutoutWithTubes(Transform):
 
             _validate_mesh(parent, f"parent cutout with tubes result")
 
-            return MeshPhantom(
-                parent=parent,
-                children=target_phantom.children,
-                tubes=target_phantom.tubes
-            )
-        
+            return MeshPhantom(parent=parent, children=target_phantom.children, tubes=target_phantom.tubes)
+
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for parent cutout with tubes. "
@@ -387,10 +448,31 @@ class MeshesParentCutoutWithTubes(Transform):
                 f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
-    
+
 
 class MeshesChildrenClipping(Transform):
+    """Clip children meshes to fit within parent boundaries using boolean intersection."""
+
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
+        """Clip children using boolean intersection with parent.
+
+        Parameters
+        ----------
+        target_phantom : MeshPhantom
+            Phantom to modify.
+        original_phantom : MeshPhantom
+            Source phantom for geometry.
+
+        Returns
+        -------
+        MeshPhantom
+            Phantom with clipped children meshes.
+
+        Raises
+        ------
+        RuntimeError
+            If boolean intersection operation fails.
+        """
         try:
             logging.debug("Attempting children clipping with manifold engine")
 
@@ -402,10 +484,8 @@ class MeshesChildrenClipping(Transform):
 
             clipped_children = []
             for i, child in enumerate(target_phantom.children):
-                clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine='manifold')
-                clipped_child.update_faces(
-                    clipped_child.nondegenerate_faces()
-                )
+                clipped_child = trimesh.boolean.intersection([child, original_phantom.parent], engine="manifold")
+                clipped_child.update_faces(clipped_child.nondegenerate_faces())
                 clipped_child.update_faces(clipped_child.unique_faces())
                 clipped_child.remove_unreferenced_vertices()
                 # stitch small holes
@@ -414,13 +494,9 @@ class MeshesChildrenClipping(Transform):
                 trimesh.repair.fix_normals(clipped_child)
                 _validate_mesh(clipped_child, f"child {i} clipping")
                 clipped_children.append(clipped_child)
-            
+
             logging.info("Children clipping successful")
-            return MeshPhantom(
-                parent=target_phantom.parent,
-                children=clipped_children,
-                tubes=target_phantom.tubes
-            )
+            return MeshPhantom(parent=target_phantom.parent, children=clipped_children, tubes=target_phantom.tubes)
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for children clipping. "
@@ -435,15 +511,16 @@ class MeshesChildrenClipping(Transform):
 class MeshesCleaning(Transform):
     """
     Transform for cleaning and repairing mesh geometry after boolean operations.
-    
+
     Applies various mesh repair operations including degenerate face removal,
     hole filling, vertex merging, normal fixing, and unreferenced vertex removal
     to ensure mesh quality for subsequent processing.
     """
+
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
         """
         Clean and repair all mesh components in the phantom.
-        
+
         Applies comprehensive mesh cleaning operations to all phantom components
         to ensure high-quality geometry suitable for downstream processing. The
         cleaning process removes degenerate faces, fills holes, merges duplicate
@@ -465,13 +542,13 @@ class MeshesCleaning(Transform):
         return MeshPhantom(
             parent=self._clean_mesh(tissue.parent),
             children=[self._clean_mesh(c) for c in tissue.children],
-            tubes=[self._clean_mesh(t) for t in tissue.tubes]
+            tubes=[self._clean_mesh(t) for t in tissue.tubes],
         )
-    
+
     def _clean_mesh(self, mesh: Trimesh) -> Trimesh:
         """
         Apply comprehensive cleaning operations to a single mesh.
-        
+
         Performs a sequence of mesh repair operations including degenerate face
         removal, duplicate face elimination, hole filling, vertex merging, normal
         fixing, and unreferenced vertex removal. These operations ensure the mesh
@@ -495,12 +572,12 @@ class MeshesCleaning(Transform):
         mesh.fix_normals()
         mesh.remove_unreferenced_vertices()
         return mesh
-    
+
 
 class MeshesRemesh(Transform):
     """
     Transform for adaptive mesh refinement and subdivision.
-    
+
     Subdivides mesh elements to achieve uniform edge lengths below a specified
     threshold, improving mesh quality for numerical simulations. Note that this
     operation may produce non-watertight meshes due to the underlying subdivision
@@ -510,7 +587,7 @@ class MeshesRemesh(Transform):
     def __init__(self, max_len: float = 8.0, *args, **kwargs):
         """
         Initialize the adaptive mesh refinement transform.
-        
+
         Sets up the remeshing parameters for subdividing mesh elements to achieve
         uniform edge lengths. The maximum edge length threshold controls the level
         of mesh refinement and affects the trade-off between geometric accuracy
@@ -530,7 +607,7 @@ class MeshesRemesh(Transform):
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
         """
         Apply adaptive mesh refinement to all phantom components.
-        
+
         Subdivides mesh elements in all phantom components to ensure edge lengths
         are below the specified threshold. This creates more uniform mesh quality
         suitable for numerical simulations while maintaining geometric fidelity.
@@ -552,13 +629,13 @@ class MeshesRemesh(Transform):
         return MeshPhantom(
             parent=self._remesh(tissue.parent),
             children=[self._remesh(c) for c in tissue.children],
-            tubes=[self._remesh(t) for t in tissue.tubes]
+            tubes=[self._remesh(t) for t in tissue.tubes],
         )
-    
+
     def _remesh(self, mesh: Trimesh) -> Trimesh:
         """
         Apply subdivision remeshing to achieve uniform edge lengths.
-        
+
         Subdivides mesh elements iteratively until all edges are below the
         maximum length threshold. This creates more uniform element sizes
         for improved numerical accuracy in simulations, though it may increase
@@ -574,10 +651,6 @@ class MeshesRemesh(Transform):
         Trimesh
             Remeshed geometry with edges below the maximum length threshold.
         """
-        v, f = trimesh.remesh.subdivide_to_size(
-            mesh.vertices, 
-            mesh.faces, 
-            max_edge=self.max_len
-        )
+        v, f = trimesh.remesh.subdivide_to_size(mesh.vertices, mesh.faces, max_edge=self.max_len)
         mesh = trimesh.Trimesh(vertices=v, faces=f)
         return mesh

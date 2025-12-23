@@ -4,6 +4,7 @@ NAME
 DESCRIPTION
     This module consists of the abstract base class for loading the electromagnetic simulation data.
 """
+
 import os
 import h5py
 from pathlib import Path
@@ -32,7 +33,7 @@ from magnet_pinn.preprocessing.preprocessing import (
     PROCESSED_ANTENNA_DIR_PATH,
     TRUNCATION_COEFFICIENTS_OUT_KEY,
     DTYPE_OUT_KEY,
-    COORDINATES_OUT_KEY
+    COORDINATES_OUT_KEY,
 )
 
 
@@ -183,7 +184,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             mask=np.ones(self.num_coils),
             coils=self.coils,
             dtype=self._get_dtype(simulation_path),
-            truncation_coefficients=self._get_truncation_coefficients(simulation_path)
+            truncation_coefficients=self._get_truncation_coefficients(simulation_path),
         )
 
     def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
@@ -205,6 +206,20 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         """
 
         def read_field(f: h5py.File, field_key: str) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+            """Read complex field from HDF5 file and split into real/imaginary parts.
+
+            Parameters
+            ----------
+            f : h5py.File
+                Open HDF5 file handle.
+            field_key : str
+                Key for the field dataset in the file.
+
+            Returns
+            -------
+            Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]
+                Real and imaginary parts of the field.
+            """
             field_val = f[field_key][:]
             return field_val["re"], field_val["im"]
 
@@ -301,7 +316,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             Positions of points
         """
 
-        with h5py.File(simulation_path, 'r') as f:
+        with h5py.File(simulation_path, "r") as f:
             positions = f[COORDINATES_OUT_KEY][:]
         return positions
 
@@ -318,4 +333,11 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
                 yield augmented_simulation.__dict__
 
     def __len__(self):
-        return len(self.simulation_list)*self.num_samples
+        """Return total number of samples.
+
+        Returns
+        -------
+        int
+            Total samples (number of simulations × samples per simulation).
+        """
+        return len(self.simulation_list) * self.num_samples

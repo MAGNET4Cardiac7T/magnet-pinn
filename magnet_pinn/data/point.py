@@ -3,6 +3,7 @@
 DESCRIPTION
     This module contains classes for loading the electromagnetic simulation data in the pointscloud format.
 """
+
 import warnings
 from typing import Union
 from pathlib import Path
@@ -20,12 +21,25 @@ class MagnetPointIterator(MagnetBaseIterator):
     Alias for the iterator of the electromagnetic simulation data in the pointscloud format.
     A class is deprecated and will be removed.
     """
-    
+
     def __init__(self, *args, **kwargs):
+        """Initialize MagnetPointIterator (deprecated).
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to MagnetBaseIterator.
+        **kwargs
+            Keyword arguments passed to MagnetBaseIterator.
+
+        Warnings
+        --------
+        DeprecationWarning
+            This class is deprecated. Use MagnetBaseIterator directly.
+        """
         warnings.warn(
-            "MagnetPointIterator is deprecated and will be removed. "
-            "Use MagnetBaseIterator directly instead.",
+            "MagnetPointIterator is deprecated and will be removed. " "Use MagnetBaseIterator directly instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         super().__init__(*args, **kwargs)
