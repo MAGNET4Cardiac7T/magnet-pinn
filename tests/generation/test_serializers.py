@@ -25,7 +25,9 @@ class UnsupportedStructure(Structure3D):
 def test_serializer_abstract_base_class_cannot_be_instantiated():
     serializer = Serializer()
     with pytest.raises(NotImplementedError):
-        serializer.serialize(None)  # type: ignore[arg-type]  # Testing abstract base class
+        # type: ignore[arg-type]  
+        # Testing abstract base class
+        serializer.serialize(None)  
 
 
 def test_mesh_serializer_initialization():
@@ -467,7 +469,10 @@ def test_integration_mesh_tube_sampler_to_serializer_height_workflow(tmp_path):
 
 
 def test_integration_tube_height_consistency_across_samplers():
-    """Test that both TubeSampler and MeshTubeSampler produce tubes with identical height calculation."""
+    """
+        Test that both TubeSampler and MeshTubeSampler 
+        produce tubes with identical height calculation.
+    """
     from magnet_pinn.generator.samplers import TubeSampler, MeshTubeSampler
     from numpy.random import default_rng
 
@@ -496,7 +501,10 @@ def test_integration_tube_height_consistency_across_samplers():
 
 
 def test_integration_serializer_handles_various_tube_heights():
-    """Test that MeshSerializer correctly handles tubes with various heights set by different parent_radius values."""
+    """
+        Test that MeshSerializer correctly handles tubes with 
+        various heights set by different parent_radius values.
+    """
     serializer = MeshSerializer()
 
     parent_radius_values = [10.0, 100.0, 1000.0]

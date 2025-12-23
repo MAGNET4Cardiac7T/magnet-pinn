@@ -33,7 +33,8 @@ def test_samplers_import_fallback(monkeypatch):
     def fast_winding_number_for_meshes(*args, **kwargs):
         return "fallback"
 
-    fake_igl.fast_winding_number_for_meshes = fast_winding_number_for_meshes  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    fake_igl.fast_winding_number_for_meshes = fast_winding_number_for_meshes  
     monkeypatch.setitem(sys.modules, "igl", fake_igl)
 
     reloaded = importlib.reload(samplers_module)
@@ -839,7 +840,10 @@ def test_blob_sampler_find_valid_positions_progressive_specific_error_message():
 
 
 def test_blob_sampler_progressive_sampling_max_iterations_exhaustion():
-    """Test that covers the missing lines 373, 376 - break statements in nested loops."""
+    """
+    Test that covers the missing lines 373, 376
+    - break statements in nested loops.
+    """
     sampler = BlobSampler(radius_decrease_factor=0.5)
     rng = default_rng(42)
 
@@ -1389,7 +1393,8 @@ def test_property_sampler_sample_with_none_properties_list():
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    property_item = sampler._sample(rng, None)  # type: ignore[arg-type]  # Testing default None parameter behavior
+    # type: ignore[arg-type]  # Testing default None parameter behavior
+    property_item = sampler._sample(rng, None)
 
     assert isinstance(property_item, PropertyItem)
     assert hasattr(property_item, "conductivity")
@@ -1504,7 +1509,8 @@ def test_property_sampler_sample_like_with_mesh_phantom():
     tube_meshes = [trimesh.primitives.Cylinder(radius=0.1, height=2.0)]
     # Test fixture: list invariance, Sphere/Cylinder are Trimesh subtypes
     mesh_phantom = MeshPhantom(
-        parent=parent_mesh, children=child_meshes, tubes=tube_meshes  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        parent=parent_mesh, children=child_meshes, tubes=tube_meshes  
     )
 
     property_phantom = sampler.sample_like(mesh_phantom, rng)
@@ -2310,7 +2316,7 @@ def test_mesh_tube_sampler_sample_inside_position_reproducible_with_same_seed():
     assert np.allclose(position1, position2)
 
 
-def test_mesh_tube_sampler_sample_inside_position_different_results_with_different_seeds():
+def test_mesh_tube_sampler_sample_inside_position_different_seeds():
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
     mesh = create_test_mesh()
 

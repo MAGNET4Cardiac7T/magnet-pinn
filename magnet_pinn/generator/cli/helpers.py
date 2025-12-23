@@ -60,9 +60,10 @@ def _print_tissue_report(args: Namespace):
     print(f"  Blob radius decrease factor: {args.blob_radius_decrease}")
     print(f"  Number of tubes: {args.num_tubes}")
     print(
-        f"  Relative tube radius range: [{args.relative_tube_min_radius}, {args.relative_tube_max_radius}]"
+        "  Relative tube radius range: "
+        + f"[{args.relative_tube_min_radius}, {args.relative_tube_max_radius}]"
     )
-    print(f"  Parent blob center extent:")
+    print("  Parent blob center extent:")
     print(f"    X: [{args.x_min}, {args.x_max}]")
     print(f"    Y: [{args.y_min}, {args.y_max}]")
     print(f"    Z: [{args.z_min}, {args.z_max}]")
@@ -75,7 +76,8 @@ def _print_custom_report(args: Namespace):
     print(f"  Blob radius decrease factor: {args.blob_radius_decrease}")
     print(f"  Number of tubes: {args.num_tubes}")
     print(
-        f"  Relative tube radius range: [{args.relative_tube_min_radius}, {args.relative_tube_max_radius}]"
+        "  Relative tube radius range: "
+        + f"[{args.relative_tube_min_radius}, {args.relative_tube_max_radius}]"
     )
     print(f"  Sample children only inside: {args.sample_children_only_inside}")
     print(f"  Child blobs batch size: {args.child_blobs_batch_size}")

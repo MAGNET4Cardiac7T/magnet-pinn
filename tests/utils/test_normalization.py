@@ -290,13 +290,17 @@ def test_normalizer_with_nonlinearity(
     # Should reconstruct original data
     assert torch.allclose(
         random_batch, denormalized, atol=1e-5
-    ), f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
+    ), f"Failed to reconstruct with {normalizer_class.__name__}, \
+        {nonlinearity_class.__name__}, before={nonlinearity_before}"
 
 
 def test_standard_normalizer_nonlinearity_after_normalization(
     random_iterator, random_batch
 ):
-    """Test that nonlinearity is applied after normalization when nonlinearity_before=False."""
+    """
+    Test that nonlinearity is applied after 
+    normalization when nonlinearity_before=False.
+    """
     normalizer = StandardNormalizer(nonlinearity=Tanh(), nonlinearity_before=False)
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
@@ -311,7 +315,10 @@ def test_standard_normalizer_nonlinearity_after_normalization(
 
 
 def test_standard_normalizer_nonlinearity_before_normalization(random_iterator):
-    """Test that nonlinearity is applied before normalization when nonlinearity_before=True."""
+    """
+    Test that nonlinearity is applied before 
+    normalization when nonlinearity_before=True.
+    """
 
     # Use positive data to test with Log nonlinearity
     def positive_iterator(seed=42, num_batches=10, batch_size=5, num_features=3):

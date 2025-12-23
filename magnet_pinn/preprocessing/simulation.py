@@ -42,8 +42,8 @@ class Simulation:
 
     name: str
     path: Path
-    e_field: Optional[np.array] = None
-    h_field: Optional[np.array] = None
-    object_masks: Optional[np.array] = None
-    features: Optional[np.array] = None
+    e_field: Optional[np.ndarray] = None
+    h_field: Optional[np.ndarray] = None
+    object_masks: Optional[np.ndarray] = None
+    features: Optional[np.ndarray] = None
     resulting_path: Optional[Path] = None

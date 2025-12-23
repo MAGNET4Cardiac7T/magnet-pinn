@@ -50,6 +50,8 @@ pytest = "^8.3.2"
 coverage = "^7.6.3"
 flake8-pyproject = "^1.2.4"
 autoflake = "^2.3.1"
+pandas-stubs = "^2.2.2"
+types-tqdm = "^4.66.0"
 
 [tool.poetry.extras]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
@@ -61,6 +63,7 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+profile = "black"
 
 [tool.pytest.ini_options]
 addopts = [
@@ -78,3 +81,6 @@ extend-ignore = ["E203", "W503"]
 
 [tool.black]
 line-length = 88
+
+[tool.mypy]
+ignore_missing_imports = true

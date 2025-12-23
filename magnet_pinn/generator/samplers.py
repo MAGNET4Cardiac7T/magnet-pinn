@@ -67,7 +67,8 @@ class PropertySampler:
         rng : Generator
             Random number generator for reproducible property sampling.
         properties_list : List, optional
-            List of property names to sample. If None, samples all configured properties.
+            List of property names to sample. 
+            If None, samples all configured properties.
 
         Returns
         -------
@@ -89,7 +90,8 @@ class PropertySampler:
         rng : Generator
             Random number generator for reproducible property sampling.
         properties_list : List, optional
-            List of property names to sample. If None, samples all configured properties.
+            List of property names to sample. 
+            If None, samples all configured properties.
 
         Returns
         -------
@@ -504,7 +506,8 @@ class BlobSampler:
                 break
 
         raise RuntimeError(
-            f"Could not find {target_positions} valid positions with minimum distance {min_distance:.3f} "
+            f"Could not find {target_positions} valid positions "
+            f"with minimum distance {min_distance:.3f} "
             f"within radius {sampling_radius:.3f} after {total_attempts} attempts. "
             f"Try reducing target_positions or increasing sampling_radius."
         )
@@ -536,15 +539,16 @@ class TubeSampler:
         Creates a stateless sampler that requires RNG to be passed to sampling methods.
         This design allows for proper seed control and makes the sampler reusable
         across different generation contexts. Samples tubes with random radii within
-        specified bounds and ensures no intersections through collision detection. Also defines
-        a fixed height for tubes based on an approximate parent radius.
+        specified bounds and ensures no intersections through collision detection. 
+        Also defines a fixed height for tubes based on an approximate parent radius.
 
         Parameters
         ----------
         tube_max_radius : float
             Maximum radius for generated tubes. Must be positive.
         tube_min_radius : float
-            Minimum radius for generated tubes. Must be positive and less than max_radius.
+            Minimum radius for generated tubes. 
+            Must be positive and less than max_radius.
         parent_radius : float
             Approximate parent radius to define tube height. Default is 250.
 
@@ -568,7 +572,8 @@ class TubeSampler:
         self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator
     ) -> Tube:
         """
-        Sample a tube line within a ball. Defines a fixed line height as 4 times the parent radius.
+        Sample a tube line within a ball. 
+        Defines a fixed line height as 4 times the parent radius.
         """
         point_sampler = PointSampler(center, ball_radius)
         point = point_sampler.sample_point(rng)
@@ -693,7 +698,8 @@ class MeshBlobSampler:
         points_to_return: int = 50000,
     ) -> np.ndarray:
         """
-        Sample points uniformly inside the mesh volume using winding number method to check if the point is inside the mesh.
+        Sample points uniformly inside the mesh volume using 
+        winding number method to check if the point is inside the mesh.
 
         Parameters
         ----------
@@ -709,7 +715,8 @@ class MeshBlobSampler:
         Returns
         -------
         np.ndarray
-            Array of shape (points_to_return, 3) containing sampled points inside the mesh.
+            Array of shape (points_to_return, 3) containing 
+            sampled points inside the mesh.
         """
         points = (rng.random((batch_size, 3)) * mesh.extents) + mesh.bounds[0]
         winding_number = fast_winding_number(mesh.vertices, mesh.faces, points)
@@ -743,7 +750,8 @@ class MeshBlobSampler:
         rng : Generator
             Random number generator for reproducible blob positioning and creation.
         batch_size : int, optional
-            Number of points to sample in batch for potential blob centers. Default is 10,000,000.
+            Number of points to sample in batch for potential blob centers. 
+            Default is 10,000,000.
 
         Returns
         -------
@@ -814,7 +822,8 @@ class MeshBlobSampler:
 
 class MeshTubeSampler:
     """
-    Sampler for tubes inside a mesh volume with collision detection and radius variation.
+    Sampler for tubes inside a mesh volume with collision 
+    detection and radius variation.
 
     Allows placement of multiple tubes within a mesh while ensuring no intersections
     between tubes. Tubes are assigned random radii within specified bounds and
@@ -898,7 +907,8 @@ class MeshTubeSampler:
         Sample tubes inside a mesh volume with collision detection.
         Places tubes within the given mesh structure using random sampling
         and collision detection to ensure no overlaps. Defines tube height
-        based on an approximate parent radius and it should be 4 times the parent radius.
+        based on an approximate parent radius and it 
+        should be 4 times the parent radius.
 
         Parameters
         ----------

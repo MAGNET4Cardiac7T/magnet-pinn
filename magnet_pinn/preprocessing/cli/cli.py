@@ -28,9 +28,9 @@ Z_MAX = 250
 
 def parse_arguments() -> Namespace:
     """
-    So, here is the function to parse the CLI arguments. It creates a global parser, which predefines the arguments
-    for `batches`, `antenna`, `output`, `field_dtype`, and `sim_names`. This parent parse is inherited by the all parsers:
-    the main one and grid/pointcloud subparsers.
+    Parse CLI arguments. Creates a global parser with arguments for `batches`,
+    `antenna`, `output`, `field_dtype`, and `sim_names`. This parent parser is
+    inherited by the main parser and grid/pointcloud subparsers.
 
     Returns:
     --------
@@ -43,21 +43,24 @@ def parse_arguments() -> Namespace:
         "--batches",
         nargs="+",
         type=Path,
-        help="Paths of batch directories, by default is all of the directories in the `./data/raw/batches/` directory from the current user`s directory",
+        help="Paths of batch directories, by default is all of the directories in the" +
+             "`./data/raw/batches/` directory from the current user`s directory",
         default=BATCHES,
     )
     global_parser.add_argument(
         "-a",
         "--antenna",
         type=Path,
-        help="Path of the antenna directory, be default is `./data/raw/antenna` from the current user`s directory",
+        help="Path of the antenna directory, be default is " +
+             "`./data/raw/antenna` from the current user`s directory",
         default=ANTENNA_DIR,
     )
     global_parser.add_argument(
         "-o",
         "--output",
         type=Path,
-        help="Path of the output directory, by default is `./data/processed` from the current user`s directory",
+        help="Path of the output directory, by default is " +
+             "`./data/processed` from the current user`s directory",
         default=OUTPUT_DIR,
     )
     global_parser.add_argument(
@@ -65,7 +68,8 @@ def parse_arguments() -> Namespace:
         "--field_dtype",
         type=np.dtype,
         default=FIEld_DTYPE,
-        help="Data type of the field, must be a string representative of the np.dtype, by default is np.float32",
+        help="Data type of the field, must be a string representative " +
+             "of the np.dtype, by default is np.float32",
     )
     global_parser.add_argument(
         "-s",
@@ -73,7 +77,8 @@ def parse_arguments() -> Namespace:
         nargs="+",
         type=Path,
         default=None,
-        help="Paths/names of simulations to preprocess, by default gets `None` value and preprocesses all the simulations in the batch directories",
+        help="Paths/names of simulations to preprocess, by default gets `None`" +
+             "value and preprocesses all the simulations in the batch directories",
     )
 
     main_parser = argparse.ArgumentParser(
@@ -138,6 +143,14 @@ def parse_arguments() -> Namespace:
 
     pointcloud_parser = subparsers.add_parser(
         "pointcloud", parents=[global_parser], help="Process data as a point cloud"
+    )
+
+    pointcloud_parser.add_argument(
+        "--coil-thick-coef",
+        type=float,
+        default=2.0,
+        help="Coefficient by which the coil is thickened along normals " +
+             "to generate point cloud, by default is 2.0",
     )
 
     return main_parser.parse_args()

@@ -40,7 +40,8 @@ class Writer(ABC):
         Parameters
         ----------
         output_dir : str or Path, optional
-            Output directory path for written files. Default is "data/raw/tissue_meshes".
+            Output directory path for written files. 
+            Default is "data/raw/tissue_meshes".
             Directory will be created if it doesn't exist.
         *args, **kwargs
             Additional arguments passed to parent class.

@@ -5,13 +5,13 @@ NAME
 DESCRIPTION
     This module provides serialization of geometric structures to mesh representations.
     Contains serializers for converting abstract 3D structures (blobs, tubes) into
-    concrete triangular mesh objects suitable for visualization and numerical simulation.
+    concrete triangular mesh objects suitable for visualization and numerical
+    simulation.
 """
 
 from abc import ABC
 
 import trimesh
-import numpy as np
 from trimesh import Trimesh
 
 from .structures import Structure3D, Blob, Tube, CustomMeshStructure
