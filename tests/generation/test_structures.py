@@ -94,9 +94,9 @@ def test_blob_initialization_with_default_optional_parameters():
     assert np.array_equal(blob.position, position)
     assert blob.radius == radius
     assert blob.relative_disruption_strength == 0.1
-    assert hasattr(blob, 'empirical_max_offset')
-    assert hasattr(blob, 'empirical_min_offset')
-    assert hasattr(blob, 'noise')
+    assert hasattr(blob, "empirical_max_offset")
+    assert hasattr(blob, "empirical_min_offset")
+    assert hasattr(blob, "noise")
     assert blob.perlin_scale == 0.4
 
 
@@ -114,7 +114,7 @@ def test_blob_initialization_with_custom_optional_parameters():
         num_octaves=num_octaves,
         relative_disruption_strength=relative_disruption_strength,
         seed=seed,
-        perlin_scale=perlin_scale
+        perlin_scale=perlin_scale,
     )
 
     assert np.array_equal(blob.position, position)
@@ -131,7 +131,7 @@ def test_blob_initialization_with_minimum_disruption_strength():
     blob = Blob(
         position=position,
         radius=radius,
-        relative_disruption_strength=disruption_strength
+        relative_disruption_strength=disruption_strength,
     )
 
     assert blob.relative_disruption_strength == disruption_strength
@@ -145,7 +145,7 @@ def test_blob_initialization_with_large_disruption_strength():
     blob = Blob(
         position=position,
         radius=radius,
-        relative_disruption_strength=disruption_strength
+        relative_disruption_strength=disruption_strength,
     )
 
     assert blob.relative_disruption_strength == disruption_strength
@@ -157,9 +157,9 @@ def test_blob_initialization_with_minimum_octaves():
 
     blob = Blob(position=position, radius=radius, num_octaves=1)
 
-    assert hasattr(blob, 'noise')
-    assert hasattr(blob, 'empirical_max_offset')
-    assert hasattr(blob, 'empirical_min_offset')
+    assert hasattr(blob, "noise")
+    assert hasattr(blob, "empirical_max_offset")
+    assert hasattr(blob, "empirical_min_offset")
 
 
 def test_blob_initialization_with_large_octaves():
@@ -168,7 +168,7 @@ def test_blob_initialization_with_large_octaves():
 
     blob = Blob(position=position, radius=radius, num_octaves=20)
 
-    assert hasattr(blob, 'noise')
+    assert hasattr(blob, "noise")
 
 
 def test_blob_initialization_with_zero_seed():
@@ -177,7 +177,7 @@ def test_blob_initialization_with_zero_seed():
 
     blob = Blob(position=position, radius=radius, seed=0)
 
-    assert hasattr(blob, 'noise')
+    assert hasattr(blob, "noise")
 
 
 def test_blob_initialization_with_negative_seed():
@@ -186,7 +186,7 @@ def test_blob_initialization_with_negative_seed():
 
     blob = Blob(position=position, radius=radius, seed=-42)
 
-    assert hasattr(blob, 'noise')
+    assert hasattr(blob, "noise")
 
 
 def test_blob_initialization_with_minimal_perlin_scale():
@@ -214,8 +214,8 @@ def test_blob_calls_fibonacci_points_generation_during_initialization():
     blob = Blob(position=position, radius=radius)
 
     # Verify that empirical offsets were calculated (which means fibonacci points were generated)
-    assert hasattr(blob, 'empirical_max_offset')
-    assert hasattr(blob, 'empirical_min_offset')
+    assert hasattr(blob, "empirical_max_offset")
+    assert hasattr(blob, "empirical_min_offset")
     assert isinstance(blob.empirical_max_offset, float)
     assert isinstance(blob.empirical_min_offset, float)
 
@@ -248,12 +248,9 @@ def test_blob_calculate_offsets_for_multiple_vertices():
     radius = 1.0
     blob = Blob(position=position, radius=radius, seed=42)
 
-    vertices = np.array([
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0],
-        [-1.0, 0.0, 0.0]
-    ])
+    vertices = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]]
+    )
     offsets = blob.calculate_offsets(vertices)
 
     assert offsets.shape == (4, 1)
@@ -271,7 +268,7 @@ def test_blob_calculate_offsets_scaling_correctness():
         radius=radius,
         relative_disruption_strength=disruption_strength,
         perlin_scale=perlin_scale,
-        seed=42
+        seed=42,
     )
 
     vertices = np.array([[1.0, 0.0, 0.0]])
@@ -306,11 +303,19 @@ def test_blob_calculate_offsets_different_results_with_different_seeds():
     blob1 = Blob(position=position, radius=radius, seed=42)
     blob2 = Blob(position=position, radius=radius, seed=123)
 
-    vertices = np.array([
-        [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0],
-        [0.5, 0.5, 0.5], [0.3, 0.7, 0.1], [0.8, 0.2, 0.6],
-        [0.1, 0.9, 0.4], [0.6, 0.3, 0.8], [0.4, 0.6, 0.2]
-    ])
+    vertices = np.array(
+        [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.5, 0.5, 0.5],
+            [0.3, 0.7, 0.1],
+            [0.8, 0.2, 0.6],
+            [0.1, 0.9, 0.4],
+            [0.6, 0.3, 0.8],
+            [0.4, 0.6, 0.2],
+        ]
+    )
 
     offsets1 = blob1.calculate_offsets(vertices)
     offsets2 = blob2.calculate_offsets(vertices)
@@ -428,12 +433,12 @@ def test_tube_distance_calculation_between_parallel_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([0.0, 3.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -445,12 +450,12 @@ def test_tube_distance_calculation_between_perpendicular_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([1.0, 1.0, 0.0]),
         direction=np.array([0.0, 1.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -462,12 +467,12 @@ def test_tube_distance_calculation_between_skew_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([0.0, 1.0, 1.0]),
         direction=np.array([0.0, 1.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -479,12 +484,12 @@ def test_tube_distance_calculation_between_identical_tubes():
     tube1 = Tube(
         position=np.array([1.0, 2.0, 3.0]),
         direction=np.array([1.0, 1.0, 1.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([1.0, 2.0, 3.0]),
         direction=np.array([1.0, 1.0, 1.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -496,12 +501,12 @@ def test_tube_distance_calculation_between_parallel_offset_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([0.0, 0.0, 1.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([2.0, 3.0, 5.0]),
         direction=np.array([0.0, 0.0, 1.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -514,12 +519,12 @@ def test_tube_distance_calculation_when_cross_product_is_zero():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([5.0, 0.0, 0.0]),
         direction=np.array([2.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -574,12 +579,12 @@ def test_tube_distance_calculation_with_very_small_direction_vectors():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1e-15, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([0.0, 1.0, 0.0]),
         direction=np.array([0.0, 1e-15, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -616,8 +621,8 @@ def test_blob_initialization_with_zero_relative_disruption_strength():
     blob = Blob(position=position, radius=radius, relative_disruption_strength=0.0)
 
     assert blob.relative_disruption_strength == 0.0
-    assert hasattr(blob, 'empirical_max_offset')
-    assert hasattr(blob, 'empirical_min_offset')
+    assert hasattr(blob, "empirical_max_offset")
+    assert hasattr(blob, "empirical_min_offset")
 
 
 def test_blob_initialization_with_negative_octaves():
@@ -649,7 +654,9 @@ def test_blob_initialization_with_zero_perlin_scale():
     position = np.array([0.0, 0.0, 0.0])
     radius = 1.0
 
-    with pytest.raises(ValueError, match="perlin_scale cannot be zero as it causes division by zero"):
+    with pytest.raises(
+        ValueError, match="perlin_scale cannot be zero as it causes division by zero"
+    ):
         Blob(position=position, radius=radius, perlin_scale=0.0)
 
 
@@ -657,12 +664,12 @@ def test_tube_distance_calculation_between_antiparallel_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([0.0, 2.0, 0.0]),
         direction=np.array([-1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)
@@ -673,12 +680,12 @@ def test_tube_distance_calculation_with_very_close_parallel_tubes():
     tube1 = Tube(
         position=np.array([0.0, 0.0, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
     tube2 = Tube(
         position=np.array([0.0, 1e-10, 0.0]),
         direction=np.array([1.0, 0.0, 0.0]),
-        radius=1.0
+        radius=1.0,
     )
 
     distance = Tube.distance_to_tube(tube1, tube2)

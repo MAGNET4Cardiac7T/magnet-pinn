@@ -5,7 +5,12 @@ from trimesh import Trimesh
 import trimesh
 
 from magnet_pinn.generator.serializers import Serializer, MeshSerializer
-from magnet_pinn.generator.structures import Structure3D, Blob, Tube, CustomMeshStructure
+from magnet_pinn.generator.structures import (
+    Structure3D,
+    Blob,
+    Tube,
+    CustomMeshStructure,
+)
 
 
 class ConcreteSerializer(Serializer):
@@ -109,17 +114,17 @@ def test_mesh_serializer_blob_vertex_transformation_algorithm():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.primitives.Sphere') as mock_sphere_class:
+    with patch("trimesh.primitives.Sphere") as mock_sphere_class:
         mock_sphere = Mock()
         mock_vertices = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         mock_sphere.vertices = mock_vertices
         mock_sphere.faces = [[0, 1, 2]]
         mock_sphere_class.return_value = mock_sphere
 
-        with patch.object(blob, 'calculate_offsets') as mock_offsets:
+        with patch.object(blob, "calculate_offsets") as mock_offsets:
             mock_offsets.return_value = np.array([0.1, 0.2, 0.3])
 
-            with patch('trimesh.Trimesh') as mock_trimesh:
+            with patch("trimesh.Trimesh") as mock_trimesh:
                 mock_mesh = Mock()
                 mock_trimesh.return_value = mock_mesh
 
@@ -128,7 +133,9 @@ def test_mesh_serializer_blob_vertex_transformation_algorithm():
                 expected_vertices = (1 + np.array([0.1, 0.2, 0.3])) * mock_vertices
                 mock_trimesh.assert_called_once()
                 call_args = mock_trimesh.call_args
-                np.testing.assert_array_almost_equal(call_args[1]['vertices'], expected_vertices)
+                np.testing.assert_array_almost_equal(
+                    call_args[1]["vertices"], expected_vertices
+                )
 
 
 def test_mesh_serializer_blob_subdivision_parameter_passing():
@@ -138,14 +145,14 @@ def test_mesh_serializer_blob_subdivision_parameter_passing():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.primitives.Sphere') as mock_sphere_class:
+    with patch("trimesh.primitives.Sphere") as mock_sphere_class:
         mock_sphere = Mock()
         mock_sphere.vertices = np.array([[1.0, 0.0, 0.0]])
         mock_sphere.faces = [[0, 1, 2]]
         mock_sphere_class.return_value = mock_sphere
 
-        with patch.object(blob, 'calculate_offsets'):
-            with patch('trimesh.Trimesh'):
+        with patch.object(blob, "calculate_offsets"):
+            with patch("trimesh.Trimesh"):
                 serializer.serialize(blob, subdivisions=7)
                 mock_sphere_class.assert_called_once_with(1, subdivisions=7)
 
@@ -157,7 +164,7 @@ def test_mesh_serializer_blob_apply_scale_and_translation():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.Trimesh') as mock_trimesh:
+    with patch("trimesh.Trimesh") as mock_trimesh:
         mock_mesh = Mock()
         mock_trimesh.return_value = mock_mesh
 
@@ -177,14 +184,14 @@ def test_mesh_serializer_blob_calculate_offsets_integration():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.primitives.Sphere') as mock_sphere_class:
+    with patch("trimesh.primitives.Sphere") as mock_sphere_class:
         mock_sphere = Mock()
         test_vertices = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
         mock_sphere.vertices = test_vertices
         mock_sphere.faces = [[0, 1, 2]]
         mock_sphere_class.return_value = mock_sphere
 
-        with patch('trimesh.Trimesh') as mock_trimesh:
+        with patch("trimesh.Trimesh") as mock_trimesh:
             mock_mesh = Mock()
             mock_trimesh.return_value = mock_mesh
 
@@ -200,11 +207,11 @@ def test_mesh_serializer_tube_parameter_calculation():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.creation.cylinder') as mock_cylinder:
+    with patch("trimesh.creation.cylinder") as mock_cylinder:
         mock_cylinder.return_value = Mock()
 
-        with patch('trimesh.transformations.translation_matrix') as mock_translation:
-            with patch('trimesh.geometry.align_vectors') as mock_align:
+        with patch("trimesh.transformations.translation_matrix") as mock_translation:
+            with patch("trimesh.geometry.align_vectors") as mock_align:
                 mock_translation.return_value = np.eye(4)
                 mock_align.return_value = np.eye(4)
 
@@ -212,11 +219,11 @@ def test_mesh_serializer_tube_parameter_calculation():
 
                 expected_height = height
                 call_args = mock_cylinder.call_args
-                assert call_args[1]['radius'] == radius
-                assert call_args[1]['height'] == expected_height
+                assert call_args[1]["radius"] == radius
+                assert call_args[1]["height"] == expected_height
 
-                expected_sections = 3 ** 2
-                assert call_args[1]['sections'] == expected_sections
+                expected_sections = 3**2
+                assert call_args[1]["sections"] == expected_sections
 
 
 def test_mesh_serializer_tube_transformation_composition():
@@ -227,13 +234,17 @@ def test_mesh_serializer_tube_transformation_composition():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.creation.cylinder') as mock_cylinder:
+    with patch("trimesh.creation.cylinder") as mock_cylinder:
         mock_cylinder.return_value = Mock()
 
-        with patch('trimesh.transformations.translation_matrix') as mock_translation:
-            with patch('trimesh.geometry.align_vectors') as mock_align:
-                translation_matrix = np.array([[1, 0, 0, 1], [0, 1, 0, 2], [0, 0, 1, 3], [0, 0, 0, 1]])
-                rotation_matrix = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        with patch("trimesh.transformations.translation_matrix") as mock_translation:
+            with patch("trimesh.geometry.align_vectors") as mock_align:
+                translation_matrix = np.array(
+                    [[1, 0, 0, 1], [0, 1, 0, 2], [0, 0, 1, 3], [0, 0, 0, 1]]
+                )
+                rotation_matrix = np.array(
+                    [[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+                )
 
                 mock_translation.return_value = translation_matrix
                 mock_align.return_value = rotation_matrix
@@ -242,7 +253,9 @@ def test_mesh_serializer_tube_transformation_composition():
 
                 expected_transform = translation_matrix @ rotation_matrix
                 call_args = mock_cylinder.call_args
-                np.testing.assert_array_equal(call_args[1]['transform'], expected_transform)
+                np.testing.assert_array_equal(
+                    call_args[1]["transform"], expected_transform
+                )
 
 
 def test_mesh_serializer_tube_subdivision_parameter_passing():
@@ -253,16 +266,16 @@ def test_mesh_serializer_tube_subdivision_parameter_passing():
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.creation.cylinder') as mock_cylinder:
+    with patch("trimesh.creation.cylinder") as mock_cylinder:
         mock_cylinder.return_value = Mock()
 
-        with patch('trimesh.transformations.translation_matrix'):
-            with patch('trimesh.geometry.align_vectors'):
+        with patch("trimesh.transformations.translation_matrix"):
+            with patch("trimesh.geometry.align_vectors"):
                 serializer.serialize(tube, subdivisions=6)
 
                 call_args = mock_cylinder.call_args
-                expected_sections = 6 ** 2
-                assert call_args[1]['sections'] == expected_sections
+                expected_sections = 6**2
+                assert call_args[1]["sections"] == expected_sections
 
 
 def test_mesh_serializer_handles_blob_calculate_offsets_failure():
@@ -272,7 +285,7 @@ def test_mesh_serializer_handles_blob_calculate_offsets_failure():
 
     serializer = MeshSerializer()
 
-    with patch.object(blob, 'calculate_offsets') as mock_offsets:
+    with patch.object(blob, "calculate_offsets") as mock_offsets:
         mock_offsets.side_effect = RuntimeError("Calculation failed")
 
         with pytest.raises(RuntimeError, match="Calculation failed"):
@@ -368,20 +381,22 @@ def test_mesh_serializer_tube_default_height_parameter():
     position = np.array([0.0, 0.0, 0.0])
     direction = np.array([0.0, 0.0, 1.0])
     radius = 1.0
-    tube = Tube(position=position, direction=direction, radius=radius)  # No height specified, should default to 10000
+    tube = Tube(
+        position=position, direction=direction, radius=radius
+    )  # No height specified, should default to 10000
 
     serializer = MeshSerializer()
 
-    with patch('trimesh.creation.cylinder') as mock_cylinder:
+    with patch("trimesh.creation.cylinder") as mock_cylinder:
         mock_cylinder.return_value = Mock()
 
-        with patch('trimesh.transformations.translation_matrix'):
-            with patch('trimesh.geometry.align_vectors'):
+        with patch("trimesh.transformations.translation_matrix"):
+            with patch("trimesh.geometry.align_vectors"):
                 serializer._serialize_tube(tube, subdivisions=3)
 
                 call_args = mock_cylinder.call_args
                 expected_height = 10000
-                assert call_args[1]['height'] == expected_height
+                assert call_args[1]["height"] == expected_height
 
 
 def test_integration_tube_sampler_to_serializer_height_workflow():
@@ -393,7 +408,9 @@ def test_integration_tube_sampler_to_serializer_height_workflow():
     from numpy.random import default_rng
 
     parent_radius = 200.0
-    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+    )
     serializer = MeshSerializer()
 
     center = np.array([0.0, 0.0, 0.0])
@@ -424,7 +441,9 @@ def test_integration_mesh_tube_sampler_to_serializer_height_workflow(tmp_path):
     import trimesh
 
     parent_radius = 150.0
-    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius
+    )
     serializer = MeshSerializer()
 
     stl_file = tmp_path / "test_mesh.stl"
@@ -455,15 +474,21 @@ def test_integration_tube_height_consistency_across_samplers():
     parent_radius_values = [50.0, 100.0, 500.0]
 
     for parent_radius in parent_radius_values:
-        tube_sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
-        mesh_tube_sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+        tube_sampler = TubeSampler(
+            tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+        )
+        mesh_tube_sampler = MeshTubeSampler(
+            tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+        )
 
         rng1 = default_rng(42)
         center = np.array([0.0, 0.0, 0.0])
         ball_radius = 5.0
         tube_radius = 0.5
 
-        tube_from_sampler = tube_sampler._sample_line(center, ball_radius, tube_radius, rng1)
+        tube_from_sampler = tube_sampler._sample_line(
+            center, ball_radius, tube_radius, rng1
+        )
 
         expected_height = 4 * parent_radius
         assert tube_from_sampler.height == expected_height
@@ -481,7 +506,9 @@ def test_integration_serializer_handles_various_tube_heights():
 
     for parent_radius in parent_radius_values:
         height = 4 * parent_radius
-        tube = Tube(position=position, direction=direction, radius=radius, height=height)
+        tube = Tube(
+            position=position, direction=direction, radius=radius, height=height
+        )
 
         mesh = serializer.serialize(tube)
 

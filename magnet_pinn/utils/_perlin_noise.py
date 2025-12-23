@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import math
 import random
 
+
 def dot(
     vec1: Union[List, Tuple],
     vec2: Union[List, Tuple],

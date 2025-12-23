@@ -5,8 +5,14 @@ from typing import List
 from trimesh import Trimesh
 
 from magnet_pinn.generator.typing import (
-    PropertyItem, StructurePhantom, MeshPhantom, PropertyPhantom,
-    Point3D, FaceIndices, MeshGrid, PhantomItem
+    PropertyItem,
+    StructurePhantom,
+    MeshPhantom,
+    PropertyPhantom,
+    Point3D,
+    FaceIndices,
+    MeshGrid,
+    PhantomItem,
 )
 from magnet_pinn.generator.structures import Blob, Tube
 
@@ -55,9 +61,11 @@ def test_property_item_serialization_compatibility():
     assert unpickled.density == original.density
     assert unpickled == original
 
-    as_dict = {"conductivity": original.conductivity,
-               "permittivity": original.permittivity,
-               "density": original.density}
+    as_dict = {
+        "conductivity": original.conductivity,
+        "permittivity": original.permittivity,
+        "density": original.density,
+    }
     json_str = json.dumps(as_dict)
     parsed = json.loads(json_str)
 
@@ -73,10 +81,12 @@ def test_property_item_extreme_values_validation():
     metal = PropertyItem(conductivity=5.96e7, permittivity=1.0, density=8960.0)
     assert metal.conductivity == 5.96e7
 
-    nan_prop = PropertyItem(conductivity=float('nan'), permittivity=80.0, density=1000.0)
+    nan_prop = PropertyItem(
+        conductivity=float("nan"), permittivity=80.0, density=1000.0
+    )
     assert np.isnan(nan_prop.conductivity)
 
-    inf_prop = PropertyItem(conductivity=float('inf'), permittivity=1.0, density=8960.0)
+    inf_prop = PropertyItem(conductivity=float("inf"), permittivity=1.0, density=8960.0)
     assert np.isinf(inf_prop.conductivity)
 
 
@@ -91,7 +101,9 @@ def test_property_item_boundary_validation():
     negative_cond = PropertyItem(conductivity=-0.1, permittivity=50.0, density=1000.0)
     assert negative_cond.conductivity == -0.1
 
-    scientific_prop = PropertyItem(conductivity=1.23e-15, permittivity=8.854e-12, density=6.022e23)
+    scientific_prop = PropertyItem(
+        conductivity=1.23e-15, permittivity=8.854e-12, density=6.022e23
+    )
     assert scientific_prop.conductivity == 1.23e-15
 
 
@@ -105,8 +117,16 @@ def test_structure_phantom_with_realistic_mri_setup():
     ]
 
     tubes = [
-        Tube(position=np.array([0.0, 0.0, 20.0]), direction=np.array([1.0, 0.0, 0.0]), radius=2.0),
-        Tube(position=np.array([0.0, 0.0, -20.0]), direction=np.array([0.0, 1.0, 0.0]), radius=1.5),
+        Tube(
+            position=np.array([0.0, 0.0, 20.0]),
+            direction=np.array([1.0, 0.0, 0.0]),
+            radius=2.0,
+        ),
+        Tube(
+            position=np.array([0.0, 0.0, -20.0]),
+            direction=np.array([0.0, 1.0, 0.0]),
+            radius=1.5,
+        ),
     ]
 
     # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
@@ -121,35 +141,43 @@ def test_structure_phantom_with_realistic_mri_setup():
 
 def test_mesh_phantom_with_trimesh_integration():
     """Test MeshPhantom integration with Trimesh objects."""
-    vertices = np.array([
-        [0.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.5, 1.0, 0.0],
-        [0.5, 0.5, 1.0]
-    ])
-    faces = np.array([
-        [0, 1, 2],
-        [0, 1, 3],
-        [1, 2, 3],
-        [0, 2, 3]
-    ])
+    vertices = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 1.0, 0.0], [0.5, 0.5, 1.0]]
+    )
+    faces = np.array([[0, 1, 2], [0, 1, 3], [1, 2, 3], [0, 2, 3]])
 
     parent_mesh = Trimesh(vertices=vertices, faces=faces)
 
     child_mesh = Trimesh(vertices=vertices * 0.5, faces=faces)
 
-    tube_vertices = np.array([
-        [0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.1, 0.1, 0.0], [0.0, 0.1, 0.0],
-        [0.0, 0.0, 2.0], [0.1, 0.0, 2.0], [0.1, 0.1, 2.0], [0.0, 0.1, 2.0]
-    ])
-    tube_faces = np.array([
-        [0, 1, 2], [0, 2, 3],
-        [4, 6, 5], [4, 7, 6],
-        [0, 4, 5], [0, 5, 1],
-        [1, 5, 6], [1, 6, 2],
-        [2, 6, 7], [2, 7, 3],
-        [3, 7, 4], [3, 4, 0]
-    ])
+    tube_vertices = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.1, 0.0, 0.0],
+            [0.1, 0.1, 0.0],
+            [0.0, 0.1, 0.0],
+            [0.0, 0.0, 2.0],
+            [0.1, 0.0, 2.0],
+            [0.1, 0.1, 2.0],
+            [0.0, 0.1, 2.0],
+        ]
+    )
+    tube_faces = np.array(
+        [
+            [0, 1, 2],
+            [0, 2, 3],
+            [4, 6, 5],
+            [4, 7, 6],
+            [0, 4, 5],
+            [0, 5, 1],
+            [1, 5, 6],
+            [1, 6, 2],
+            [2, 6, 7],
+            [2, 7, 3],
+            [3, 7, 4],
+            [3, 4, 0],
+        ]
+    )
     tube_mesh = Trimesh(vertices=tube_vertices, faces=tube_faces)
 
     phantom = MeshPhantom(parent=parent_mesh, children=[child_mesh], tubes=[tube_mesh])
@@ -172,9 +200,7 @@ def test_property_phantom_with_multilayer_tissue():
     blood = PropertyItem(conductivity=0.7, permittivity=58.0, density=1060.0)
 
     phantom = PropertyPhantom(
-        parent=skin,
-        children=[fat, muscle, bone],
-        tubes=[blood, blood]
+        parent=skin, children=[fat, muscle, bone], tubes=[blood, blood]
     )
 
     assert phantom.parent.conductivity == 0.1
@@ -191,21 +217,19 @@ def test_phantom_serialization_workflow():
     structure_phantom = StructurePhantom(
         parent=Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0),
         children=[],
-        tubes=[]
+        tubes=[],
     )
 
     vertices = [[0, 0, 0], [1, 0, 0], [0, 1, 0]]
     faces = [[0, 1, 2]]
     mesh_phantom = MeshPhantom(
-        parent=Trimesh(vertices=vertices, faces=faces),
-        children=[],
-        tubes=[]
+        parent=Trimesh(vertices=vertices, faces=faces), children=[], tubes=[]
     )
 
     property_phantom = PropertyPhantom(
         parent=PropertyItem(conductivity=0.5, permittivity=80.0, density=1000.0),
         children=[],
-        tubes=[]
+        tubes=[],
     )
 
     all_phantoms = [structure_phantom, mesh_phantom, property_phantom]
@@ -237,9 +261,7 @@ def test_phantom_boundary_conditions():
     assert large_phantom.parent.radius == 1000.0
 
     extreme_props = PropertyItem(
-        conductivity=1e-10,
-        permittivity=1000.0,
-        density=10000.0
+        conductivity=1e-10, permittivity=1000.0, density=10000.0
     )
     extreme_phantom = PropertyPhantom(parent=extreme_props, children=[], tubes=[])
 
@@ -255,13 +277,11 @@ def test_phantom_types_integration_with_structures():
     tube_child = Tube(
         position=np.array([0.0, 20.0, 0.0]),
         direction=np.array([0.0, 0.0, 1.0]),
-        radius=3.0
+        radius=3.0,
     )
 
     mixed_phantom = StructurePhantom(
-        parent=blob_parent,
-        children=[blob_child],
-        tubes=[tube_child]
+        parent=blob_parent, children=[blob_child], tubes=[tube_child]
     )
 
     assert mixed_phantom.parent.radius == 50.0
@@ -282,10 +302,10 @@ def test_property_item_edge_cases_consolidated():
     assert prop1 == prop2
     assert prop1 != prop3
 
-    assert hasattr(prop1, 'conductivity')
-    assert hasattr(prop1, 'permittivity')
-    assert hasattr(prop1, 'density')
-    assert not hasattr(prop1, 'nonexistent_field')
+    assert hasattr(prop1, "conductivity")
+    assert hasattr(prop1, "permittivity")
+    assert hasattr(prop1, "density")
+    assert not hasattr(prop1, "nonexistent_field")
 
     original = prop1.conductivity
     prop1.conductivity = 0.8
@@ -330,7 +350,7 @@ def test_mesh_grid_type_alias():
     """Test MeshGrid type alias structure and access patterns."""
     grid: MeshGrid = [
         [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)],
-        [(0.0, 1.0, 0.0), (1.0, 1.0, 0.0)]
+        [(0.0, 1.0, 0.0), (1.0, 1.0, 0.0)],
     ]
 
     assert len(grid) == 2
@@ -351,19 +371,19 @@ def test_phantom_item_union_type():
     structure_phantom = StructurePhantom(
         parent=Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0),
         children=[],
-        tubes=[]
+        tubes=[],
     )
 
     mesh_phantom = MeshPhantom(
         parent=Trimesh(vertices=[[0, 0, 0], [1, 0, 0], [0, 1, 0]], faces=[[0, 1, 2]]),
         children=[],
-        tubes=[]
+        tubes=[],
     )
 
     property_phantom = PropertyPhantom(
         parent=PropertyItem(conductivity=0.5, permittivity=80.0, density=1000.0),
         children=[],
-        tubes=[]
+        tubes=[],
     )
 
     phantoms: List[PhantomItem] = [structure_phantom, mesh_phantom, property_phantom]
@@ -413,13 +433,17 @@ def test_phantom_component_type_validation():
 
     mixed_children = [
         Blob(position=np.array([0.0, 0.0, 0.0]), radius=5.0),
-        Tube(position=np.array([10.0, 0.0, 0.0]), direction=np.array([1.0, 0.0, 0.0]), radius=2.0)
+        Tube(
+            position=np.array([10.0, 0.0, 0.0]),
+            direction=np.array([1.0, 0.0, 0.0]),
+            radius=2.0,
+        ),
     ]
 
     mixed_phantom = StructurePhantom(
         parent=Blob(position=np.array([0.0, 0.0, 0.0]), radius=20.0),
         children=mixed_children,
-        tubes=[]
+        tubes=[],
     )
 
     assert len(mixed_phantom.children) == 2
@@ -434,17 +458,13 @@ def test_property_phantom_mismatched_lengths():
     many_child_props = [
         PropertyItem(conductivity=0.1, permittivity=40.0, density=900.0),
         PropertyItem(conductivity=0.2, permittivity=50.0, density=1100.0),
-        PropertyItem(conductivity=0.3, permittivity=60.0, density=1200.0)
+        PropertyItem(conductivity=0.3, permittivity=60.0, density=1200.0),
     ]
 
-    few_tube_props = [
-        PropertyItem(conductivity=0.7, permittivity=58.0, density=1060.0)
-    ]
+    few_tube_props = [PropertyItem(conductivity=0.7, permittivity=58.0, density=1060.0)]
 
     mismatched_phantom = PropertyPhantom(
-        parent=parent_prop,
-        children=many_child_props,
-        tubes=few_tube_props
+        parent=parent_prop, children=many_child_props, tubes=few_tube_props
     )
 
     assert len(mismatched_phantom.children) == 3
@@ -460,11 +480,7 @@ def test_phantom_with_none_components():
     assert len(none_parent_phantom.tubes) == 0
 
     blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
-    mixed_phantom = StructurePhantom(
-        parent=blob,
-        children=[None, blob, None],
-        tubes=[]
-    )
+    mixed_phantom = StructurePhantom(parent=blob, children=[None, blob, None], tubes=[])
 
     assert mixed_phantom.parent is blob
     assert len(mixed_phantom.children) == 3
@@ -478,9 +494,7 @@ def test_phantom_nested_structure_depth():
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=100.0)
 
     recursive_phantom = StructurePhantom(
-        parent=parent_blob,
-        children=[parent_blob, parent_blob],
-        tubes=[]
+        parent=parent_blob, children=[parent_blob, parent_blob], tubes=[]
     )
 
     assert recursive_phantom.parent is parent_blob
@@ -509,18 +523,20 @@ def test_phantom_component_count_edge_cases():
     assert len(single_phantom.children) == 1
 
     few_children = [
-        Blob(position=np.array([i, 0.0, 0.0]), radius=1.0)
-        for i in range(5)
+        Blob(position=np.array([i, 0.0, 0.0]), radius=1.0) for i in range(5)
     ]
     few_tubes = [
-        Tube(position=np.array([0.0, 0.0, i]), direction=np.array([1.0, 0.0, 0.0]), radius=0.5)
+        Tube(
+            position=np.array([0.0, 0.0, i]),
+            direction=np.array([1.0, 0.0, 0.0]),
+            radius=0.5,
+        )
         for i in range(3)
     ]
 
     # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
     asymmetric_phantom = StructurePhantom(
-        parent=parent,
-        children=few_children, tubes=few_tubes  # type: ignore[arg-type]
+        parent=parent, children=few_children, tubes=few_tubes  # type: ignore[arg-type]
     )
 
     assert len(asymmetric_phantom.children) == 5
@@ -533,17 +549,13 @@ def test_property_phantom_with_extreme_property_ranges():
 
     children_props = [
         PropertyItem(conductivity=1e-8, permittivity=10.0, density=100.0),
-        PropertyItem(conductivity=1e-6, permittivity=100.0, density=1000.0)
+        PropertyItem(conductivity=1e-6, permittivity=100.0, density=1000.0),
     ]
 
-    tube_props = [
-        PropertyItem(conductivity=1e6, permittivity=1.0, density=8000.0)
-    ]
+    tube_props = [PropertyItem(conductivity=1e6, permittivity=1.0, density=8000.0)]
 
     extreme_phantom = PropertyPhantom(
-        parent=parent_prop,
-        children=children_props,
-        tubes=tube_props
+        parent=parent_prop, children=children_props, tubes=tube_props
     )
 
     assert extreme_phantom.parent.conductivity == 1e-10
@@ -552,7 +564,10 @@ def test_property_phantom_with_extreme_property_ranges():
 
     # Verify increasing conductivity pattern
     for i in range(1, len(extreme_phantom.children)):
-        assert extreme_phantom.children[i].conductivity > extreme_phantom.children[i-1].conductivity
+        assert (
+            extreme_phantom.children[i].conductivity
+            > extreme_phantom.children[i - 1].conductivity
+        )
 
 
 def test_property_phantom_consistency_validation():
@@ -562,12 +577,10 @@ def test_property_phantom_consistency_validation():
 
     children = [
         PropertyItem(conductivity=0.1, permittivity=50.0, density=1000.0),
-        PropertyItem(conductivity=0.5, permittivity=60.0, density=1050.0)
+        PropertyItem(conductivity=0.5, permittivity=60.0, density=1050.0),
     ]
 
-    tubes = [
-        PropertyItem(conductivity=0.8, permittivity=58.0, density=1060.0)
-    ]
+    tubes = [PropertyItem(conductivity=0.8, permittivity=58.0, density=1060.0)]
 
     consistent_phantom = PropertyPhantom(parent=parent, children=children, tubes=tubes)
 
@@ -576,7 +589,8 @@ def test_property_phantom_consistency_validation():
         for child in consistent_phantom.children
     )
     assert all(
-        tube.conductivity > max(child.conductivity for child in consistent_phantom.children)
+        tube.conductivity
+        > max(child.conductivity for child in consistent_phantom.children)
         for tube in consistent_phantom.tubes
     )
 

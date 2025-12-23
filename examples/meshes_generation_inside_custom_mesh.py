@@ -4,6 +4,7 @@ NAME
 DESCRIPTION
     Example of how to generate experiments data by using the `src.generation` module and by having a custom mesh as a parent structure.
 """
+
 import os
 from pathlib import Path
 
@@ -20,7 +21,7 @@ from magnet_pinn.generator.transforms import (
     MeshesChildrenCutout,
     MeshesParentCutoutWithChildren,
     MeshesParentCutoutWithTubes,
-    MeshesChildrenClipping
+    MeshesChildrenClipping,
 )
 
 # Step 1/4: Generate stage object wit custom mesh as parent object and with blobs and tubes inside
@@ -30,7 +31,7 @@ phantom = CustomPhantom(
     blob_radius_decrease_per_level=0.2,
     num_tubes=10,
     relative_tube_max_radius=0.08,
-    relative_tube_min_radius=0.02
+    relative_tube_min_radius=0.02,
 )
 raw_3d_structures = phantom.generate(seed=42)
 
@@ -43,13 +44,15 @@ print(f"- {len(raw_3d_structures.tubes)} tubes")
 phantom_meshes = ToMesh()(raw_3d_structures)
 
 # Step 3/5: Define the workflow for processing meshes
-workflow = Compose([
-    MeshesTubesClipping(),
-    MeshesChildrenCutout(),
-    MeshesParentCutoutWithChildren(),
-    MeshesParentCutoutWithTubes(),
-    MeshesChildrenClipping()
-])
+workflow = Compose(
+    [
+        MeshesTubesClipping(),
+        MeshesChildrenCutout(),
+        MeshesParentCutoutWithChildren(),
+        MeshesParentCutoutWithTubes(),
+        MeshesChildrenClipping(),
+    ]
+)
 
 processed_meshes = workflow(phantom_meshes)
 print(f"Processed phantom with:")
@@ -59,27 +62,20 @@ print(f"- {len(processed_meshes.tubes)} tube meshes")
 
 # Optinonally, if the user has a display available, show the generated blobs and tubes
 if os.environ.get("DISPLAY"):
-    print("We will show generated tubes and children meshes, restricted by the parent mesh")
+    print(
+        "We will show generated tubes and children meshes, restricted by the parent mesh"
+    )
     trimesh.boolean.union(
         processed_meshes.tubes + processed_meshes.children,
-        engine='manifold',
+        engine="manifold",
     ).show()
 
 # Step 4/5: Sample physical properties for the generated meshes
 prop_sampler = PropertySampler(
     {
-        "density": {
-            "min": 400,
-            "max": 2000
-        },
-        "conductivity": {
-            "min": 0,
-            "max": 2.5
-        },
-        "permittivity": {
-            "min": 1,
-            "max": 71
-        }
+        "density": {"min": 400, "max": 2000},
+        "conductivity": {"min": 0, "max": 2.5},
+        "permittivity": {"min": 1, "max": 71},
     }
 )
 prop = prop_sampler.sample_like(processed_meshes, rng=default_rng())

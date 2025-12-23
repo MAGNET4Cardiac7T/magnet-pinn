@@ -4,10 +4,18 @@ import trimesh
 from unittest.mock import Mock, patch
 
 from magnet_pinn.generator.transforms import (
-    Transform, Compose, ToMesh, MeshesCleaning, MeshesRemesh,
-    MeshesTubesClipping, MeshesChildrenCutout, MeshesParentCutoutWithChildren,
-    MeshesParentCutoutWithTubes, MeshesChildrenClipping,
-    _validate_mesh, _validate_input_meshes
+    Transform,
+    Compose,
+    ToMesh,
+    MeshesCleaning,
+    MeshesRemesh,
+    MeshesTubesClipping,
+    MeshesChildrenCutout,
+    MeshesParentCutoutWithChildren,
+    MeshesParentCutoutWithTubes,
+    MeshesChildrenClipping,
+    _validate_mesh,
+    _validate_input_meshes,
 )
 from magnet_pinn.generator.typing import StructurePhantom, MeshPhantom
 from magnet_pinn.generator.structures import Blob, Tube
@@ -35,9 +43,7 @@ def simple_tube():
 def structure_phantom(simple_blob, simple_tube):
     child_blob = Blob(position=np.array([0.5, 0.5, 0.5]), radius=0.8, seed=24)
     return StructurePhantom(
-        parent=simple_blob,
-        children=[child_blob],
-        tubes=[simple_tube]
+        parent=simple_blob, children=[child_blob], tubes=[simple_tube]
     )
 
 
@@ -52,11 +58,7 @@ def complex_mesh_phantom(simple_sphere_mesh):
     child_mesh = trimesh.creation.icosphere(subdivisions=1, radius=0.5)
     tube_mesh = trimesh.creation.cylinder(radius=0.3, height=2.0)
 
-    return MeshPhantom(
-        parent=parent_mesh,
-        children=[child_mesh],
-        tubes=[tube_mesh]
-    )
+    return MeshPhantom(parent=parent_mesh, children=[child_mesh], tubes=[tube_mesh])
 
 
 def test_abstract_transform_cannot_be_instantiated():
@@ -121,7 +123,9 @@ def test_compose_call_passes_additional_arguments(structure_phantom):
     compose = Compose([mock_transform])
     compose(structure_phantom, "extra_arg", keyword="extra_kwarg")
 
-    mock_transform.assert_called_once_with(structure_phantom, structure_phantom, "extra_arg", keyword="extra_kwarg")
+    mock_transform.assert_called_once_with(
+        structure_phantom, structure_phantom, "extra_arg", keyword="extra_kwarg"
+    )
 
 
 def test_compose_repr_shows_component_transforms():
@@ -134,14 +138,14 @@ def test_compose_repr_shows_component_transforms():
 
 def test_tomesh_initialization_creates_serializer():
     tomesh = ToMesh()
-    assert hasattr(tomesh, 'serializer')
+    assert hasattr(tomesh, "serializer")
     assert tomesh.serializer is not None
 
 
 def test_tomesh_call_returns_mesh_phantom(structure_phantom):
     tomesh = ToMesh()
 
-    with patch.object(tomesh.serializer, 'serialize') as mock_serialize:
+    with patch.object(tomesh.serializer, "serialize") as mock_serialize:
         mock_mesh = Mock(spec=trimesh.Trimesh)
         mock_serialize.return_value = mock_mesh
 
@@ -158,7 +162,7 @@ def test_tomesh_call_returns_mesh_phantom(structure_phantom):
 def test_tomesh_call_serializes_all_components(structure_phantom):
     tomesh = ToMesh()
 
-    with patch.object(tomesh.serializer, 'serialize') as mock_serialize:
+    with patch.object(tomesh.serializer, "serialize") as mock_serialize:
         mock_serialize.return_value = Mock(spec=trimesh.Trimesh)
 
         tomesh(structure_phantom)
@@ -210,27 +214,33 @@ def test_validate_input_meshes_rejects_none_in_list():
 def test_validate_input_meshes_rejects_empty_vertices():
     mesh1 = trimesh.creation.icosphere(subdivisions=1, radius=1.0)
     mesh2 = trimesh.Trimesh(vertices=np.array([]), faces=np.array([]))
-    with pytest.raises(ValueError, match="Input mesh 1 has no vertices for test_operation"):
+    with pytest.raises(
+        ValueError, match="Input mesh 1 has no vertices for test_operation"
+    ):
         _validate_input_meshes([mesh1, mesh2], "test_operation")
 
 
 def test_validate_input_meshes_rejects_empty_faces():
     mesh1 = trimesh.creation.icosphere(subdivisions=1, radius=1.0)
     mesh2 = trimesh.Trimesh(vertices=np.array([[0, 0, 0]]), faces=np.array([]))
-    with pytest.raises(ValueError, match="Input mesh 1 has no faces for test_operation"):
+    with pytest.raises(
+        ValueError, match="Input mesh 1 has no faces for test_operation"
+    ):
         _validate_input_meshes([mesh1, mesh2], "test_operation")
 
 
 def test_meshes_cleaning_call_returns_mesh_phantom(complex_mesh_phantom):
     cleaning = MeshesCleaning()
 
-    with patch.object(cleaning, '_clean_mesh') as mock_clean:
+    with patch.object(cleaning, "_clean_mesh") as mock_clean:
         mock_clean.return_value = Mock(spec=trimesh.Trimesh)
 
         result = cleaning(complex_mesh_phantom)
 
         assert isinstance(result, MeshPhantom)
-        expected_calls = 1 + len(complex_mesh_phantom.children) + len(complex_mesh_phantom.tubes)
+        expected_calls = (
+            1 + len(complex_mesh_phantom.children) + len(complex_mesh_phantom.tubes)
+        )
         assert mock_clean.call_count == expected_calls
 
 
@@ -274,9 +284,7 @@ def test_transforms_work_with_real_meshes():
     tube_cylinder = trimesh.creation.cylinder(radius=0.3, height=1.0)
 
     phantom = MeshPhantom(
-        parent=parent_sphere,
-        children=[child_sphere],
-        tubes=[tube_cylinder]
+        parent=parent_sphere, children=[child_sphere], tubes=[tube_cylinder]
     )
 
     cleaning = MeshesCleaning()
@@ -306,20 +314,22 @@ def test_abstract_transform_call_method_raises_not_implemented():
             return super().__call__(*args, **kwargs)  # type: ignore[safe-super]
 
     transform = IncompleteTransform()
-    with pytest.raises(NotImplementedError, match="Subclasses must implement `__call__` method"):
+    with pytest.raises(
+        NotImplementedError, match="Subclasses must implement `__call__` method"
+    ):
         transform("dummy_input")
 
 
 def test_compose_initialization_validates_transform_interface():
     transform = MockTransform()
     compose = Compose([transform])
-    assert all(hasattr(t, '__call__') for t in compose.transforms)
+    assert all(hasattr(t, "__call__") for t in compose.transforms)
 
 
 def test_tomesh_call_preserves_phantom_structure_integrity(structure_phantom):
     tomesh = ToMesh()
 
-    with patch.object(tomesh.serializer, 'serialize') as mock_serialize:
+    with patch.object(tomesh.serializer, "serialize") as mock_serialize:
         mock_mesh = Mock(spec=trimesh.Trimesh)
         mock_serialize.return_value = mock_mesh
 
@@ -351,10 +361,10 @@ def test_meshes_remesh_initialization_with_custom_max_len():
 def test_meshes_remesh_call_returns_mesh_phantom(complex_mesh_phantom):
     remesh = MeshesRemesh(max_len=10.0)
 
-    with patch('trimesh.remesh.subdivide_to_size') as mock_subdivide:
+    with patch("trimesh.remesh.subdivide_to_size") as mock_subdivide:
         mock_subdivide.return_value = (
             complex_mesh_phantom.parent.vertices,
-            complex_mesh_phantom.parent.faces
+            complex_mesh_phantom.parent.faces,
         )
 
         result = remesh(complex_mesh_phantom)
@@ -366,10 +376,10 @@ def test_meshes_remesh_call_returns_mesh_phantom(complex_mesh_phantom):
 def test_meshes_remesh_preserves_phantom_structure(complex_mesh_phantom):
     remesh = MeshesRemesh(max_len=10.0)
 
-    with patch('trimesh.remesh.subdivide_to_size') as mock_subdivide:
+    with patch("trimesh.remesh.subdivide_to_size") as mock_subdivide:
         mock_subdivide.return_value = (
             complex_mesh_phantom.parent.vertices,
-            complex_mesh_phantom.parent.faces
+            complex_mesh_phantom.parent.faces,
         )
 
         result = remesh(complex_mesh_phantom)
@@ -381,7 +391,7 @@ def test_meshes_remesh_preserves_phantom_structure(complex_mesh_phantom):
 def test_meshes_remesh_calls_subdivide_with_correct_parameters(complex_mesh_phantom):
     remesh = MeshesRemesh(max_len=5.0)
 
-    with patch('trimesh.remesh.subdivide_to_size') as mock_subdivide:
+    with patch("trimesh.remesh.subdivide_to_size") as mock_subdivide:
         vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
         faces = np.array([[0, 1, 2]])
         mock_subdivide.return_value = (vertices, faces)
@@ -389,7 +399,7 @@ def test_meshes_remesh_calls_subdivide_with_correct_parameters(complex_mesh_phan
         remesh(complex_mesh_phantom)
 
         for call in mock_subdivide.call_args_list:
-            assert call[1]['max_edge'] == 5.0
+            assert call[1]["max_edge"] == 5.0
 
 
 def test_meshes_tubes_clipping_successful_operation(complex_mesh_phantom):
@@ -405,9 +415,11 @@ def test_meshes_tubes_clipping_successful_operation(complex_mesh_phantom):
     mock_clipped_tube.remove_unreferenced_vertices = Mock()
     mock_clipped_tube.fill_holes = Mock()
 
-    with patch('trimesh.boolean.intersection', return_value=mock_clipped_tube) as mock_intersection:
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "trimesh.boolean.intersection", return_value=mock_clipped_tube
+    ) as mock_intersection:
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 result = clipping(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert isinstance(result, MeshPhantom)
@@ -420,18 +432,27 @@ def test_meshes_tubes_clipping_successful_operation(complex_mesh_phantom):
 def test_meshes_tubes_clipping_handles_runtime_error(complex_mesh_phantom):
     clipping = MeshesTubesClipping()
 
-    with patch('trimesh.boolean.intersection', side_effect=RuntimeError("Boolean operation failed")):
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with pytest.raises(RuntimeError, match="Boolean operation failed for tubes clipping"):
+    with patch(
+        "trimesh.boolean.intersection",
+        side_effect=RuntimeError("Boolean operation failed"),
+    ):
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with pytest.raises(
+                RuntimeError, match="Boolean operation failed for tubes clipping"
+            ):
                 clipping(complex_mesh_phantom, complex_mesh_phantom)
 
 
 def test_meshes_tubes_clipping_validates_input_meshes(complex_mesh_phantom):
     clipping = MeshesTubesClipping()
 
-    with patch('magnet_pinn.generator.transforms._validate_input_meshes') as mock_validate:
-        with patch('trimesh.boolean.intersection', return_value=Mock(spec=trimesh.Trimesh)):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "magnet_pinn.generator.transforms._validate_input_meshes"
+    ) as mock_validate:
+        with patch(
+            "trimesh.boolean.intersection", return_value=Mock(spec=trimesh.Trimesh)
+        ):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 mock_clipped = Mock(spec=trimesh.Trimesh)
                 mock_clipped.vertices = np.array([[0, 0, 0]])
                 mock_clipped.faces = np.array([[0, 1, 2]])
@@ -442,7 +463,7 @@ def test_meshes_tubes_clipping_validates_input_meshes(complex_mesh_phantom):
                 mock_clipped.remove_unreferenced_vertices = Mock()
                 mock_clipped.fill_holes = Mock()
 
-                with patch('trimesh.boolean.intersection', return_value=mock_clipped):
+                with patch("trimesh.boolean.intersection", return_value=mock_clipped):
                     clipping(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert mock_validate.call_count == 2
@@ -461,9 +482,11 @@ def test_meshes_children_cutout_successful_operation(complex_mesh_phantom):
     mock_cutout_child.remove_unreferenced_vertices = Mock()
     mock_cutout_child.fill_holes = Mock()
 
-    with patch('trimesh.boolean.difference', return_value=mock_cutout_child) as mock_difference:
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "trimesh.boolean.difference", return_value=mock_cutout_child
+    ) as mock_difference:
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 result = cutout(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert isinstance(result, MeshPhantom)
@@ -476,9 +499,14 @@ def test_meshes_children_cutout_successful_operation(complex_mesh_phantom):
 def test_meshes_children_cutout_handles_runtime_error(complex_mesh_phantom):
     cutout = MeshesChildrenCutout()
 
-    with patch('trimesh.boolean.difference', side_effect=RuntimeError("Boolean operation failed")):
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with pytest.raises(RuntimeError, match="Boolean operation failed for children cutout"):
+    with patch(
+        "trimesh.boolean.difference",
+        side_effect=RuntimeError("Boolean operation failed"),
+    ):
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with pytest.raises(
+                RuntimeError, match="Boolean operation failed for children cutout"
+            ):
                 cutout(complex_mesh_phantom, complex_mesh_phantom)
 
 
@@ -495,9 +523,11 @@ def test_meshes_parent_cutout_with_children_successful_operation(complex_mesh_ph
     mock_parent.remove_unreferenced_vertices = Mock()
     mock_parent.fill_holes = Mock()
 
-    with patch('trimesh.boolean.difference', return_value=mock_parent) as mock_difference:
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "trimesh.boolean.difference", return_value=mock_parent
+    ) as mock_difference:
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 result = cutout(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert isinstance(result, MeshPhantom)
@@ -510,9 +540,15 @@ def test_meshes_parent_cutout_with_children_successful_operation(complex_mesh_ph
 def test_meshes_parent_cutout_with_children_handles_runtime_error(complex_mesh_phantom):
     cutout = MeshesParentCutoutWithChildren()
 
-    with patch('trimesh.boolean.difference', side_effect=RuntimeError("Boolean operation failed")):
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with pytest.raises(RuntimeError, match="Boolean operation failed for parent cutout with children"):
+    with patch(
+        "trimesh.boolean.difference",
+        side_effect=RuntimeError("Boolean operation failed"),
+    ):
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with pytest.raises(
+                RuntimeError,
+                match="Boolean operation failed for parent cutout with children",
+            ):
                 cutout(complex_mesh_phantom, complex_mesh_phantom)
 
 
@@ -529,9 +565,11 @@ def test_meshes_parent_cutout_with_tubes_successful_operation(complex_mesh_phant
     mock_parent.remove_unreferenced_vertices = Mock()
     mock_parent.fill_holes = Mock()
 
-    with patch('trimesh.boolean.difference', return_value=mock_parent) as mock_difference:
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "trimesh.boolean.difference", return_value=mock_parent
+    ) as mock_difference:
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 result = cutout(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert isinstance(result, MeshPhantom)
@@ -544,9 +582,15 @@ def test_meshes_parent_cutout_with_tubes_successful_operation(complex_mesh_phant
 def test_meshes_parent_cutout_with_tubes_handles_runtime_error(complex_mesh_phantom):
     cutout = MeshesParentCutoutWithTubes()
 
-    with patch('trimesh.boolean.difference', side_effect=RuntimeError("Boolean operation failed")):
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with pytest.raises(RuntimeError, match="Boolean operation failed for parent cutout with tubes"):
+    with patch(
+        "trimesh.boolean.difference",
+        side_effect=RuntimeError("Boolean operation failed"),
+    ):
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with pytest.raises(
+                RuntimeError,
+                match="Boolean operation failed for parent cutout with tubes",
+            ):
                 cutout(complex_mesh_phantom, complex_mesh_phantom)
 
 
@@ -563,9 +607,11 @@ def test_meshes_children_clipping_successful_operation(complex_mesh_phantom):
     mock_clipped_child.remove_unreferenced_vertices = Mock()
     mock_clipped_child.fill_holes = Mock()
 
-    with patch('trimesh.boolean.intersection', return_value=mock_clipped_child) as mock_intersection:
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with patch('magnet_pinn.generator.transforms._validate_mesh'):
+    with patch(
+        "trimesh.boolean.intersection", return_value=mock_clipped_child
+    ) as mock_intersection:
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with patch("magnet_pinn.generator.transforms._validate_mesh"):
                 result = clipping(complex_mesh_phantom, complex_mesh_phantom)
 
                 assert isinstance(result, MeshPhantom)
@@ -578,19 +624,20 @@ def test_meshes_children_clipping_successful_operation(complex_mesh_phantom):
 def test_meshes_children_clipping_handles_runtime_error(complex_mesh_phantom):
     clipping = MeshesChildrenClipping()
 
-    with patch('trimesh.boolean.intersection', side_effect=RuntimeError("Boolean operation failed")):
-        with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
-            with pytest.raises(RuntimeError, match="Boolean operation failed for children clipping"):
+    with patch(
+        "trimesh.boolean.intersection",
+        side_effect=RuntimeError("Boolean operation failed"),
+    ):
+        with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
+            with pytest.raises(
+                RuntimeError, match="Boolean operation failed for children clipping"
+            ):
                 clipping(complex_mesh_phantom, complex_mesh_phantom)
 
 
 def test_transform_pipeline_composition():
     """Test that transforms can be composed into pipelines."""
-    transforms = [
-        ToMesh(),
-        MeshesCleaning(),
-        MeshesRemesh(max_len=10.0)
-    ]
+    transforms = [ToMesh(), MeshesCleaning(), MeshesRemesh(max_len=10.0)]
 
     # Test fixture: list contains Transform subtypes
     pipeline = Compose(transforms)  # type: ignore[arg-type]
@@ -617,24 +664,24 @@ def test_boolean_operations_error_handling():
     tube_mock.faces = np.array([[0, 1, 2]])
     tube_mock.volume = 0.3
 
-    phantom = MeshPhantom(
-        parent=parent_mock,
-        children=[child_mock],
-        tubes=[tube_mock]
-    )
+    phantom = MeshPhantom(parent=parent_mock, children=[child_mock], tubes=[tube_mock])
 
     transforms = [
         MeshesTubesClipping(),
         MeshesChildrenCutout(),
         MeshesParentCutoutWithChildren(),
         MeshesParentCutoutWithTubes(),
-        MeshesChildrenClipping()
+        MeshesChildrenClipping(),
     ]
 
     for transform in transforms:
-        with patch('trimesh.boolean.intersection', side_effect=RuntimeError("Test error")):
-            with patch('trimesh.boolean.difference', side_effect=RuntimeError("Test error")):
-                with patch('magnet_pinn.generator.transforms._validate_input_meshes'):
+        with patch(
+            "trimesh.boolean.intersection", side_effect=RuntimeError("Test error")
+        ):
+            with patch(
+                "trimesh.boolean.difference", side_effect=RuntimeError("Test error")
+            ):
+                with patch("magnet_pinn.generator.transforms._validate_input_meshes"):
                     with pytest.raises(RuntimeError, match="Boolean operation failed"):
                         transform(phantom, phantom)
 
@@ -646,8 +693,8 @@ def test_mesh_cleaning_operations_applied():
     mesh.nondegenerate_faces.return_value = np.array([0, 1, 2])
     mesh.unique_faces.return_value = np.array([0, 1, 2])
 
-    with patch('trimesh.repair.fill_holes'):
-        with patch('trimesh.repair.fix_normals'):
+    with patch("trimesh.repair.fill_holes"):
+        with patch("trimesh.repair.fix_normals"):
             cleaning._clean_mesh(mesh)
 
             mesh.update_faces.assert_called()
@@ -663,16 +710,12 @@ def test_remesh_subdivide_parameters():
     mesh.vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
     mesh.faces = np.array([[0, 1, 2]])
 
-    with patch('trimesh.remesh.subdivide_to_size') as mock_subdivide:
+    with patch("trimesh.remesh.subdivide_to_size") as mock_subdivide:
         mock_subdivide.return_value = (mesh.vertices, mesh.faces)
 
         remesh._remesh(mesh)
 
-        mock_subdivide.assert_called_once_with(
-            mesh.vertices,
-            mesh.faces,
-            max_edge=3.5
-        )
+        mock_subdivide.assert_called_once_with(mesh.vertices, mesh.faces, max_edge=3.5)
 
 
 def test_meshes_tubes_clipping_returns_early_when_no_tubes():

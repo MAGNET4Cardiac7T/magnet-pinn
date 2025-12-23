@@ -5,6 +5,7 @@ DESCRIPTION
     Entry point for the magnet_pinn.generator module.
     This module orchestrates the phantom generation pipeline using CLI arguments.
 """
+
 import logging
 from pathlib import Path
 
@@ -20,7 +21,7 @@ from .transforms import (
     MeshesParentCutoutWithChildren,
     MeshesParentCutoutWithTubes,
     MeshesChildrenClipping,
-    MeshesCleaning
+    MeshesCleaning,
 )
 from .cli.cli import parse_arguments
 from .samplers import PropertySampler
@@ -30,8 +31,7 @@ from .cli.helpers import print_report, validate_arguments
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -50,20 +50,19 @@ def create_property_sampler(args):
     PropertySampler
         Configured property sampler.
     """
-    return PropertySampler({
-        "density": {
-            "min": args.density_min,
-            "max": args.density_max
-        },
-        "conductivity": {
-            "min": args.conductivity_min,
-            "max": args.conductivity_max
-        },
-        "permittivity": {
-            "min": args.permittivity_min,
-            "max": args.permittivity_max
+    return PropertySampler(
+        {
+            "density": {"min": args.density_min, "max": args.density_max},
+            "conductivity": {
+                "min": args.conductivity_min,
+                "max": args.conductivity_max,
+            },
+            "permittivity": {
+                "min": args.permittivity_min,
+                "max": args.permittivity_max,
+            },
         }
-    })
+    )
 
 
 def create_tissue_phantom(args):
@@ -80,11 +79,13 @@ def create_tissue_phantom(args):
     Tissue
         Configured tissue phantom generator.
     """
-    initial_blob_center_extent = np.array([
-        [args.x_min, args.x_max],
-        [args.y_min, args.y_max],
-        [args.z_min, args.z_max],
-    ])
+    initial_blob_center_extent = np.array(
+        [
+            [args.x_min, args.x_max],
+            [args.y_min, args.y_max],
+            [args.z_min, args.z_max],
+        ]
+    )
 
     return Tissue(
         num_children_blobs=args.num_children_blobs,
@@ -93,7 +94,7 @@ def create_tissue_phantom(args):
         blob_radius_decrease_per_level=args.blob_radius_decrease,
         num_tubes=args.num_tubes,
         relative_tube_max_radius=args.relative_tube_max_radius,
-        relative_tube_min_radius=args.relative_tube_min_radius
+        relative_tube_min_radius=args.relative_tube_min_radius,
     )
 
 
@@ -118,7 +119,7 @@ def create_custom_phantom(args):
         num_tubes=args.num_tubes,
         relative_tube_max_radius=args.relative_tube_max_radius,
         relative_tube_min_radius=args.relative_tube_min_radius,
-        sample_children_only_inside=args.sample_children_only_inside
+        sample_children_only_inside=args.sample_children_only_inside,
     )
 
 
@@ -138,7 +139,7 @@ def create_workflow(args):
     """
     mode = args.transforms_mode
 
-    if mode == 'none':
+    if mode == "none":
         return Compose([])
 
     transforms = [
@@ -148,15 +149,14 @@ def create_workflow(args):
     ]
 
     if mode == "all":
-        transforms.extend([
-            MeshesTubesClipping(),
-            MeshesChildrenClipping()
-        ])
+        transforms.extend([MeshesTubesClipping(), MeshesChildrenClipping()])
 
     return Compose(transforms)
 
 
-def generate_single_phantom(phantom_generator, property_sampler, workflow, args, output_dir: Path, seed: int):
+def generate_single_phantom(
+    phantom_generator, property_sampler, workflow, args, output_dir: Path, seed: int
+):
     """
     Generate a single phantom with all processing steps.
 
@@ -186,13 +186,14 @@ def generate_single_phantom(phantom_generator, property_sampler, workflow, args,
     logger.info("Step 1/5: Generating raw 3D structures")
     if args.phantom_type == "custom":
         raw_structures = phantom_generator.generate(
-            seed=seed,
-            child_blobs_batch_size=args.child_blobs_batch_size
+            seed=seed, child_blobs_batch_size=args.child_blobs_batch_size
         )
     else:
         raw_structures = phantom_generator.generate(seed=seed)
 
-    logger.info(f"Generated phantom with {len(raw_structures.children)} children and {len(raw_structures.tubes)} tubes")
+    logger.info(
+        f"Generated phantom with {len(raw_structures.children)} children and {len(raw_structures.tubes)} tubes"
+    )
 
     # Step 2: Convert to meshes
     logger.info("Step 2/5: Converting structures to meshes")
@@ -201,7 +202,9 @@ def generate_single_phantom(phantom_generator, property_sampler, workflow, args,
     # Step 3: Process meshes
     logger.info("Step 3/5: Processing meshes through workflow")
     processed_meshes = workflow(phantom_meshes)
-    logger.info(f"Processed phantom: parent has {len(processed_meshes.parent.vertices)} vertices")
+    logger.info(
+        f"Processed phantom: parent has {len(processed_meshes.parent.vertices)} vertices"
+    )
 
     # Step 4: Sample properties
     logger.info("Step 4/5: Sampling physical properties")
@@ -257,7 +260,7 @@ def main():
             workflow=workflow,
             args=args,
             output_dir=args.output,
-            seed=args.seed
+            seed=args.seed,
         )
 
         # Print report

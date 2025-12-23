@@ -7,6 +7,7 @@ DESCRIPTION
     Contains mathematical utilities for sphere packing validation and other geometric
     computations required during the phantom generation process.
 """
+
 import numpy as np
 
 
@@ -43,10 +44,12 @@ def generate_fibonacci_points_on_sphere(num_points: int = 10000) -> np.ndarray:
         return np.array([]).reshape(0, 3)
 
     if num_points == 1:
-        raise ZeroDivisionError("Cannot generate Fibonacci points for a single point due to division by zero")
+        raise ZeroDivisionError(
+            "Cannot generate Fibonacci points for a single point due to division by zero"
+        )
 
     points = []
-    phi = np.pi * (np.sqrt(5.) - 1.)
+    phi = np.pi * (np.sqrt(5.0) - 1.0)
     for i in range(num_points):
         y = 1 - (i / float(num_points - 1)) * 2
         radius = np.sqrt(1 - y * y)
@@ -57,7 +60,12 @@ def generate_fibonacci_points_on_sphere(num_points: int = 10000) -> np.ndarray:
     return np.array(points)
 
 
-def spheres_packable(radius_outer: float, radius_inner: float, num_inner: int = 1, safety_margin: float = 0.02) -> bool:
+def spheres_packable(
+    radius_outer: float,
+    radius_inner: float,
+    num_inner: int = 1,
+    safety_margin: float = 0.02,
+) -> bool:
     """
     Check if specified number of spheres can be packed within a larger sphere.
 

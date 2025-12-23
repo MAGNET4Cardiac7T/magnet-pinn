@@ -1,4 +1,5 @@
 """Utility functions for UNet3D model configuration and dynamic class loading."""
+
 import importlib
 
 
@@ -28,7 +29,7 @@ def get_class(class_name, modules):
         clazz = getattr(m, class_name, None)
         if clazz is not None:
             return clazz
-    raise RuntimeError(f'Unsupported dataset class: {class_name}')
+    raise RuntimeError(f"Unsupported dataset class: {class_name}")
 
 
 def number_of_features_per_level(init_channel_number, num_levels):
@@ -48,4 +49,4 @@ def number_of_features_per_level(init_channel_number, num_levels):
         List containing the number of feature maps at each level,
         computed as init_channel_number * 2^k for k in range(num_levels)
     """
-    return [init_channel_number * 2 ** k for k in range(num_levels)]
+    return [init_channel_number * 2**k for k in range(num_levels)]

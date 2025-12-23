@@ -15,7 +15,9 @@ from magnet_pinn.preprocessing.preprocessing import (
 from tests.preprocessing.helpers import CENTRAL_SPHERE_SIM_NAME
 
 
-def test_grid_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_dir_path, processed_dir_path):
+def test_grid_preprocess_then_iterate(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_dir_path
+):
     p = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -33,10 +35,7 @@ def test_grid_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_di
 
     case_dir = p.out_simulations_dir_path.parent
 
-    augmentation = Compose([
-        Crop(crop_size=(4, 4, 4)),
-        GridPhaseShift(num_coils=4)
-    ])
+    augmentation = Compose([Crop(crop_size=(4, 4, 4)), GridPhaseShift(num_coils=4)])
 
     it = MagnetBaseIterator(case_dir, transforms=augmentation, num_samples=1)
 
@@ -64,7 +63,9 @@ def test_grid_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_di
     assert result["truncation_coefficients"].shape == (3,)
 
 
-def test_point_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_dir_path, processed_dir_path):
+def test_point_preprocess_then_iterate(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_dir_path
+):
     p = PointPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -76,10 +77,7 @@ def test_point_preprocess_then_iterate(raw_central_batch_dir_path, raw_antenna_d
     case_dir = p.out_simulations_dir_path.parent
 
     augmentation = Compose(
-        [
-            PointSampling(points_sampled=10),
-            PointPhaseShift(num_coils=4)
-        ]
+        [PointSampling(points_sampled=10), PointPhaseShift(num_coils=4)]
     )
 
     it = MagnetBaseIterator(case_dir, transforms=augmentation, num_samples=1)

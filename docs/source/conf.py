@@ -6,10 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'magnet-pinn'
-copyright = '2024, Andrzej Dulny'
-author = 'Andrzej Dulny'
-release = '0.0.12'
+project = "magnet-pinn"
+copyright = "2024, Andrzej Dulny"
+author = "Andrzej Dulny"
+release = "0.0.12"
 
 # from importlib.metadata import version, PackageNotFoundError
 
@@ -22,27 +22,27 @@ release = '0.0.12'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
-    'sphinx_design',
-    'sphinx_rtd_theme',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx_design",
+    "sphinx_rtd_theme",
 ]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
 # -- Options for autodoc extension -------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#module-sphinx.ext.autodoc
 
 autodoc_default_options = {
-    'members': True,
+    "members": True,
     "undoc-members": True,
-    'private-members': False,
+    "private-members": False,
     "inherited-members": False,
-    'show-inheritance': True,
-    'special-members': False,
+    "show-inheritance": True,
+    "special-members": False,
 }
 autosummary_imported_members = True
 
@@ -50,8 +50,8 @@ autosummary_imported_members = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]
 
 html_css_files = [
     "dynabench.css",

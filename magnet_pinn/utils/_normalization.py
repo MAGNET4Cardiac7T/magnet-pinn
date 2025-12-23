@@ -324,9 +324,15 @@ class Normalizer(torch.nn.Module):
 
         self._params = params.copy() if params else {}
         self.nonlinearity = (
-            nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
+            nonlinearity
+            if isinstance(nonlinearity, Nonlinearity)
+            else self._get_nonlineartiy_function(nonlinearity)
         )
-        self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
+        self.nonlinearity_name = (
+            nonlinearity
+            if isinstance(nonlinearity, str)
+            else nonlinearity.__class__.__name__
+        )
         self.nonlinearity_before = nonlinearity_before
         self.counter = 0
 
@@ -506,13 +512,21 @@ class Normalizer(torch.nn.Module):
 
         expanded_params = {}
         for key, value in params_dict.items():
-            pattern = "c -> " + " ".join(["1"] * axis) + " c " + " ".join(["1"] * (ndims - axis - 1))
+            pattern = (
+                "c -> "
+                + " ".join(["1"] * axis)
+                + " c "
+                + " ".join(["1"] * (ndims - axis - 1))
+            )
             expanded_params[key] = einops.rearrange(value, pattern)
 
         return expanded_params
 
     def _cast_params(
-        self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device("cpu")
+        self,
+        params_dict: dict = None,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
         """Cast parameter values to specified dtype and device.
 
@@ -623,7 +637,14 @@ class Normalizer(torch.nn.Module):
             nonlinearity_before = params.pop("nonlinearity_before", False)
             nonlinearity_fn = cls._get_nonlineartiy_function(nonlinearity)
 
-        return cast(Self, cls(params=params, nonlinearity=nonlinearity_fn, nonlinearity_before=nonlinearity_before))
+        return cast(
+            Self,
+            cls(
+                params=params,
+                nonlinearity=nonlinearity_fn,
+                nonlinearity_before=nonlinearity_before,
+            ),
+        )
 
 
 class MinMaxNormalizer(Normalizer):
@@ -715,10 +736,16 @@ class MinMaxNormalizer(Normalizer):
         cur_min = einops.reduce(x, pattern, reduction="min").tolist()
         cur_max = einops.reduce(x, pattern, reduction="max").tolist()
         self._params["x_min"] = [
-            min(prev, cur) for prev, cur in zip_longest(self._params["x_min"], cur_min, fillvalue=float("inf"))
+            min(prev, cur)
+            for prev, cur in zip_longest(
+                self._params["x_min"], cur_min, fillvalue=float("inf")
+            )
         ]
         self._params["x_max"] = [
-            max(prev, cur) for prev, cur in zip_longest(self._params["x_max"], cur_max, fillvalue=float("-inf"))
+            max(prev, cur)
+            for prev, cur in zip_longest(
+                self._params["x_max"], cur_max, fillvalue=float("-inf")
+            )
         ]
 
 
@@ -838,7 +865,9 @@ class StandardNormalizer(Normalizer):
         ]
         self._params["x_mean_sq"] = [
             mean_update(prev, cur, self.counter)
-            for prev, cur in zip_longest(self._params["x_mean_sq"], cur_mean_sq, fillvalue=0)
+            for prev, cur in zip_longest(
+                self._params["x_mean_sq"], cur_mean_sq, fillvalue=0
+            )
         ]
 
 
@@ -901,7 +930,9 @@ class MetaNormalizer(Normalizer):
         NotImplementedError
             MetaNormalizer does not support direct normalization.
         """
-        raise NotImplementedError("MetaNormalizer does not support direct normalization.")
+        raise NotImplementedError(
+            "MetaNormalizer does not support direct normalization."
+        )
 
     def _denormalize(self, x, axis: int = 0):
         """Not implemented for MetaNormalizer.
@@ -918,7 +949,9 @@ class MetaNormalizer(Normalizer):
         NotImplementedError
             MetaNormalizer does not support direct denormalization.
         """
-        raise NotImplementedError("MetaNormalizer does not support direct denormalization.")
+        raise NotImplementedError(
+            "MetaNormalizer does not support direct denormalization."
+        )
 
     def _expand_params(self, params_dict: dict = None, axis: int = 0, ndims: int = 5):
         """Not implemented for MetaNormalizer.
@@ -937,10 +970,15 @@ class MetaNormalizer(Normalizer):
         NotImplementedError
             MetaNormalizer does not support parameter expansion.
         """
-        raise NotImplementedError("MetaNormalizer does not support parameter expansion.")
+        raise NotImplementedError(
+            "MetaNormalizer does not support parameter expansion."
+        )
 
     def _cast_params(
-        self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device("cpu")
+        self,
+        params_dict: dict = None,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
         """Not implemented for MetaNormalizer.
 
@@ -966,7 +1004,11 @@ class MetaNormalizer(Normalizer):
             normalizer._reset_params()
 
     def fit_params(
-        self, dataset: Iterable, axis: int = 0, keys: Union[str, List[str]] = "input", verbose: bool = True
+        self,
+        dataset: Iterable,
+        axis: int = 0,
+        keys: Union[str, List[str]] = "input",
+        verbose: bool = True,
     ) -> None:
         """
         Fit parameters for all normalizers in one loop over the dataset.
@@ -989,7 +1031,9 @@ class MetaNormalizer(Normalizer):
             keys = [keys] * len(self.normalizers)
         elif isinstance(keys, list):
             if len(keys) != len(self.normalizers):
-                raise ValueError("The number of keys must match the number of normalizers.")
+                raise ValueError(
+                    "The number of keys must match the number of normalizers."
+                )
         else:
             raise TypeError("Keys must be either a string or a list of strings.")
 
@@ -1003,7 +1047,9 @@ class MetaNormalizer(Normalizer):
                 normalizer._update_params(x, axis=axis)
             self.counter += 1  # Increment MetaNormalizer's counter
 
-    def save_as_json(self, file_names: List[str], base_path: Optional[str] = None) -> None:
+    def save_as_json(
+        self, file_names: List[str], base_path: Optional[str] = None
+    ) -> None:
         """
         Save all normalizers separately to the specified file names.
 
@@ -1017,7 +1063,9 @@ class MetaNormalizer(Normalizer):
             file names are used. If provided, it must be a string.
         """
         if len(file_names) != len(self.normalizers):
-            raise ValueError("The number of file names must match the number of normalizers.")
+            raise ValueError(
+                "The number of file names must match the number of normalizers."
+            )
 
         if base_path is not None and not isinstance(base_path, str):
             raise TypeError("base_path must be a string or None.")

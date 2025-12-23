@@ -11,7 +11,7 @@ from magnet_pinn.generator.__main__ import (
     create_custom_phantom,
     create_workflow,
     generate_single_phantom,
-    main
+    main,
 )
 from magnet_pinn.generator.samplers import PropertySampler
 from magnet_pinn.generator.phantoms import Tissue, CustomPhantom
@@ -25,7 +25,7 @@ def test_create_property_sampler_with_default_values():
         conductivity_min=0.5,
         conductivity_max=1.5,
         permittivity_min=10.0,
-        permittivity_max=20.0
+        permittivity_max=20.0,
     )
 
     sampler = create_property_sampler(args)
@@ -46,7 +46,7 @@ def test_create_property_sampler_with_custom_values():
         conductivity_min=0.1,
         conductivity_max=2.0,
         permittivity_min=1.0,
-        permittivity_max=80.0
+        permittivity_max=80.0,
     )
 
     sampler = create_property_sampler(args)
@@ -73,7 +73,7 @@ def test_create_tissue_phantom_with_default_parameters():
         blob_radius_decrease=0.3,
         num_tubes=8,
         relative_tube_max_radius=0.1,
-        relative_tube_min_radius=0.01
+        relative_tube_min_radius=0.01,
     )
 
     phantom = create_tissue_phantom(args)
@@ -84,7 +84,7 @@ def test_create_tissue_phantom_with_default_parameters():
     assert phantom.num_tubes == 8
     assert np.array_equal(
         phantom.initial_blob_center_extent,
-        np.array([[-10.0, 10.0], [-10.0, 10.0], [-10.0, 10.0]])
+        np.array([[-10.0, 10.0], [-10.0, 10.0], [-10.0, 10.0]]),
     )
 
 
@@ -101,7 +101,7 @@ def test_create_tissue_phantom_with_custom_parameters():
         blob_radius_decrease=0.5,
         num_tubes=15,
         relative_tube_max_radius=0.2,
-        relative_tube_min_radius=0.05
+        relative_tube_min_radius=0.05,
     )
 
     phantom = create_tissue_phantom(args)
@@ -112,7 +112,9 @@ def test_create_tissue_phantom_with_custom_parameters():
     assert phantom.num_tubes == 15
 
 
-def test_create_custom_phantom_with_default_parameters(simple_mesh, generation_output_dir_path):
+def test_create_custom_phantom_with_default_parameters(
+    simple_mesh, generation_output_dir_path
+):
     stl_path = generation_output_dir_path / "test_mesh.stl"
     simple_mesh.export(stl_path)
 
@@ -123,7 +125,7 @@ def test_create_custom_phantom_with_default_parameters(simple_mesh, generation_o
         num_tubes=10,
         relative_tube_max_radius=0.1,
         relative_tube_min_radius=0.01,
-        sample_children_only_inside=False
+        sample_children_only_inside=False,
     )
 
     phantom = create_custom_phantom(args)
@@ -133,7 +135,9 @@ def test_create_custom_phantom_with_default_parameters(simple_mesh, generation_o
     assert phantom.num_tubes == 10
 
 
-def test_create_custom_phantom_with_custom_parameters(simple_mesh, generation_output_dir_path):
+def test_create_custom_phantom_with_custom_parameters(
+    simple_mesh, generation_output_dir_path
+):
     stl_path = generation_output_dir_path / "custom_mesh.stl"
     simple_mesh.export(stl_path)
 
@@ -144,7 +148,7 @@ def test_create_custom_phantom_with_custom_parameters(simple_mesh, generation_ou
         num_tubes=12,
         relative_tube_max_radius=0.15,
         relative_tube_min_radius=0.02,
-        sample_children_only_inside=True
+        sample_children_only_inside=True,
     )
 
     phantom = create_custom_phantom(args)
@@ -155,7 +159,7 @@ def test_create_custom_phantom_with_custom_parameters(simple_mesh, generation_ou
 
 
 def test_create_workflow_mode_none():
-    args = Namespace(transforms_mode='none')
+    args = Namespace(transforms_mode="none")
 
     workflow = create_workflow(args)
 
@@ -164,7 +168,7 @@ def test_create_workflow_mode_none():
 
 
 def test_create_workflow_mode_default():
-    args = Namespace(transforms_mode='default')
+    args = Namespace(transforms_mode="default")
 
     workflow = create_workflow(args)
 
@@ -173,7 +177,7 @@ def test_create_workflow_mode_default():
 
 
 def test_create_workflow_mode_all():
-    args = Namespace(transforms_mode='all')
+    args = Namespace(transforms_mode="all")
 
     workflow = create_workflow(args)
 
@@ -181,10 +185,12 @@ def test_create_workflow_mode_all():
     assert len(workflow.transforms) == 5
 
 
-@patch('magnet_pinn.generator.__main__.MeshWriter')
-@patch('magnet_pinn.generator.__main__.default_rng')
-@patch('magnet_pinn.generator.__main__.ToMesh')
-def test_generate_single_phantom_tissue_type(mock_to_mesh, mock_rng, mock_writer, generation_output_dir_path):
+@patch("magnet_pinn.generator.__main__.MeshWriter")
+@patch("magnet_pinn.generator.__main__.default_rng")
+@patch("magnet_pinn.generator.__main__.ToMesh")
+def test_generate_single_phantom_tissue_type(
+    mock_to_mesh, mock_rng, mock_writer, generation_output_dir_path
+):
     mock_phantom_generator = Mock()
     mock_raw_structures = Mock()
     mock_raw_structures.children = [Mock(), Mock()]
@@ -211,7 +217,7 @@ def test_generate_single_phantom_tissue_type(mock_to_mesh, mock_rng, mock_writer
     mock_writer_instance = Mock()
     mock_writer.return_value = mock_writer_instance
 
-    args = Namespace(phantom_type='tissue')
+    args = Namespace(phantom_type="tissue")
     output_dir = generation_output_dir_path / "output"
     seed = 42
 
@@ -221,23 +227,29 @@ def test_generate_single_phantom_tissue_type(mock_to_mesh, mock_rng, mock_writer
         workflow=mock_workflow,
         args=args,
         output_dir=output_dir,
-        seed=seed
+        seed=seed,
     )
 
     mock_phantom_generator.generate.assert_called_once_with(seed=seed)
     mock_to_mesh_instance.assert_called_once_with(mock_raw_structures)
     mock_workflow.assert_called_once_with(mock_phantom_meshes)
     mock_rng.assert_called_once_with(seed)
-    mock_property_sampler.sample_like.assert_called_once_with(mock_processed_meshes, rng=mock_rng_instance)
+    mock_property_sampler.sample_like.assert_called_once_with(
+        mock_processed_meshes, rng=mock_rng_instance
+    )
     mock_writer.assert_called_once_with(output_dir)
-    mock_writer_instance.write.assert_called_once_with(mock_processed_meshes, mock_properties)
+    mock_writer_instance.write.assert_called_once_with(
+        mock_processed_meshes, mock_properties
+    )
     assert result == output_dir
 
 
-@patch('magnet_pinn.generator.__main__.MeshWriter')
-@patch('magnet_pinn.generator.__main__.default_rng')
-@patch('magnet_pinn.generator.__main__.ToMesh')
-def test_generate_single_phantom_custom_type(mock_to_mesh, mock_rng, mock_writer, generation_output_dir_path):
+@patch("magnet_pinn.generator.__main__.MeshWriter")
+@patch("magnet_pinn.generator.__main__.default_rng")
+@patch("magnet_pinn.generator.__main__.ToMesh")
+def test_generate_single_phantom_custom_type(
+    mock_to_mesh, mock_rng, mock_writer, generation_output_dir_path
+):
     mock_phantom_generator = Mock()
     mock_raw_structures = Mock()
     mock_raw_structures.children = [Mock()]
@@ -264,7 +276,7 @@ def test_generate_single_phantom_custom_type(mock_to_mesh, mock_rng, mock_writer
     mock_writer_instance = Mock()
     mock_writer.return_value = mock_writer_instance
 
-    args = Namespace(phantom_type='custom', child_blobs_batch_size=500000)
+    args = Namespace(phantom_type="custom", child_blobs_batch_size=500000)
     output_dir = generation_output_dir_path / "custom_output"
     seed = 123
 
@@ -274,36 +286,43 @@ def test_generate_single_phantom_custom_type(mock_to_mesh, mock_rng, mock_writer
         workflow=mock_workflow,
         args=args,
         output_dir=output_dir,
-        seed=seed
+        seed=seed,
     )
 
-    mock_phantom_generator.generate.assert_called_once_with(seed=seed, child_blobs_batch_size=500000)
+    mock_phantom_generator.generate.assert_called_once_with(
+        seed=seed, child_blobs_batch_size=500000
+    )
     mock_to_mesh_instance.assert_called_once_with(mock_raw_structures)
     mock_workflow.assert_called_once_with(mock_phantom_meshes)
     mock_rng.assert_called_once_with(seed)
-    mock_property_sampler.sample_like.assert_called_once_with(mock_processed_meshes, rng=mock_rng_instance)
+    mock_property_sampler.sample_like.assert_called_once_with(
+        mock_processed_meshes, rng=mock_rng_instance
+    )
     mock_writer.assert_called_once_with(output_dir)
-    mock_writer_instance.write.assert_called_once_with(mock_processed_meshes, mock_properties)
+    mock_writer_instance.write.assert_called_once_with(
+        mock_processed_meshes, mock_properties
+    )
     assert result == output_dir
 
 
-@patch('magnet_pinn.generator.__main__.print_report')
-@patch('magnet_pinn.generator.__main__.generate_single_phantom')
-@patch('magnet_pinn.generator.__main__.create_workflow')
-@patch('magnet_pinn.generator.__main__.create_property_sampler')
-@patch('magnet_pinn.generator.__main__.create_tissue_phantom')
-@patch('magnet_pinn.generator.__main__.validate_arguments')
-@patch('magnet_pinn.generator.__main__.parse_arguments')
+@patch("magnet_pinn.generator.__main__.print_report")
+@patch("magnet_pinn.generator.__main__.generate_single_phantom")
+@patch("magnet_pinn.generator.__main__.create_workflow")
+@patch("magnet_pinn.generator.__main__.create_property_sampler")
+@patch("magnet_pinn.generator.__main__.create_tissue_phantom")
+@patch("magnet_pinn.generator.__main__.validate_arguments")
+@patch("magnet_pinn.generator.__main__.parse_arguments")
 def test_main_tissue_phantom_success(
-    mock_parse_args, mock_validate, mock_create_tissue,
-    mock_create_sampler, mock_create_workflow, mock_generate, mock_print_report,
-    generation_output_dir_path
+    mock_parse_args,
+    mock_validate,
+    mock_create_tissue,
+    mock_create_sampler,
+    mock_create_workflow,
+    mock_generate,
+    mock_print_report,
+    generation_output_dir_path,
 ):
-    args = Namespace(
-        phantom_type='tissue',
-        output=generation_output_dir_path,
-        seed=42
-    )
+    args = Namespace(phantom_type="tissue", output=generation_output_dir_path, seed=42)
     mock_parse_args.return_value = args
 
     mock_phantom = Mock()
@@ -332,28 +351,29 @@ def test_main_tissue_phantom_success(
         workflow=mock_workflow,
         args=args,
         output_dir=args.output,
-        seed=args.seed
+        seed=args.seed,
     )
     mock_print_report.assert_called_once_with(args, mock_output_path)
 
 
-@patch('magnet_pinn.generator.__main__.print_report')
-@patch('magnet_pinn.generator.__main__.generate_single_phantom')
-@patch('magnet_pinn.generator.__main__.create_workflow')
-@patch('magnet_pinn.generator.__main__.create_property_sampler')
-@patch('magnet_pinn.generator.__main__.create_custom_phantom')
-@patch('magnet_pinn.generator.__main__.validate_arguments')
-@patch('magnet_pinn.generator.__main__.parse_arguments')
+@patch("magnet_pinn.generator.__main__.print_report")
+@patch("magnet_pinn.generator.__main__.generate_single_phantom")
+@patch("magnet_pinn.generator.__main__.create_workflow")
+@patch("magnet_pinn.generator.__main__.create_property_sampler")
+@patch("magnet_pinn.generator.__main__.create_custom_phantom")
+@patch("magnet_pinn.generator.__main__.validate_arguments")
+@patch("magnet_pinn.generator.__main__.parse_arguments")
 def test_main_custom_phantom_success(
-    mock_parse_args, mock_validate, mock_create_custom,
-    mock_create_sampler, mock_create_workflow, mock_generate, mock_print_report,
-    generation_output_dir_path
+    mock_parse_args,
+    mock_validate,
+    mock_create_custom,
+    mock_create_sampler,
+    mock_create_workflow,
+    mock_generate,
+    mock_print_report,
+    generation_output_dir_path,
 ):
-    args = Namespace(
-        phantom_type='custom',
-        output=generation_output_dir_path,
-        seed=100
-    )
+    args = Namespace(phantom_type="custom", output=generation_output_dir_path, seed=100)
     mock_parse_args.return_value = args
 
     mock_phantom = Mock()
@@ -382,15 +402,15 @@ def test_main_custom_phantom_success(
         workflow=mock_workflow,
         args=args,
         output_dir=args.output,
-        seed=args.seed
+        seed=args.seed,
     )
     mock_print_report.assert_called_once_with(args, mock_output_path)
 
 
-@patch('magnet_pinn.generator.__main__.validate_arguments')
-@patch('magnet_pinn.generator.__main__.parse_arguments')
+@patch("magnet_pinn.generator.__main__.validate_arguments")
+@patch("magnet_pinn.generator.__main__.parse_arguments")
 def test_main_validation_error(mock_parse_args, mock_validate):
-    args = Namespace(phantom_type='tissue')
+    args = Namespace(phantom_type="tissue")
     mock_parse_args.return_value = args
     mock_validate.side_effect = ValueError("Invalid configuration")
 
@@ -401,11 +421,11 @@ def test_main_validation_error(mock_parse_args, mock_validate):
     mock_validate.assert_called_once_with(args)
 
 
-@patch('magnet_pinn.generator.__main__.create_tissue_phantom')
-@patch('magnet_pinn.generator.__main__.validate_arguments')
-@patch('magnet_pinn.generator.__main__.parse_arguments')
+@patch("magnet_pinn.generator.__main__.create_tissue_phantom")
+@patch("magnet_pinn.generator.__main__.validate_arguments")
+@patch("magnet_pinn.generator.__main__.parse_arguments")
 def test_main_unknown_phantom_type(mock_parse_args, mock_validate, mock_create_tissue):
-    args = Namespace(phantom_type='unknown_type')
+    args = Namespace(phantom_type="unknown_type")
     mock_parse_args.return_value = args
 
     result = main()
@@ -416,22 +436,22 @@ def test_main_unknown_phantom_type(mock_parse_args, mock_validate, mock_create_t
     mock_create_tissue.assert_not_called()
 
 
-@patch('magnet_pinn.generator.__main__.generate_single_phantom')
-@patch('magnet_pinn.generator.__main__.create_workflow')
-@patch('magnet_pinn.generator.__main__.create_property_sampler')
-@patch('magnet_pinn.generator.__main__.create_tissue_phantom')
-@patch('magnet_pinn.generator.__main__.validate_arguments')
-@patch('magnet_pinn.generator.__main__.parse_arguments')
+@patch("magnet_pinn.generator.__main__.generate_single_phantom")
+@patch("magnet_pinn.generator.__main__.create_workflow")
+@patch("magnet_pinn.generator.__main__.create_property_sampler")
+@patch("magnet_pinn.generator.__main__.create_tissue_phantom")
+@patch("magnet_pinn.generator.__main__.validate_arguments")
+@patch("magnet_pinn.generator.__main__.parse_arguments")
 def test_main_generation_error(
-    mock_parse_args, mock_validate, mock_create_tissue,
-    mock_create_sampler, mock_create_workflow, mock_generate,
-    generation_output_dir_path
+    mock_parse_args,
+    mock_validate,
+    mock_create_tissue,
+    mock_create_sampler,
+    mock_create_workflow,
+    mock_generate,
+    generation_output_dir_path,
 ):
-    args = Namespace(
-        phantom_type='tissue',
-        output=generation_output_dir_path,
-        seed=42
-    )
+    args = Namespace(phantom_type="tissue", output=generation_output_dir_path, seed=42)
     mock_parse_args.return_value = args
 
     mock_phantom = Mock()
@@ -458,9 +478,7 @@ def test_main_generation_error(
 
 def test_main_module_direct_execution():
     result = subprocess.run(
-        [sys.executable, '-m', 'magnet_pinn.generator'],
-        capture_output=True,
-        timeout=5
+        [sys.executable, "-m", "magnet_pinn.generator"], capture_output=True, timeout=5
     )
 
     assert result.returncode == 2

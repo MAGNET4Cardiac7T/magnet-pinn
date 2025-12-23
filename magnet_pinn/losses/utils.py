@@ -1,4 +1,5 @@
 """Utility classes for loss computation and finite difference operators."""
+
 import torch
 from typing import Optional
 from findiff import coefficients
@@ -20,9 +21,7 @@ class LossReducer(torch.nn.Module):
         Whether to apply masking during reduction. Default is True.
     """
 
-    def __init__(self,
-                 agg: str = 'mean',
-                 masking: bool = True):
+    def __init__(self, agg: str = "mean", masking: bool = True):
         """
         Initialize LossReducer.
 
@@ -39,7 +38,7 @@ class LossReducer(torch.nn.Module):
             If agg is not one of the supported methods
         """
         super(LossReducer, self).__init__()
-        if not agg in ['mean', 'sum', 'min', 'max']:
+        if not agg in ["mean", "sum", "min", "max"]:
             raise ValueError("Unknown aggregation method: {agg}")
         self.agg = agg
 
@@ -68,24 +67,26 @@ class LossReducer(torch.nn.Module):
         """
         if self.masking and mask is not None:
             if mask.shape != loss.shape:
-                raise ValueError(f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}")
+                raise ValueError(
+                    f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}"
+                )
 
-            return einops.reduce(loss[mask], '... ->', self.agg)   # one scalar
+            return einops.reduce(loss[mask], "... ->", self.agg)  # one scalar
         else:
-            return einops.reduce(loss, '... ->', self.agg)
+            return einops.reduce(loss, "... ->", self.agg)
 
 
 class ObjectMaskCropping:
     """
-        Crop object mask to disregard boundary regions of the object. Useful for excluding areas
-        where finite difference calculations may be inaccurate due to discontinuities at object edges.
+    Crop object mask to disregard boundary regions of the object. Useful for excluding areas
+    where finite difference calculations may be inaccurate due to discontinuities at object edges.
 
-        Works by checking if all neighboring voxels within a specified padding distance are filled (i.e., part of the object).
+    Works by checking if all neighboring voxels within a specified padding distance are filled (i.e., part of the object).
 
-        Parameters
-        ----------
-        padding : int, optional
-            Number of voxels to crop from the object boundaries, by default 1.
+    Parameters
+    ----------
+    padding : int, optional
+        Number of voxels to crop from the object boundaries, by default 1.
     """
 
     def __init__(self, padding: int = 1):
@@ -99,7 +100,7 @@ class ObjectMaskCropping:
         """
         self.padding = padding
         self.padding_filter = torch.ones(
-            [1, 1] + [self.padding*2 + 1]*3, dtype=torch.float32
+            [1, 1] + [self.padding * 2 + 1] * 3, dtype=torch.float32
         )
 
     def __call__(self, input_shape_mask: torch.Tensor) -> torch.Tensor:
@@ -160,11 +161,14 @@ class DiffFilterFactory:
     ValueError
         If the length of dim_names does not match num_dims.
     """
-    def __init__(self,
-                 accuracy: int = 2,
-                 dx: float = 1.0,
-                 num_dims: int = 3,
-                 dim_names: str = 'xyz'):
+
+    def __init__(
+        self,
+        accuracy: int = 2,
+        dx: float = 1.0,
+        num_dims: int = 3,
+        dim_names: str = "xyz",
+    ):
         """
         Initialize DiffFilterFactory.
 
@@ -197,7 +201,9 @@ class DiffFilterFactory:
         self.dim_names = dim_names
 
         if len(dim_names) != num_dims:
-            raise ValueError(f"dim_names {dim_names} does not match num_dims {num_dims}")
+            raise ValueError(
+                f"dim_names {dim_names} does not match num_dims {num_dims}"
+            )
 
     def _single_derivative_coeffs(self, order: int = 1) -> torch.Tensor:
         """
@@ -216,9 +222,9 @@ class DiffFilterFactory:
         if order == 0:
             return torch.tensor([1.0], dtype=torch.float32)
         coeffs = coefficients(deriv=order, acc=self.accuracy)
-        return torch.tensor(
-            coeffs['center']['coefficients'], dtype=torch.float32
-        ) / (self.dx**order)
+        return torch.tensor(coeffs["center"]["coefficients"], dtype=torch.float32) / (
+            self.dx**order
+        )
 
     def _generate_einops_expansion_expression(self, dim: int) -> str:
         """
@@ -237,9 +243,9 @@ class DiffFilterFactory:
         """
         if dim >= self.num_dims:
             raise ValueError(f"dim {dim} must be less than num_dims {self.num_dims}")
-        dims_before = ' '.join(['()']*dim)
-        dims_after = ' '.join(['()']*(self.num_dims - dim - 1))
-        return f'd -> {dims_before} d {dims_after}'
+        dims_before = " ".join(["()"] * dim)
+        dims_after = " ".join(["()"] * (self.num_dims - dim - 1))
+        return f"d -> {dims_before} d {dims_after}"
 
     def _pad_to_square(self, tensor: torch.Tensor) -> torch.Tensor:
         """
@@ -259,7 +265,7 @@ class DiffFilterFactory:
         pad_sizes = [(max_dim - s) // 2 for s in tensor.shape]
         pad_sizes = [item for sublist in zip(pad_sizes, pad_sizes) for item in sublist]
         pad_sizes = pad_sizes[::-1]
-        return torch.nn.functional.pad(tensor, pad_sizes, mode='constant', value=0)
+        return torch.nn.functional.pad(tensor, pad_sizes, mode="constant", value=0)
 
     def derivative_from_expression(self, expression: str) -> torch.Tensor:
         """
@@ -282,9 +288,7 @@ class DiffFilterFactory:
         orders = [expression.count(dim) for dim in self.dim_names]
         coeffs = [self._single_derivative_coeffs(order) for order in orders]
         coeffs = [
-            einops.rearrange(
-                coeff, self._generate_einops_expansion_expression(dim)
-            )
+            einops.rearrange(coeff, self._generate_einops_expansion_expression(dim))
             for dim, coeff in enumerate(coeffs)
         ]
 
@@ -308,7 +312,7 @@ class DiffFilterFactory:
             self._pad_to_square(coeff) for coeff in per_dimension_coeffs
         ]
         divergence_filter = torch.stack(per_dimension_coeffs, dim=0)
-        divergence_filter = einops.rearrange(divergence_filter, '... -> () ...')
+        divergence_filter = einops.rearrange(divergence_filter, "... -> () ...")
         return divergence_filter
 
     def curl(self) -> torch.Tensor:
@@ -326,14 +330,14 @@ class DiffFilterFactory:
             dtype=torch.float32,
         )
 
-        dy_filter = self.derivative_from_expression('y')
-        dz_filter = self.derivative_from_expression('z')
+        dy_filter = self.derivative_from_expression("y")
+        dz_filter = self.derivative_from_expression("z")
         dy_padded = self._pad_to_square(dy_filter)
         dz_padded = self._pad_to_square(dz_filter)
         curl_filter[0, 2] = dy_padded
         curl_filter[0, 1] = -dz_padded
 
-        dx_filter = self.derivative_from_expression('x')
+        dx_filter = self.derivative_from_expression("x")
         dx_padded = self._pad_to_square(dx_filter)
         curl_filter[1, 0] = dz_padded
         curl_filter[1, 2] = -dx_padded
@@ -342,25 +346,3 @@ class DiffFilterFactory:
         curl_filter[2, 0] = -dy_padded
 
         return curl_filter
-
-
-def mask_padding(input_shape_mask: torch.Tensor, padding: int = 1) -> torch.Tensor:
-    """
-    Convenience function for ObjectMaskPadding.
-
-    Pads object mask to create a boundary region around objects.
-
-    Parameters
-    ----------
-    input_shape_mask : torch.Tensor
-        Input boolean mask tensor.
-    padding : int, optional
-        Padding distance in voxels, by default 1.
-
-    Returns
-    -------
-    torch.Tensor
-        Boolean tensor where True indicates all neighbors within
-        padding distance are filled.
-    """
-    return ObjectMaskPadding(padding=padding)(input_shape_mask)

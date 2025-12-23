@@ -69,10 +69,13 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     simulation_list: List[Path]
         List of simulation `.h5` file paths
     """
-    def __init__(self,
-                 data_dir: Union[str, Path],
-                 transforms: Optional[BaseTransform] = None,
-                 num_samples: int = 1):
+
+    def __init__(
+        self,
+        data_dir: Union[str, Path],
+        transforms: Optional[BaseTransform] = None,
+        num_samples: int = 1,
+    ):
         """
         Parameters
         ----------
@@ -187,7 +190,9 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             truncation_coefficients=self._get_truncation_coefficients(simulation_path),
         )
 
-    def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
+    def _read_fields(
+        self, simulation_path: Union[str, Path]
+    ) -> npt.NDArray[np.float32]:
         """
         A method for reading the field from the h5 file. After the extraction
         we join e- and h-fields in the first axis, and real and imaginary parts in the second axis.
@@ -205,7 +210,9 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             Field array
         """
 
-        def read_field(f: h5py.File, field_key: str) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        def read_field(
+            f: h5py.File, field_key: str
+        ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
             """Read complex field from HDF5 file and split into real/imaginary parts.
 
             Parameters
@@ -227,7 +234,13 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             re_efield, im_efield = read_field(f, E_FIELD_OUT_KEY)
             re_hfield, im_hfield = read_field(f, H_FIELD_OUT_KEY)
 
-        return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
+        return np.stack(
+            [
+                np.stack([re_efield, im_efield], axis=0),
+                np.stack([re_hfield, im_hfield], axis=0),
+            ],
+            axis=0,
+        )
 
     def _read_input(self, simulation_path: Union[Path, str]) -> npt.NDArray[np.float32]:
         """
@@ -284,7 +297,9 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             dtype = f.attrs[DTYPE_OUT_KEY]
         return dtype
 
-    def _get_truncation_coefficients(self, simulation_path: Union[Path, str]) -> npt.NDArray:
+    def _get_truncation_coefficients(
+        self, simulation_path: Union[Path, str]
+    ) -> npt.NDArray:
         """
         Method reads the truncation coefficients from the h5 file.
 

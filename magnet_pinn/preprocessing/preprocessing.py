@@ -10,6 +10,7 @@ CLASSES
     GridPreprocessing
     PointPreprocessing
 """
+
 import warnings
 from pathlib import Path
 from collections import Counter
@@ -34,7 +35,7 @@ from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
     H_FIELD_DATABASE_KEY,
     FieldReaderFactory,
-    FieldReader
+    FieldReader,
 )
 from magnet_pinn.preprocessing.simulation import Simulation
 from magnet_pinn.preprocessing.voxelizing_mesh import MeshVoxelizer
@@ -145,13 +146,14 @@ class Preprocessing(ABC):
             )
         return self.__dipoles_features
 
-
-    def __init__(self,
-                 batches_dir_paths: Union[str, Path, List[str], List[Path]],
-                 antenna_dir_path: Union[str, Path],
-                 output_dir_path: Union[str, Path],
-                 field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Optional[float] = 2.0) -> None:
+    def __init__(
+        self,
+        batches_dir_paths: Union[str, Path, List[str], List[Path]],
+        antenna_dir_path: Union[str, Path],
+        output_dir_path: Union[str, Path],
+        field_dtype: np.dtype = np.complex64,
+        coil_thick_coef: Optional[float] = 2.0,
+    ) -> None:
         """
         The method checks the input and output directories, reads antenna data and
         prepares the output directories. It also checks if simulations have unique names.
@@ -178,11 +180,13 @@ class Preprocessing(ABC):
                 f"The complex dtype '{field_dtype.name}' will be internally converted to "
                 f"its corresponding float type. Please use float types directly (e.g., np.float32 instead of np.complex64).",
                 DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
             self.field_dtype = np.dtype(f"f{field_dtype.itemsize // 2}")
         elif field_dtype.kind != FLOAT_DTYPE_KIND:
-            raise Exception(f'Unsupported field data type: {field_dtype.name}. Only float types are supported (e.g., np.float32, np.float64).')
+            raise Exception(
+                f"Unsupported field data type: {field_dtype.name}. Only float types are supported (e.g., np.float32, np.float64)."
+            )
         else:
             self.field_dtype = field_dtype
 
@@ -199,15 +203,22 @@ class Preprocessing(ABC):
         unique_counted = Counter(map(lambda x: x.name, self.all_sim_paths))
         for name, count in unique_counted.items():
             if count > 1:
-                warnings.warn(f"Simulation '{name}' is not unique and will be overridden. Only one last instance will be kept", UserWarning)
+                warnings.warn(
+                    f"Simulation '{name}' is not unique and will be overridden. Only one last instance will be kept",
+                    UserWarning,
+                )
 
         # create output directories
         target_dir_name = self._output_target_dir
 
-        self.out_simulations_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_SIMULATIONS_DIR_PATH
+        self.out_simulations_dir_path = (
+            Path(output_dir_path) / target_dir_name / PROCESSED_SIMULATIONS_DIR_PATH
+        )
         self.out_simulations_dir_path.mkdir(parents=True, exist_ok=True)
 
-        self.out_antenna_dir_path = Path(output_dir_path) / target_dir_name / PROCESSED_ANTENNA_DIR_PATH
+        self.out_antenna_dir_path = (
+            Path(output_dir_path) / target_dir_name / PROCESSED_ANTENNA_DIR_PATH
+        )
         self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
 
         antenna_dir_path = Path(antenna_dir_path)
@@ -261,11 +272,15 @@ class Preprocessing(ABC):
             if not batch_path.exists():
                 raise FileNotFoundError(f"Batch directory {batch_path} does not exist")
             elif not batch_path.is_dir():
-                raise FileNotFoundError(f"Batch directory {batch_path} is not a directory")
+                raise FileNotFoundError(
+                    f"Batch directory {batch_path} is not a directory"
+                )
             elif len(list(batch_path.iterdir())) == 0:
                 raise FileNotFoundError(f"Batch directory {batch_path} is empty")
 
-            all_simulations_paths.extend([i.resolve().absolute() for i in batch_path.iterdir() if i.is_dir()])
+            all_simulations_paths.extend(
+                [i.resolve().absolute() for i in batch_path.iterdir() if i.is_dir()]
+            )
 
         if len(all_simulations_paths) == 0:
             raise FileNotFoundError("No simulations found")
@@ -281,7 +296,9 @@ class Preprocessing(ABC):
         """
         pass
 
-    def __get_properties_and_meshes(self, dir_path: str) -> Tuple[pd.DataFrame, List[Trimesh]]:
+    def __get_properties_and_meshes(
+        self, dir_path: str
+    ) -> Tuple[pd.DataFrame, List[Trimesh]]:
         """
         Reads properties file `materials.txt` as csv file and then
         loads meshes files which are mentioned in the dataframe and
@@ -329,7 +346,11 @@ class Preprocessing(ABC):
             A list of simulation names which should be processed.
             If None, all simulations will be processed.
         """
-        simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
+        simulations = (
+            self.__resolve_simulations(simulations)
+            if simulations is not None
+            else self.all_sim_paths
+        )
 
         self._write_dipoles()
 
@@ -495,19 +516,20 @@ class Preprocessing(ABC):
         Tuple
             A tuple of features and masks
         """
-        mask = np.ascontiguousarray(rearrange(
-            list(map(
-                self._get_mask,
-                meshes,
-            )),
-            self._masks_stack_pattern
-        ))
+        mask = np.ascontiguousarray(
+            rearrange(
+                list(
+                    map(
+                        self._get_mask,
+                        meshes,
+                    )
+                ),
+                self._masks_stack_pattern,
+            )
+        )
 
         features = self._get_features(properties, mask)
-        return (
-            features,
-            mask
-        )
+        return (features, mask)
 
     @abstractmethod
     def _get_mask(self, mesh: Trimesh) -> np.array:
@@ -524,7 +546,7 @@ class Preprocessing(ABC):
         """
         pass
 
-    def _get_features(self, properties: pd.DataFrame, masks:np.array) -> np.array:
+    def _get_features(self, properties: pd.DataFrame, masks: np.array) -> np.array:
         """
         A shortcut for the procedure of multiplication of properties and masks.
 
@@ -546,17 +568,14 @@ class Preprocessing(ABC):
         props = properties.loc[:, FEATURE_NAMES].to_numpy().T
         extended_props = self._extend_props(props, masks)
 
-        extended_masks = np.ascontiguousarray(repeat(
-            masks,
-            self._extend_masks_pattern,
-            feature=len(FEATURE_NAMES)
-        ))
+        extended_masks = np.ascontiguousarray(
+            repeat(masks, self._extend_masks_pattern, feature=len(FEATURE_NAMES))
+        )
 
-        result = np.ascontiguousarray(reduce(
-            extended_props * extended_masks,
-            self._features_sum_pattern,
-            "sum"
-        ), dtype=np.float32)
+        result = np.ascontiguousarray(
+            reduce(extended_props * extended_masks, self._features_sum_pattern, "sum"),
+            dtype=np.float32,
+        )
         return result
 
     @abstractmethod
@@ -614,7 +633,9 @@ class Preprocessing(ABC):
         features = self._format_features(out_simulation)
 
         self.out_simulations_dir_path.mkdir(parents=True, exist_ok=True)
-        output_file_path = self.out_simulations_dir_path / TARGET_FILE_NAME.format(name=out_simulation.name)
+        output_file_path = self.out_simulations_dir_path / TARGET_FILE_NAME.format(
+            name=out_simulation.name
+        )
         with File(output_file_path, "w") as f:
             f.create_dataset(FEATURES_OUT_KEY, data=features)
             f.create_dataset(E_FIELD_OUT_KEY, data=e_field)
@@ -626,11 +647,11 @@ class Preprocessing(ABC):
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """
-            Calculates the coefficients for truncating the features based on the given feature type, to prevent overflow
-            when saving the data as float16.
+        Calculates the coefficients for truncating the features based on the given feature type, to prevent overflow
+        when saving the data as float16.
         """
         if self.field_dtype.name == "float16":
-            return np.array([1e+4, 1, 1], dtype=np.float32)
+            return np.array([1e4, 1, 1], dtype=np.float32)
         return np.array([1, 1, 1], dtype=np.float32)
 
     def _format_masks(self, simulation: Simulation) -> np.array:
@@ -667,7 +688,6 @@ class Preprocessing(ABC):
         """
         pass
 
-
     def _format_fields(self, simulation: Simulation) -> Tuple[np.array, np.array]:
         """
         Formats fields data.
@@ -687,13 +707,17 @@ class Preprocessing(ABC):
         if self.field_dtype.kind != FLOAT_DTYPE_KIND:
             raise Exception("Unsupported field data type")
 
-        e_field = np.empty_like(simulation.e_field,
-                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        e_field = np.empty_like(
+            simulation.e_field,
+            dtype=[("re", self.field_dtype), ("im", self.field_dtype)],
+        )
         e_field["re"] = simulation.e_field.real
         e_field["im"] = simulation.e_field.imag
 
-        h_field = np.empty_like(simulation.h_field,
-                                dtype=[("re", self.field_dtype),("im", self.field_dtype)])
+        h_field = np.empty_like(
+            simulation.h_field,
+            dtype=[("re", self.field_dtype), ("im", self.field_dtype)],
+        )
         h_field["re"] = simulation.h_field.real
         h_field["im"] = simulation.h_field.imag
 
@@ -711,8 +735,9 @@ class Preprocessing(ABC):
             a h5 file descriptor
         """
         f.attrs[DTYPE_OUT_KEY] = self.field_dtype.name
-        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = self._feature_truncate_coefficients(simulation)
-
+        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = self._feature_truncate_coefficients(
+            simulation
+        )
 
     def _write_dipoles(self) -> None:
         """
@@ -722,7 +747,9 @@ class Preprocessing(ABC):
 
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(self.out_antenna_dir_path / target_file_name, "w") as f:
-            f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
+            f.create_dataset(
+                ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_)
+            )
 
 
 class GridPreprocessing(Preprocessing):
@@ -776,6 +803,7 @@ class GridPreprocessing(Preprocessing):
     process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
+
     def __init__(
         self,
         simulations_dir_path: Union[str, List[str]],
@@ -784,7 +812,7 @@ class GridPreprocessing(Preprocessing):
         voxel_size: int = STANDARD_VOXEL_SIZE,
         field_dtype: np.dtype = np.complex64,
         coil_thick_coef: Optional[float] = 1.0,
-        **kwargs
+        **kwargs,
     ):
         """
         It does a standard init, checks the extent, creates a voxelizer and process antenna data.
@@ -805,15 +833,17 @@ class GridPreprocessing(Preprocessing):
             colis are mostly flat, this parameters controlls thickering
         """
         self.voxel_size = voxel_size
-        super().__init__(simulations_dir_path, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
+        super().__init__(
+            simulations_dir_path,
+            antenna_dir_path,
+            output_dir_path,
+            field_dtype,
+            coil_thick_coef,
+        )
 
         # check extent for validity
-        min_values = np.array(
-            (kwargs["x_min"], kwargs["y_min"], kwargs["z_min"])
-        )
-        max_values = np.array(
-            (kwargs["x_max"], kwargs["y_max"], kwargs["z_max"])
-        )
+        min_values = np.array((kwargs["x_min"], kwargs["y_min"], kwargs["z_min"]))
+        max_values = np.array((kwargs["x_max"], kwargs["y_max"], kwargs["z_max"]))
         if not np.all((max_values - min_values) % voxel_size == 0):
             raise Exception("Extent not divisible by voxel size")
         self.positions_min = min_values
@@ -855,15 +885,13 @@ class GridPreprocessing(Preprocessing):
             raise Exception("Different coordinate systems for E and H fields")
 
         data_min = np.array(
-            (np.min(x_bound), np.min(y_bound), np.min(z_bound)),
-            dtype=np.float32
+            (np.min(x_bound), np.min(y_bound), np.min(z_bound)), dtype=np.float32
         )
         if not np.array_equal(self.positions_min, data_min):
             raise Exception("Min not satisfied")
 
         data_max = np.array(
-            (np.max(x_bound), np.max(y_bound), np.max(z_bound)),
-            dtype=np.float32
+            (np.max(x_bound), np.max(y_bound), np.max(z_bound)), dtype=np.float32
         )
         if not np.array_equal(self.positions_max, data_max):
             raise Exception("Max not satisfied")
@@ -884,13 +912,15 @@ class GridPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extneded_air_prop = np.ascontiguousarray(repeat(
-            AIR_FEATURE_VALUES,
-            "feature -> feature x y z",
-            x=features.shape[1],
-            y=features.shape[2],
-            z=features.shape[3]
-        ))
+        extneded_air_prop = np.ascontiguousarray(
+            repeat(
+                AIR_FEATURE_VALUES,
+                "feature -> feature x y z",
+                x=features.shape[1],
+                y=features.shape[2],
+                z=features.shape[3],
+            )
+        )
 
         return features + extneded_air_prop * air_mask
 
@@ -939,13 +969,15 @@ class GridPreprocessing(Preprocessing):
         masks : np.array
             a mask array
         """
-        return np.ascontiguousarray(repeat(
-            props,
-            "feature component -> feature component x y z",
-            x=masks.shape[1],
-            y=masks.shape[2],
-            z=masks.shape[3]
-        ))
+        return np.ascontiguousarray(
+            repeat(
+                props,
+                "feature component -> feature component x y z",
+                x=masks.shape[1],
+                y=masks.shape[2],
+                z=masks.shape[3],
+            )
+        )
 
     @property
     def _extend_masks_pattern(self) -> str:
@@ -976,7 +1008,9 @@ class GridPreprocessing(Preprocessing):
             features data
         """
         truncation_coefficients = self._feature_truncate_coefficients(simulation)
-        truncation_coefficients = np.expand_dims(truncation_coefficients, axis=(1, 2, 3))
+        truncation_coefficients = np.expand_dims(
+            truncation_coefficients, axis=(1, 2, 3)
+        )
         features = simulation.features / truncation_coefficients
         return features.astype(self.field_dtype.type(0).real)
 
@@ -1006,8 +1040,7 @@ class GridPreprocessing(Preprocessing):
         z = len(self.voxelizer.z)
         coordinates = np.ascontiguousarray(
             einops.rearrange(
-                self.voxelizer.points, '(x y z) d -> d x y z',
-                x=x, y=y, z=z
+                self.voxelizer.points, "(x y z) d -> d x y z", x=x, y=y, z=z
             )
         ).astype(np.float32)
         f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)
@@ -1057,14 +1090,17 @@ class PointPreprocessing(Preprocessing):
     process_simulations(simulation_names: Optional[List[str]] = None)
         Main processing method. It processes all simulations in the batch
     """
+
     _coordinates = None
 
-    def __init__(self,
-                 batches_dir_paths: Union[str, Path, List[str], List[Path]],
-                 antenna_dir_path: Union[str, Path],
-                 output_dir_path: Union[str, Path],
-                 field_dtype: np.dtype = np.complex64,
-                 coil_thick_coef: Optional[float] = 2.0) -> None:
+    def __init__(
+        self,
+        batches_dir_paths: Union[str, Path, List[str], List[Path]],
+        antenna_dir_path: Union[str, Path],
+        output_dir_path: Union[str, Path],
+        field_dtype: np.dtype = np.complex64,
+        coil_thick_coef: Optional[float] = 2.0,
+    ) -> None:
         """
         Initializes the point preprocessing object and reads coordinates from the first simulation.
 
@@ -1081,7 +1117,13 @@ class PointPreprocessing(Preprocessing):
         coil_thick_coef : float | None
             coils are mostly flat, this parameter controls thickening
         """
-        super().__init__(batches_dir_paths, antenna_dir_path, output_dir_path, field_dtype, coil_thick_coef)
+        super().__init__(
+            batches_dir_paths,
+            antenna_dir_path,
+            output_dir_path,
+            field_dtype,
+            coil_thick_coef,
+        )
         self._initialize_coordinates()
 
     def _initialize_coordinates(self) -> None:
@@ -1126,9 +1168,7 @@ class PointPreprocessing(Preprocessing):
         e_coordinates = e_reader.coordinates
         h_coordinates = h_reader.coordinates
 
-        if (
-            not np.array_equal(e_coordinates, h_coordinates)
-        ):
+        if not np.array_equal(e_coordinates, h_coordinates):
             raise Exception("Different coordinate systems for E and H fields")
 
         if not np.array_equal(self._coordinates, e_coordinates):
@@ -1152,11 +1192,13 @@ class PointPreprocessing(Preprocessing):
         np.array
             an extended properties array
         """
-        return np.ascontiguousarray(repeat(
-            props,
-            "feature component -> feature component points",
-            points=masks.shape[1]
-        ))
+        return np.ascontiguousarray(
+            repeat(
+                props,
+                "feature component -> feature component points",
+                points=masks.shape[1],
+            )
+        )
 
     @property
     def _extend_masks_pattern(self) -> str:
@@ -1188,11 +1230,13 @@ class PointPreprocessing(Preprocessing):
         """
         air_mask = features == 0
 
-        extended_air_prop = np.ascontiguousarray(repeat(
-            AIR_FEATURE_VALUES,
-            "feature -> feature points",
-            points=features.shape[-1]
-        ))
+        extended_air_prop = np.ascontiguousarray(
+            repeat(
+                AIR_FEATURE_VALUES,
+                "feature -> feature points",
+                points=features.shape[-1],
+            )
+        )
 
         return features + extended_air_prop * air_mask
 
@@ -1220,16 +1264,9 @@ class PointPreprocessing(Preprocessing):
         faces = np.ascontiguousarray(mesh.faces)
         points = np.ascontiguousarray(self.coordinates, dtype=vertices.dtype)
 
-        winding_number = fast_winding_number(
-            vertices,
-            faces,
-            points
-        )
+        winding_number = fast_winding_number(vertices, faces, points)
 
-        return np.logical_and(
-            ~ np.isclose(winding_number, 0.5),
-            winding_number > 0.5
-        )
+        return np.logical_and(~np.isclose(winding_number, 0.5), winding_number > 0.5)
 
     @property
     def _masks_stack_pattern(self) -> str:
@@ -1272,8 +1309,7 @@ class PointPreprocessing(Preprocessing):
             a h5 file descriptor
         """
         super()._write_extra_data(simulation, f)
-        coordinates = np.ascontiguousarray(rearrange(
-            self.coordinates,
-            "points axis -> axis points"
-        ))
+        coordinates = np.ascontiguousarray(
+            rearrange(self.coordinates, "points axis -> axis points")
+        )
         f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)

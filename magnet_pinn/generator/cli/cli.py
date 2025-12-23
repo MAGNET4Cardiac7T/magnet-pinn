@@ -4,6 +4,7 @@ NAME
 DESCRIPTION
     This module implements CLI interface for the generator module.
 """
+
 import argparse
 from pathlib import Path
 from argparse import Namespace
@@ -57,14 +58,14 @@ def parse_arguments() -> Namespace:
         "--output",
         type=Path,
         help=f"Path of the output directory, by default is {OUTPUT_DIR} from the current user's directory",
-        default=OUTPUT_DIR
+        default=OUTPUT_DIR,
     )
     global_parser.add_argument(
         "-s",
         "--seed",
         type=int,
         default=SEED,
-        help="Random seed for reproducible generation, by default is 42"
+        help="Random seed for reproducible generation, by default is 42",
     )
 
     # Property sampling arguments
@@ -72,46 +73,48 @@ def parse_arguments() -> Namespace:
         "--density-min",
         type=float,
         default=DENSITY_MIN,
-        help="Minimum density value for property sampling, by default is 400.0"
+        help="Minimum density value for property sampling, by default is 400.0",
     )
     global_parser.add_argument(
         "--density-max",
         type=float,
         default=DENSITY_MAX,
-        help="Maximum density value for property sampling, by default is 2000.0"
+        help="Maximum density value for property sampling, by default is 2000.0",
     )
     global_parser.add_argument(
         "--conductivity-min",
         type=float,
         default=CONDUCTIVITY_MIN,
-        help="Minimum conductivity value for property sampling, by default is 0.0"
+        help="Minimum conductivity value for property sampling, by default is 0.0",
     )
     global_parser.add_argument(
         "--conductivity-max",
         type=float,
         default=CONDUCTIVITY_MAX,
-        help="Maximum conductivity value for property sampling, by default is 2.5"
+        help="Maximum conductivity value for property sampling, by default is 2.5",
     )
     global_parser.add_argument(
         "--permittivity-min",
         type=float,
         default=PERMITTIVITY_MIN,
-        help="Minimum permittivity value for property sampling, by default is 1.0"
+        help="Minimum permittivity value for property sampling, by default is 1.0",
     )
     global_parser.add_argument(
         "--permittivity-max",
         type=float,
         default=PERMITTIVITY_MAX,
-        help="Maximum permittivity value for property sampling, by default is 71.0"
+        help="Maximum permittivity value for property sampling, by default is 71.0",
     )
 
     # Workflow configuration preset
     global_parser.add_argument(
         "--transforms-mode",
-        choices=['none', 'all', 'no-clipping'],
-        default='all',
-        help=("Preset selection of transforms: 'none' for no transforms, 'all' for all transforms, "
-              "'no-clipping' to skip tube and children clipping, default value is 'all'. For more fine-grained workflows please modify the code directly.")
+        choices=["none", "all", "no-clipping"],
+        default="all",
+        help=(
+            "Preset selection of transforms: 'none' for no transforms, 'all' for all transforms, "
+            "'no-clipping' to skip tube and children clipping, default value is 'all'. For more fine-grained workflows please modify the code directly."
+        ),
     )
 
     # Structure generation arguments (common to tissue and custom)
@@ -119,44 +122,44 @@ def parse_arguments() -> Namespace:
         "--num-children-blobs",
         type=int,
         default=NUM_CHILDREN_BLOBS,
-        help="Number of child blob structures to generate, by default is 3"
+        help="Number of child blob structures to generate, by default is 3",
     )
     global_parser.add_argument(
         "--blob-radius-decrease",
         type=float,
         default=BLOB_RADIUS_DECREASE,
-        help="Scaling factor for child blob radii relative to parent radius, by default is 0.3"
+        help="Scaling factor for child blob radii relative to parent radius, by default is 0.3",
     )
     global_parser.add_argument(
         "--num-tubes",
         type=int,
         default=NUM_TUBES,
-        help="Number of tube structures to generate, by default is 10"
+        help="Number of tube structures to generate, by default is 10",
     )
     global_parser.add_argument(
         "--relative-tube-min-radius",
         type=float,
         default=RELATIVE_TUBE_MIN_RADIUS,
-        help="Minimum tube radius as fraction of parent blob radius, by default is 0.01"
+        help="Minimum tube radius as fraction of parent blob radius, by default is 0.01",
     )
     global_parser.add_argument(
         "--relative-tube-max-radius",
         type=float,
         default=RELATIVE_TUBE_MAX_RADIUS,
-        help="Maximum tube radius as fraction of parent blob radius, by default is 0.1"
+        help="Maximum tube radius as fraction of parent blob radius, by default is 0.1",
     )
 
     main_parser = argparse.ArgumentParser(
         prog="magnet_pinn.generator",
         description="Generate phantom data for MRI simulations",
-        parents=[global_parser]
+        parents=[global_parser],
     )
 
     subparsers = main_parser.add_subparsers(
         dest="phantom_type",
         title="Phantom Types",
         description="Type of phantom to generate",
-        help="Sub-command to run (tissue or custom)"
+        help="Sub-command to run (tissue or custom)",
     )
     subparsers.required = True
 
@@ -164,74 +167,74 @@ def parse_arguments() -> Namespace:
     tissue_parser = subparsers.add_parser(
         "tissue",
         parents=[global_parser],
-        help="Generate tissue phantom with hierarchical blob structures and tubes"
+        help="Generate tissue phantom with hierarchical blob structures and tubes",
     )
     tissue_parser.add_argument(
         "--initial-blob-radius",
         type=float,
         default=INITIAL_BLOB_RADIUS,
-        help="Radius of the parent blob structure, by default is 100.0"
+        help="Radius of the parent blob structure, by default is 100.0",
     )
     tissue_parser.add_argument(
         "--x-min",
         type=float,
         default=X_MIN,
-        help="Minimum x-coordinate for parent blob center, by default is -5.0"
+        help="Minimum x-coordinate for parent blob center, by default is -5.0",
     )
     tissue_parser.add_argument(
         "--x-max",
         type=float,
         default=X_MAX,
-        help="Maximum x-coordinate for parent blob center, by default is 5.0"
+        help="Maximum x-coordinate for parent blob center, by default is 5.0",
     )
     tissue_parser.add_argument(
         "--y-min",
         type=float,
         default=Y_MIN,
-        help="Minimum y-coordinate for parent blob center, by default is -5.0"
+        help="Minimum y-coordinate for parent blob center, by default is -5.0",
     )
     tissue_parser.add_argument(
         "--y-max",
         type=float,
         default=Y_MAX,
-        help="Maximum y-coordinate for parent blob center, by default is 5.0"
+        help="Maximum y-coordinate for parent blob center, by default is 5.0",
     )
     tissue_parser.add_argument(
         "--z-min",
         type=float,
         default=Z_MIN,
-        help="Minimum z-coordinate for parent blob center, by default is -50.0"
+        help="Minimum z-coordinate for parent blob center, by default is -50.0",
     )
     tissue_parser.add_argument(
         "--z-max",
         type=float,
         default=Z_MAX,
-        help="Maximum z-coordinate for parent blob center, by default is 50.0"
+        help="Maximum z-coordinate for parent blob center, by default is 50.0",
     )
 
     # Custom phantom subcommand
     custom_parser = subparsers.add_parser(
         "custom",
         parents=[global_parser],
-        help="Generate custom phantom based on STL mesh with blob and tube structures"
+        help="Generate custom phantom based on STL mesh with blob and tube structures",
     )
     custom_parser.add_argument(
         "--stl-mesh-path",
         type=Path,
         required=True,
-        help="Path to the STL mesh file for the parent structure (required)"
+        help="Path to the STL mesh file for the parent structure (required)",
     )
     custom_parser.add_argument(
         "--sample-children-only-inside",
         action="store_true",
         default=SAMPLE_CHILDREN_ONLY_INSIDE,
-        help="Ensure child blobs are fully contained within parent mesh volume"
+        help="Ensure child blobs are fully contained within parent mesh volume",
     )
     custom_parser.add_argument(
         "--child-blobs-batch-size",
         type=int,
         default=CHILD_BLOBS_BATCH_SIZE,
-        help="Number of points to sample in batch for child blob placement, by default is 1000000"
+        help="Number of points to sample in batch for child blob placement, by default is 1000000",
     )
 
     return main_parser.parse_args()

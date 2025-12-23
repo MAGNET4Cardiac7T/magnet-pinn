@@ -1,4 +1,5 @@
 """Physics-informed loss functions for electromagnetic field prediction."""
+
 from abc import ABC, abstractmethod
 import torch
 from torch.nn import Identity
@@ -19,11 +20,13 @@ class BasePhysicsLoss(BaseRegressionLoss):
     """
     Base class for physics-based losses
     """
-    def __init__(self,
-                 feature_dims: Union[int, Tuple[int, ...]] = 1,
-                 reduction: str = "mean",
-                 dx: float = 1.0
-                 ):
+
+    def __init__(
+        self,
+        feature_dims: Union[int, Tuple[int, ...]] = 1,
+        reduction: str = "mean",
+        dx: float = 1.0,
+    ):
         """
         Initialize BasePhysicsLoss.
 
@@ -36,15 +39,16 @@ class BasePhysicsLoss(BaseRegressionLoss):
         dx : float, optional
             Grid spacing for finite difference calculations (default: 1.0)
         """
-        super(BasePhysicsLoss, self).__init__(feature_dims=feature_dims, reduction=reduction)
+        super(BasePhysicsLoss, self).__init__(
+            feature_dims=feature_dims, reduction=reduction
+        )
 
         self.dx = dx
-        self.diff_filter_factory = DiffFilterFactory(dx = self.dx)
+        self.diff_filter_factory = DiffFilterFactory(dx=self.dx)
         self.physics_filters = self._build_physics_filters()
 
     @abstractmethod
-    def _base_physics_fn(self,
-                         field: torch.Tensor) -> torch.Tensor:
+    def _base_physics_fn(self, field: torch.Tensor) -> torch.Tensor:
         """
         Compute the physics-based residual for the field.
 
@@ -102,7 +106,9 @@ class BasePhysicsLoss(BaseRegressionLoss):
         return loss
 
     def _cast_physics_filter(
-        self, dtype: torch.dtype = torch.float32, device: torch.device = torch.device('cpu')
+        self,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         """
         Cast physics filters to specified dtype and device.
@@ -117,7 +123,9 @@ class BasePhysicsLoss(BaseRegressionLoss):
         if self.physics_filters.dtype != dtype or self.physics_filters.device != device:
             self.physics_filters = self.physics_filters.to(dtype=dtype, device=device)
 
-    def _check_dtype_device(self, field: torch.Tensor) -> Tuple[torch.dtype, torch.device]:
+    def _check_dtype_device(
+        self, field: torch.Tensor
+    ) -> Tuple[torch.dtype, torch.device]:
         """
         Extract dtype and device from field tensor.
 
@@ -144,12 +152,16 @@ class BasePhysicsLoss(BaseRegressionLoss):
             first_value = next(iter(field.values()))
             return first_value.dtype, first_value.device
         else:
-            raise ValueError("Input field must be a torch.Tensor or a collection of torch.Tensors.")
+            raise ValueError(
+                "Input field must be a torch.Tensor or a collection of torch.Tensors."
+            )
 
-    def forward(self,
-                pred,
-                target: Optional[torch.Tensor] = None,
-                mask: Optional[torch.Tensor] = None):
+    def forward(
+        self,
+        pred,
+        target: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+    ):
         """
         Compute the forward pass of the physics loss.
 
@@ -201,6 +213,7 @@ class DivergenceLoss(BasePhysicsLoss):
         With the spatial dimensions reduced if reduction is not None.
 
     """
+
     def _base_physics_fn(self, field):
         """
         Compute the divergence of the field.
@@ -257,6 +270,7 @@ class FaradaysLawLoss(BasePhysicsLoss):
         Dimensions over which to average the loss before reduction,
         by default 1.
     """
+
     vacuum_permeability: float = VACUUM_PERMEABILITY
     mri_frequency_hz: float = MRI_FREQUENCY_HZ
 
@@ -295,7 +309,12 @@ class FaradaysLawLoss(BasePhysicsLoss):
 
         faradays_pred = (
             curl_pred_e
-            + 1j * 2 * math.pi * self.mri_frequency_hz * self.vacuum_permeability * pred_h
+            + 1j
+            * 2
+            * math.pi
+            * self.mri_frequency_hz
+            * self.vacuum_permeability
+            * pred_h
         )
 
         return faradays_pred

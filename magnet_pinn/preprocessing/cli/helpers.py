@@ -1,4 +1,5 @@
 """Helper functions for preprocessing command-line interface."""
+
 from argparse import Namespace
 
 from magnet_pinn.preprocessing.preprocessing import Preprocessing, GridPreprocessing

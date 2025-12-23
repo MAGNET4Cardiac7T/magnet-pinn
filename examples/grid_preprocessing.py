@@ -15,7 +15,7 @@ preprocessor = GridPreprocessing(
     y_min=-220,
     y_max=220,
     z_min=-250,
-    z_max=250
+    z_max=250,
 )
 
 preprocessor.process_simulations()

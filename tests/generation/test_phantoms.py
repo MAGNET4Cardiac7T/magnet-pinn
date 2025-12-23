@@ -7,15 +7,18 @@ import trimesh
 from magnet_pinn.generator.phantoms import Phantom, Tissue, CustomPhantom
 from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
 from magnet_pinn.generator.typing import StructurePhantom
-from magnet_pinn.generator.samplers import BlobSampler, TubeSampler, MeshBlobSampler, MeshTubeSampler
+from magnet_pinn.generator.samplers import (
+    BlobSampler,
+    TubeSampler,
+    MeshBlobSampler,
+    MeshTubeSampler,
+)
 
 
 class ConcretePhantom(Phantom):
     def generate(self, seed=None):
         return StructurePhantom(
-            parent=Blob(np.array([0.0, 0.0, 0.0]), 1.0),
-            children=[],
-            tubes=[]
+            parent=Blob(np.array([0.0, 0.0, 0.0]), 1.0), children=[], tubes=[]
         )
 
 
@@ -26,7 +29,9 @@ def test_phantom_initialization_with_valid_parameters():
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
 
     assert phantom.initial_blob_radius == initial_blob_radius
-    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
+    assert np.array_equal(
+        phantom.initial_blob_center_extent, initial_blob_center_extent
+    )
 
 
 def test_phantom_initialization_with_zero_radius():
@@ -40,7 +45,9 @@ def test_phantom_initialization_with_zero_radius():
 
 def test_phantom_initialization_with_large_radius():
     initial_blob_radius = 1000.0
-    initial_blob_center_extent = np.array([[-100.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]])
+    initial_blob_center_extent = np.array(
+        [[-100.0, 100.0], [-100.0, 100.0], [-100.0, 100.0]]
+    )
 
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
 
@@ -53,7 +60,9 @@ def test_phantom_initialization_with_negative_extent():
 
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
 
-    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
+    assert np.array_equal(
+        phantom.initial_blob_center_extent, initial_blob_center_extent
+    )
 
 
 def test_phantom_initialization_with_single_point_extent():
@@ -62,13 +71,17 @@ def test_phantom_initialization_with_single_point_extent():
 
     phantom = ConcretePhantom(initial_blob_radius, initial_blob_center_extent)
 
-    assert np.array_equal(phantom.initial_blob_center_extent, initial_blob_center_extent)
+    assert np.array_equal(
+        phantom.initial_blob_center_extent, initial_blob_center_extent
+    )
 
 
 def test_phantom_generate_raises_not_implemented_error():
     phantom = Phantom(1.0, np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]))
 
-    with pytest.raises(NotImplementedError, match="Subclasses should implement this method"):
+    with pytest.raises(
+        NotImplementedError, match="Subclasses should implement this method"
+    ):
         phantom.generate()
 
 
@@ -88,7 +101,7 @@ def test_tissue_initialization_with_valid_parameters():
         blob_radius_decrease_per_level,
         num_tubes,
         relative_tube_max_radius,
-        relative_tube_min_radius
+        relative_tube_min_radius,
     )
 
     assert tissue.num_children_blobs == num_children_blobs
@@ -104,7 +117,7 @@ def test_tissue_initialization_with_zero_children():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=1,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     assert tissue.num_children_blobs == 0
@@ -117,7 +130,7 @@ def test_tissue_initialization_with_zero_tubes():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=0,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     assert tissue.num_tubes == 0
@@ -130,7 +143,7 @@ def test_tissue_initialization_with_minimum_blob_radius_decrease():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.001,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     assert tissue.blob_sampler.radius_decrease_factor == 0.001
@@ -143,7 +156,7 @@ def test_tissue_initialization_with_maximum_blob_radius_decrease():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.999,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     assert tissue.blob_sampler.radius_decrease_factor == 0.999
@@ -157,7 +170,7 @@ def test_tissue_initialization_with_minimum_tube_radii():
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.001,
-        relative_tube_min_radius=0.0001
+        relative_tube_min_radius=0.0001,
     )
 
     assert tissue.tube_sampler.tube_max_radius == 0.01
@@ -172,7 +185,7 @@ def test_tissue_initialization_with_maximum_tube_radii():
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
         relative_tube_max_radius=0.999,
-        relative_tube_min_radius=0.1
+        relative_tube_min_radius=0.1,
     )
 
     assert tissue.tube_sampler.tube_max_radius == 9.99
@@ -186,7 +199,7 @@ def test_tissue_initialization_with_default_min_tube_radius():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     assert tissue.tube_sampler.tube_min_radius == 0.1
@@ -200,7 +213,7 @@ def test_tissue_rejects_negative_children_blobs():
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
@@ -212,7 +225,7 @@ def test_tissue_rejects_zero_initial_blob_radius():
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
@@ -224,7 +237,7 @@ def test_tissue_rejects_negative_initial_blob_radius():
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
@@ -236,48 +249,57 @@ def test_tissue_rejects_negative_num_tubes():
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=-1,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
 def test_tissue_rejects_zero_relative_tube_max_radius():
-    with pytest.raises(ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.0
+            relative_tube_max_radius=0.0,
         )
 
 
 def test_tissue_rejects_relative_tube_max_radius_equal_to_one():
-    with pytest.raises(ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=1.0
+            relative_tube_max_radius=1.0,
         )
 
 
 def test_tissue_rejects_relative_tube_max_radius_greater_than_one():
-    with pytest.raises(ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="relative_tube_max_radius must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=1.5
+            relative_tube_max_radius=1.5,
         )
 
 
 def test_tissue_rejects_zero_relative_tube_min_radius():
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)",
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
@@ -285,12 +307,15 @@ def test_tissue_rejects_zero_relative_tube_min_radius():
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
-            relative_tube_min_radius=0.0
+            relative_tube_min_radius=0.0,
         )
 
 
 def test_tissue_rejects_negative_relative_tube_min_radius():
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)",
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
@@ -298,12 +323,15 @@ def test_tissue_rejects_negative_relative_tube_min_radius():
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
-            relative_tube_min_radius=-0.1
+            relative_tube_min_radius=-0.1,
         )
 
 
 def test_tissue_rejects_relative_tube_min_radius_equal_to_max():
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)",
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
@@ -311,12 +339,15 @@ def test_tissue_rejects_relative_tube_min_radius_equal_to_max():
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
-            relative_tube_min_radius=0.2
+            relative_tube_min_radius=0.2,
         )
 
 
 def test_tissue_rejects_relative_tube_min_radius_greater_than_max():
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be in \\(0, relative_tube_max_radius\\)",
+    ):
         Tissue(
             num_children_blobs=0,
             initial_blob_radius=1.0,
@@ -324,7 +355,7 @@ def test_tissue_rejects_relative_tube_min_radius_greater_than_max():
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
             relative_tube_max_radius=0.2,
-            relative_tube_min_radius=0.3
+            relative_tube_min_radius=0.3,
         )
 
 
@@ -341,7 +372,7 @@ def test_tissue_rejects_none_initial_blob_center_extent():
             initial_blob_center_extent=None,  # type: ignore[arg-type]
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.2
+            relative_tube_max_radius=0.2,
         )
 
 
@@ -358,7 +389,7 @@ def test_tissue_rejects_list_of_lists_initial_blob_center_extent():
             initial_blob_center_extent=[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],  # type: ignore[arg-type]
             blob_radius_decrease_per_level=0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.2
+            relative_tube_max_radius=0.2,
         )
 
 
@@ -369,7 +400,7 @@ def test_tissue_generate_with_zero_children_and_tubes():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     phantom = tissue.generate(seed=42)
@@ -387,7 +418,7 @@ def test_tissue_generate_with_children_only():
         initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -406,7 +437,7 @@ def test_tissue_generate_with_tubes_only():
         initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.3,
         num_tubes=2,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -425,7 +456,7 @@ def test_tissue_generate_with_children_and_tubes():
         initial_blob_center_extent=np.array([[-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=1,
-        relative_tube_max_radius=0.15
+        relative_tube_max_radius=0.15,
     )
 
     phantom = tissue.generate(seed=42)
@@ -446,7 +477,7 @@ def test_tissue_generate_parent_blob_within_extent():
         initial_blob_center_extent=extent,
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -465,7 +496,7 @@ def test_tissue_generate_parent_blob_correct_radius():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -482,7 +513,7 @@ def test_tissue_generate_child_blobs_correct_radius():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=radius_decrease,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -503,7 +534,7 @@ def test_tissue_generate_tube_radii_within_range():
         blob_radius_decrease_per_level=0.5,
         num_tubes=3,
         relative_tube_max_radius=max_relative,
-        relative_tube_min_radius=min_relative
+        relative_tube_min_radius=min_relative,
     )
 
     phantom = tissue.generate(seed=42)
@@ -521,7 +552,7 @@ def test_tissue_generate_reproducible_with_same_seed():
         initial_blob_center_extent=np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=1,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     phantom1 = tissue.generate(seed=42)
@@ -540,7 +571,7 @@ def test_tissue_generate_different_results_with_different_seeds():
         initial_blob_center_extent=np.array([[-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=0,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     phantom1 = tissue.generate(seed=42)
@@ -556,7 +587,7 @@ def test_tissue_generate_without_seed():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.4,
         num_tubes=0,
-        relative_tube_max_radius=0.2
+        relative_tube_max_radius=0.2,
     )
 
     phantom = tissue.generate()
@@ -572,7 +603,7 @@ def test_tissue_generate_tube_direction_vectors_normalized():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=3,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -590,7 +621,7 @@ def test_tissue_generate_uses_parent_inner_radius_for_tubes():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -611,7 +642,7 @@ def test_tissue_generate_with_single_child_blob():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.2,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     phantom = tissue.generate(seed=42)
@@ -622,10 +653,11 @@ def test_tissue_generate_with_single_child_blob():
     parent = phantom.parent
 
     distance = np.linalg.norm(child.position - parent.position)
-    max_distance = (
-        parent.radius * (1 + parent.empirical_min_offset)  # type: ignore[attr-defined]
-        - child.radius * (1 + child.empirical_max_offset)  # type: ignore[attr-defined]
-    )
+    max_distance = parent.radius * (
+        1 + parent.empirical_min_offset
+    ) - child.radius * (  # type: ignore[attr-defined]
+        1 + child.empirical_max_offset
+    )  # type: ignore[attr-defined]
     assert distance <= max_distance
 
 
@@ -636,7 +668,7 @@ def test_tissue_generate_with_single_tube():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=1,
-        relative_tube_max_radius=0.15
+        relative_tube_max_radius=0.15,
     )
 
     phantom = tissue.generate(seed=42)
@@ -644,9 +676,9 @@ def test_tissue_generate_with_single_tube():
     assert len(phantom.tubes) == 1
     tube = phantom.tubes[0]
     assert isinstance(tube, Tube)
-    assert hasattr(tube, 'position')
-    assert hasattr(tube, 'direction')
-    assert hasattr(tube, 'radius')
+    assert hasattr(tube, "position")
+    assert hasattr(tube, "direction")
+    assert hasattr(tube, "radius")
 
 
 def test_tissue_has_correct_sampler_configuration():
@@ -662,7 +694,7 @@ def test_tissue_has_correct_sampler_configuration():
         blob_radius_decrease_per_level=blob_decrease,
         num_tubes=1,
         relative_tube_max_radius=max_tube_radius,
-        relative_tube_min_radius=min_tube_radius
+        relative_tube_min_radius=min_tube_radius,
     )
 
     assert tissue.blob_sampler.radius_decrease_factor == blob_decrease
@@ -677,59 +709,67 @@ def test_tissue_inheritance_from_phantom():
         initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
         blob_radius_decrease_per_level=0.5,
         num_tubes=0,
-        relative_tube_max_radius=0.1
+        relative_tube_max_radius=0.1,
     )
 
     assert isinstance(tissue, Phantom)
-    assert hasattr(tissue, 'initial_blob_radius')
-    assert hasattr(tissue, 'initial_blob_center_extent')
+    assert hasattr(tissue, "initial_blob_radius")
+    assert hasattr(tissue, "initial_blob_center_extent")
 
 
 def test_tissue_rejects_zero_blob_radius_decrease_per_level():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=0.0,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
 def test_tissue_rejects_negative_blob_radius_decrease_per_level():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=-0.5,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
 def test_tissue_rejects_blob_radius_decrease_per_level_equal_to_one():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=1.0,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
 def test_tissue_rejects_blob_radius_decrease_per_level_greater_than_one():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         Tissue(
             num_children_blobs=1,
             initial_blob_radius=1.0,
             initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
             blob_radius_decrease_per_level=1.5,
             num_tubes=0,
-            relative_tube_max_radius=0.1
+            relative_tube_max_radius=0.1,
         )
 
 
@@ -738,7 +778,7 @@ def simple_stl_file():
     """Create a simple STL file for testing purposes."""
     mesh = trimesh.creation.icosphere(subdivisions=2, radius=2.0)
 
-    temp_file = tempfile.NamedTemporaryFile(suffix='.stl', delete=False)
+    temp_file = tempfile.NamedTemporaryFile(suffix=".stl", delete=False)
     temp_file.close()
 
     mesh.export(temp_file.name)
@@ -765,7 +805,7 @@ def test_custom_phantom_initialization_with_valid_stl_file(simple_stl_file):
         num_tubes=num_tubes,
         relative_tube_max_radius=relative_tube_max_radius,
         relative_tube_min_radius=relative_tube_min_radius,
-        sample_children_only_inside=sample_children_only_inside
+        sample_children_only_inside=sample_children_only_inside,
     )
 
     assert phantom.num_children_blobs == num_children_blobs
@@ -791,9 +831,7 @@ def test_custom_phantom_initialization_with_default_parameters(simple_stl_file):
 def test_custom_phantom_initialization_with_zero_children(simple_stl_file):
     """Test CustomPhantom initialization with zero children blobs."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=0,
-        num_tubes=2
+        stl_mesh_path=simple_stl_file, num_children_blobs=0, num_tubes=2
     )
 
     assert phantom.num_children_blobs == 0
@@ -803,40 +841,41 @@ def test_custom_phantom_initialization_with_zero_children(simple_stl_file):
 def test_custom_phantom_initialization_with_zero_tubes(simple_stl_file):
     """Test CustomPhantom initialization with zero tubes."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=0
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=0
     )
 
     assert phantom.num_children_blobs == 2
     assert phantom.num_tubes == 0
 
 
-def test_custom_phantom_initialization_with_minimum_blob_radius_decrease(simple_stl_file):
+def test_custom_phantom_initialization_with_minimum_blob_radius_decrease(
+    simple_stl_file,
+):
     """Test CustomPhantom initialization with minimum blob radius decrease factor."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        blob_radius_decrease_per_level=0.001
+        stl_mesh_path=simple_stl_file, blob_radius_decrease_per_level=0.001
     )
 
     assert phantom.num_children_blobs == 3
 
 
-def test_custom_phantom_initialization_with_maximum_blob_radius_decrease(simple_stl_file):
+def test_custom_phantom_initialization_with_maximum_blob_radius_decrease(
+    simple_stl_file,
+):
     """Test CustomPhantom initialization with maximum blob radius decrease factor."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        blob_radius_decrease_per_level=0.999
+        stl_mesh_path=simple_stl_file, blob_radius_decrease_per_level=0.999
     )
 
     assert phantom.num_children_blobs == 3
 
 
-def test_custom_phantom_initialization_with_sample_children_only_inside_true(simple_stl_file):
+def test_custom_phantom_initialization_with_sample_children_only_inside_true(
+    simple_stl_file,
+):
     """Test CustomPhantom initialization with sample_children_only_inside=True."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        sample_children_only_inside=True
+        stl_mesh_path=simple_stl_file, sample_children_only_inside=True
     )
 
     assert phantom.num_children_blobs == 3
@@ -847,7 +886,7 @@ def test_custom_phantom_initialization_with_large_tube_radii(simple_stl_file):
     phantom = CustomPhantom(
         stl_mesh_path=simple_stl_file,
         relative_tube_max_radius=0.9,
-        relative_tube_min_radius=0.1
+        relative_tube_min_radius=0.1,
     )
 
     assert phantom.num_children_blobs == 3
@@ -859,7 +898,7 @@ def test_custom_phantom_initialization_with_small_tube_radii(simple_stl_file):
     phantom = CustomPhantom(
         stl_mesh_path=simple_stl_file,
         relative_tube_max_radius=0.001,
-        relative_tube_min_radius=0.0001
+        relative_tube_min_radius=0.0001,
     )
 
     assert phantom.num_children_blobs == 3
@@ -874,7 +913,7 @@ def test_custom_phantom_initialization_with_nonexistent_stl_file():
 
 def test_custom_phantom_initialization_with_invalid_stl_file():
     """Test CustomPhantom initialization with invalid STL file."""
-    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.stl', delete=False)
+    temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".stl", delete=False)
     temp_file.write("This is not a valid STL file")
     temp_file.close()
 
@@ -889,9 +928,7 @@ def test_custom_phantom_initialization_with_invalid_stl_file():
 def test_custom_phantom_generate_with_zero_children_and_tubes(simple_stl_file):
     """Test CustomPhantom generation with zero children and tubes."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=0,
-        num_tubes=0
+        stl_mesh_path=simple_stl_file, num_children_blobs=0, num_tubes=0
     )
 
     result = phantom.generate(seed=42)
@@ -905,9 +942,7 @@ def test_custom_phantom_generate_with_zero_children_and_tubes(simple_stl_file):
 def test_custom_phantom_generate_with_children_only(simple_stl_file):
     """Test CustomPhantom generation with children only."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=0
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=0
     )
 
     result = phantom.generate(seed=42)
@@ -924,9 +959,7 @@ def test_custom_phantom_generate_with_children_only(simple_stl_file):
 def test_custom_phantom_generate_with_tubes_only(simple_stl_file):
     """Test CustomPhantom generation with tubes only."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=0,
-        num_tubes=2
+        stl_mesh_path=simple_stl_file, num_children_blobs=0, num_tubes=2
     )
 
     result = phantom.generate(seed=42)
@@ -943,9 +976,7 @@ def test_custom_phantom_generate_with_tubes_only(simple_stl_file):
 def test_custom_phantom_generate_with_children_and_tubes(simple_stl_file):
     """Test CustomPhantom generation with both children and tubes."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=3
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=3
     )
 
     result = phantom.generate(seed=42)
@@ -965,9 +996,7 @@ def test_custom_phantom_generate_with_children_and_tubes(simple_stl_file):
 def test_custom_phantom_generate_reproducible_with_same_seed(simple_stl_file):
     """Test CustomPhantom generation is reproducible with same seed."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=2
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=2
     )
 
     result1 = phantom.generate(seed=42)
@@ -987,12 +1016,12 @@ def test_custom_phantom_generate_reproducible_with_same_seed(simple_stl_file):
         assert tube1.radius == tube2.radius
 
 
-def test_custom_phantom_generate_different_results_with_different_seeds(simple_stl_file):
+def test_custom_phantom_generate_different_results_with_different_seeds(
+    simple_stl_file,
+):
     """Test CustomPhantom generation produces different results with different seeds."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=2
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=2
     )
 
     result1 = phantom.generate(seed=42)
@@ -1000,7 +1029,10 @@ def test_custom_phantom_generate_different_results_with_different_seeds(simple_s
 
     children_different = False
     for child1, child2 in zip(result1.children, result2.children):
-        if not np.allclose(child1.position, child2.position) or child1.radius != child2.radius:
+        if (
+            not np.allclose(child1.position, child2.position)
+            or child1.radius != child2.radius
+        ):
             children_different = True
             break
 
@@ -1021,9 +1053,7 @@ def test_custom_phantom_generate_different_results_with_different_seeds(simple_s
 def test_custom_phantom_generate_without_seed(simple_stl_file):
     """Test CustomPhantom generation without specifying seed."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=1,
-        num_tubes=1
+        stl_mesh_path=simple_stl_file, num_children_blobs=1, num_tubes=1
     )
 
     result = phantom.generate()
@@ -1037,9 +1067,7 @@ def test_custom_phantom_generate_without_seed(simple_stl_file):
 def test_custom_phantom_generate_with_custom_batch_size(simple_stl_file):
     """Test CustomPhantom generation with custom batch size."""
     phantom = CustomPhantom(
-        stl_mesh_path=simple_stl_file,
-        num_children_blobs=2,
-        num_tubes=1
+        stl_mesh_path=simple_stl_file, num_children_blobs=2, num_tubes=1
     )
 
     result = phantom.generate(seed=42, child_blobs_batch_size=500000)
@@ -1054,7 +1082,7 @@ def test_custom_phantom_inheritance_from_phantom(simple_stl_file):
     phantom = CustomPhantom(stl_mesh_path=simple_stl_file)
 
     assert isinstance(phantom, Phantom)
-    assert hasattr(phantom, 'generate')
+    assert hasattr(phantom, "generate")
     assert callable(phantom.generate)
 
 
@@ -1070,7 +1098,7 @@ def test_custom_phantom_sampler_configuration(simple_stl_file):
         blob_radius_decrease_per_level=blob_radius_decrease,
         relative_tube_max_radius=tube_max_radius,
         relative_tube_min_radius=tube_min_radius,
-        sample_children_only_inside=sample_inside
+        sample_children_only_inside=sample_inside,
     )
 
     assert isinstance(phantom.child_sampler, MeshBlobSampler)

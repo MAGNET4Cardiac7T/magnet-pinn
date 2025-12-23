@@ -38,7 +38,8 @@ class MagnetPointIterator(MagnetBaseIterator):
             This class is deprecated. Use MagnetBaseIterator directly.
         """
         warnings.warn(
-            "MagnetPointIterator is deprecated and will be removed. " "Use MagnetBaseIterator directly instead.",
+            "MagnetPointIterator is deprecated and will be removed. "
+            "Use MagnetBaseIterator directly instead.",
             DeprecationWarning,
             stacklevel=2,
         )

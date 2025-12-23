@@ -45,7 +45,9 @@ class Phantom(ABC):
     initial_blob_radius: float
     initial_blob_center_extent: np.ndarray
 
-    def __init__(self, initial_blob_radius: float, initial_blob_center_extent: np.ndarray):
+    def __init__(
+        self, initial_blob_radius: float, initial_blob_center_extent: np.ndarray
+    ):
         """
         Initialize phantom generator with basic geometric parameters.
 
@@ -165,8 +167,13 @@ class Tissue(Phantom):
             raise ValueError("num_tubes must be non-negative")
         if relative_tube_max_radius <= 0 or relative_tube_max_radius >= 1:
             raise ValueError("relative_tube_max_radius must be in (0, 1)")
-        if relative_tube_min_radius <= 0 or relative_tube_min_radius >= relative_tube_max_radius:
-            raise ValueError("relative_tube_min_radius must be in (0, relative_tube_max_radius)")
+        if (
+            relative_tube_min_radius <= 0
+            or relative_tube_min_radius >= relative_tube_max_radius
+        ):
+            raise ValueError(
+                "relative_tube_min_radius must be in (0, relative_tube_max_radius)"
+            )
         if initial_blob_center_extent is None or (
             isinstance(initial_blob_center_extent, list)
             and all(isinstance(elem, list) for elem in initial_blob_center_extent)
@@ -184,7 +191,9 @@ class Tissue(Phantom):
 
         tube_max_radius = relative_tube_max_radius * initial_blob_radius
         tube_min_radius = relative_tube_min_radius * initial_blob_radius
-        self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius, initial_blob_radius)
+        self.tube_sampler = TubeSampler(
+            tube_max_radius, tube_min_radius, initial_blob_radius
+        )
 
     def generate(self, seed: int = None) -> StructurePhantom:
         """
@@ -217,23 +226,41 @@ class Tissue(Phantom):
         """
         gen_object = default_rng(seed)
 
-        initial_blob_center = np.array([gen_object.uniform(dim[0], dim[1]) for dim in self.initial_blob_center_extent])
+        initial_blob_center = np.array(
+            [
+                gen_object.uniform(dim[0], dim[1])
+                for dim in self.initial_blob_center_extent
+            ]
+        )
 
         logging.info("Generating parent blob.")
-        parent_blob = Blob(initial_blob_center, self.initial_blob_radius, seed=gen_object.integers(0, 2**32 - 1).item())
+        parent_blob = Blob(
+            initial_blob_center,
+            self.initial_blob_radius,
+            seed=gen_object.integers(0, 2**32 - 1).item(),
+        )
 
         logging.info("Generating children blobs.")
         children_blobs = self.blob_sampler.sample_children_blobs(
-            parent_blob=parent_blob, num_children=self.num_children_blobs, rng=gen_object
+            parent_blob=parent_blob,
+            num_children=self.num_children_blobs,
+            rng=gen_object,
         )
 
         logging.info("Generating tubes.")
-        parent_inner_radius = parent_blob.radius * (1 + parent_blob.empirical_min_offset)
+        parent_inner_radius = parent_blob.radius * (
+            1 + parent_blob.empirical_min_offset
+        )
         tubes = self.tube_sampler.sample_tubes(
-            center=initial_blob_center, radius=parent_inner_radius, num_tubes=self.num_tubes, rng=gen_object
+            center=initial_blob_center,
+            radius=parent_inner_radius,
+            num_tubes=self.num_tubes,
+            rng=gen_object,
         )
 
-        return StructurePhantom(parent=parent_blob, children=children_blobs, tubes=tubes)
+        return StructurePhantom(
+            parent=parent_blob, children=children_blobs, tubes=tubes
+        )
 
 
 class CustomPhantom(Phantom):
@@ -301,13 +328,19 @@ class CustomPhantom(Phantom):
         self.num_children_blobs = num_children_blobs
         self.num_tubes = num_tubes
 
-        self.child_sampler = MeshBlobSampler(child_radius, sample_children_only_inside=sample_children_only_inside)
+        self.child_sampler = MeshBlobSampler(
+            child_radius, sample_children_only_inside=sample_children_only_inside
+        )
 
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
-        self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius, self.parent_structure.radius)
+        self.tube_sampler = MeshTubeSampler(
+            tube_max_radius, tube_min_radius, self.parent_structure.radius
+        )
 
-    def generate(self, seed: int = None, child_blobs_batch_size: int = 1000000) -> StructurePhantom:
+    def generate(
+        self, seed: int = None, child_blobs_batch_size: int = 1000000
+    ) -> StructurePhantom:
         """Generate phantom with parent mesh, child blobs, and tubes.
 
         Parameters
@@ -325,11 +358,18 @@ class CustomPhantom(Phantom):
         rng = default_rng(seed)
 
         children_blobs = self.child_sampler.sample_children_blobs(
-            self.parent_structure, num_children=self.num_children_blobs, rng=rng, batch_size=child_blobs_batch_size
+            self.parent_structure,
+            num_children=self.num_children_blobs,
+            rng=rng,
+            batch_size=child_blobs_batch_size,
         )
 
         tubes = self.tube_sampler.sample_tubes(
-            parent_mesh_structure=self.parent_structure, num_tubes=self.num_tubes, rng=rng
+            parent_mesh_structure=self.parent_structure,
+            num_tubes=self.num_tubes,
+            rng=rng,
         )
 
-        return StructurePhantom(parent=self.parent_structure, children=children_blobs, tubes=tubes)
+        return StructurePhantom(
+            parent=self.parent_structure, children=children_blobs, tubes=tubes
+        )

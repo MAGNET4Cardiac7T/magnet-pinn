@@ -7,6 +7,7 @@ DESCRIPTION
     It contains writers for exporting mesh data and associated material properties to
     standard file formats used in MRI simulation workflows.
 """
+
 from pathlib import Path
 from abc import ABC, abstractmethod
 
@@ -30,7 +31,9 @@ class Writer(ABC):
     output directory management and write operations across different output formats.
     """
 
-    def __init__(self, output_dir: str | Path = Path("data/raw/tissue_meshes"), *args, **kwargs):
+    def __init__(
+        self, output_dir: str | Path = Path("data/raw/tissue_meshes"), *args, **kwargs
+    ):
         """
         Initialize writer with output directory.
 
@@ -71,6 +74,7 @@ class MeshWriter(Writer):
     containing physical properties for each mesh component. The output follows the
     standard format expected by MRI simulation software.
     """
+
     def write(self, item: MeshPhantom, prop: PropertyPhantom):
         """
         Write mesh phantom and properties to files.
@@ -96,12 +100,12 @@ class MeshWriter(Writer):
         )
 
         materials_table.extend(
-            self._save_mesh(mesh, prop, CHILD_BLOB_FILE_NAME.format(i=i+1))
+            self._save_mesh(mesh, prop, CHILD_BLOB_FILE_NAME.format(i=i + 1))
             for i, (mesh, prop) in enumerate(zip(item.children, prop.children))
         )
 
         materials_table.extend(
-            self._save_mesh(mesh, prop, TUBE_FILE_NAME.format(i=i+1))
+            self._save_mesh(mesh, prop, TUBE_FILE_NAME.format(i=i + 1))
             for i, (mesh, prop) in enumerate(zip(item.tubes, prop.tubes))
         )
 

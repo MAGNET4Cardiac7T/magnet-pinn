@@ -7,6 +7,7 @@ DESCRIPTION
     Contains serializers for converting abstract 3D structures (blobs, tubes) into
     concrete triangular mesh objects suitable for visualization and numerical simulation.
 """
+
 from abc import ABC
 
 import trimesh
@@ -23,6 +24,7 @@ class Serializer(ABC):
     Defines the interface for converting abstract geometric structures
     into concrete mesh representations for computational processing.
     """
+
     def serialize(self, structure: Structure3D):
         """
         Serialize a 3D structure to mesh representation.
@@ -48,6 +50,7 @@ class MeshSerializer(Serializer):
     into high-quality triangular meshes with configurable subdivision levels
     for optimal simulation accuracy and performance.
     """
+
     def serialize(self, structure: Structure3D, subdivisions: int = 5) -> Trimesh:
         """
         Convert a 3D structure to a triangular mesh.
@@ -78,7 +81,6 @@ class MeshSerializer(Serializer):
             return structure.mesh.copy()
         else:
             raise ValueError("Unsupported structure type")
-
 
     def _serialize_blob(self, blob: Blob, subdivisions: int = 5) -> Trimesh:
         """
@@ -120,13 +122,12 @@ class MeshSerializer(Serializer):
         Trimesh
             Triangular mesh representing the cylindrical tube.
         """
-        transform = (
-            trimesh.transformations.translation_matrix(tube.position)
-            @ trimesh.geometry.align_vectors([0, 0, 1], tube.direction)
-        )
+        transform = trimesh.transformations.translation_matrix(
+            tube.position
+        ) @ trimesh.geometry.align_vectors([0, 0, 1], tube.direction)
         return trimesh.creation.cylinder(
             radius=tube.radius,
             height=tube.height,
-            sections=subdivisions ** 2,
-            transform=transform
+            sections=subdivisions**2,
+            transform=transform,
         )

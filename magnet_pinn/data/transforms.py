@@ -28,11 +28,15 @@ def check_transforms(transforms):
         pass
     elif isinstance(transforms, Compose):
         if not sum(isinstance(t, PhaseShift) for t in transforms.transforms) == 1:
-            raise ValueError("Exactly one of the composed transforms should be a PhaseShift transform")
+            raise ValueError(
+                "Exactly one of the composed transforms should be a PhaseShift transform"
+            )
     elif isinstance(transforms, PhaseShift):
         pass
     else:
-        raise ValueError("Transforms not valid. Probably missing a phase shift transform")
+        raise ValueError(
+            "Transforms not valid. Probably missing a phase shift transform"
+        )
 
 
 class BaseTransform(ABC):
@@ -90,7 +94,9 @@ class BaseTransform(ABC):
             If simulation is not a DataItem instance.
         """
         if not isinstance(simulation, DataItem):
-            raise ValueError(f"Simulation should be an instance of DataItem, got {type(simulation)}")
+            raise ValueError(
+                f"Simulation should be an instance of DataItem, got {type(simulation)}"
+            )
 
 
 class Compose(BaseTransform):
@@ -126,7 +132,9 @@ class Compose(BaseTransform):
                 if i is None:
                     raise ValueError("Augmentation can not be None")
                 elif not isinstance(i, BaseTransform):
-                    raise ValueError(f"Augmentation should be an instance of BaseTransform, got {type(i)}")
+                    raise ValueError(
+                        f"Augmentation should be an instance of BaseTransform, got {type(i)}"
+                    )
 
         self.transforms = transforms
 
@@ -258,7 +266,11 @@ class Crop(BaseTransform):
         Position of the crop
     """
 
-    def __init__(self, crop_size: Tuple[int, int, int], crop_position: Literal["random", "center"] = "center"):
+    def __init__(
+        self,
+        crop_size: Tuple[int, int, int],
+        crop_position: Literal["random", "center"] = "center",
+    ):
         """
         Basically validates parameters and save them as attributes.
         """
@@ -321,7 +333,9 @@ class Crop(BaseTransform):
         crop_size = self.crop_size
         full_size = simulation.input.shape[1:]
         crop_start = self._sample_crop_start(full_size, crop_size)
-        crop_mask = tuple(slice(crop_start[i], crop_start[i] + crop_size[i]) for i in range(3))
+        crop_mask = tuple(
+            slice(crop_start[i], crop_start[i] + crop_size[i]) for i in range(3)
+        )
 
         return DataItem(
             input=self._crop_array(simulation.input, crop_mask, 1),
@@ -337,7 +351,10 @@ class Crop(BaseTransform):
         )
 
     def _crop_array(
-        self, array: npt.NDArray[np.float32], crop_mask: Tuple[slice, slice, slice], starting_axis: int
+        self,
+        array: npt.NDArray[np.float32],
+        crop_mask: Tuple[slice, slice, slice],
+        starting_axis: int,
     ) -> npt.NDArray[np.float32]:
         """
         Method for cropping the array based on the given mask and starting axis.
@@ -383,13 +400,17 @@ class Crop(BaseTransform):
         """
         for i in range(3):
             if crop_size[i] > full_size[i]:
-                raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
+                raise ValueError(
+                    f"crop size {crop_size} is larger than full size {full_size}"
+                )
         if full_size == crop_size:
             return (0, 0, 0)
         elif self.crop_position == "center":
             crop_start = [(full_size[i] - crop_size[i]) // 2 for i in range(3)]
         elif self.crop_position == "random":
-            crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
+            crop_start = [
+                np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)
+            ]
         else:
             raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
@@ -410,7 +431,11 @@ class Rotate(BaseTransform):
         Default is z-axis rotation, (-3, -2).
     """
 
-    def __init__(self, rot_angle: Literal["random", "90"] = "random", rot_axis: Literal["x", "y", "z"] = "z"):
+    def __init__(
+        self,
+        rot_angle: Literal["random", "90"] = "random",
+        rot_axis: Literal["x", "y", "z"] = "z",
+    ):
         """Initialize rotation transform.
 
         Parameters
@@ -525,7 +550,9 @@ class Mirror(BaseTransform):
         Default is 1.0 (always flip).
     """
 
-    def __init__(self, mirror_axis: Literal["x", "y", "z"] = "z", mirror_prob: float = 1.0):
+    def __init__(
+        self, mirror_axis: Literal["x", "y", "z"] = "z", mirror_prob: float = 1.0
+    ):
         """Initialize mirror transform.
 
         Parameters
@@ -608,7 +635,9 @@ class Mirror(BaseTransform):
             positions=self._mirror_array(simulation.positions, apply_mirror),
         )
 
-    def _mirror_array(self, array: npt.NDArray[np.float32], apply: bool = True) -> npt.NDArray[np.float32]:
+    def _mirror_array(
+        self, array: npt.NDArray[np.float32], apply: bool = True
+    ) -> npt.NDArray[np.float32]:
         """
         Mirror (flip) the array along the specified axis.
 
@@ -643,7 +672,11 @@ class PhaseShift(BaseTransform):
         If 'binomial', it samples the number of coils to be on based on the binomial distribution.
     """
 
-    def __init__(self, num_coils: int, sampling_method: Literal["uniform", "binomial"] = "uniform"):
+    def __init__(
+        self,
+        num_coils: int,
+        sampling_method: Literal["uniform", "binomial"] = "uniform",
+    ):
         """Initialize phase shift transform.
 
         Parameters
@@ -714,7 +747,9 @@ class PhaseShift(BaseTransform):
             positions=simulation.positions,
         )
 
-    def _sample_phase_and_mask(self, dtype: str = None) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
+    def _sample_phase_and_mask(
+        self, dtype: str = None
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
         A method for sampling the phase and mask. The phase is sampled from the uniform distribution and the mask is
         sampled based on the given method.
@@ -801,14 +836,21 @@ class PhaseShift(BaseTransform):
         coeffs_real = np.stack((re_phase, -im_phase), axis=0)
         coeffs_im = np.stack((im_phase, re_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = einops.repeat(coeffs, "reimout reim coils -> hf reimout reim coils", hf=2)
+        coeffs = einops.repeat(
+            coeffs, "reimout reim coils -> hf reimout reim coils", hf=2
+        )
         field_shift = einops.einsum(
-            fields, coeffs, "hf reim coils fieldxyz ... , hf reimout reim coils -> hf reimout fieldxyz ..."
+            fields,
+            coeffs,
+            "hf reim coils fieldxyz ... , hf reimout reim coils -> hf reimout fieldxyz ...",
         )
         return field_shift
 
     def _phase_shift_coils(
-        self, coils: npt.NDArray[np.float32], phase: npt.NDArray[np.float32], mask: npt.NDArray[np.bool_]
+        self,
+        coils: npt.NDArray[np.float32],
+        phase: npt.NDArray[np.float32],
+        mask: npt.NDArray[np.bool_],
     ) -> npt.NDArray[np.float32]:
         """
         Method of creation of shift values for the coils. It uses a split formula for complex numbers multiplications.
@@ -855,7 +897,9 @@ class CoilEnumeratorPhaseShift(PhaseShift):
         super().__init__(num_coils=num_coils)
         self.coil_on_index = 0
 
-    def _sample_phase_and_mask(self, dtype: str = None) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
+    def _sample_phase_and_mask(
+        self, dtype: str = None
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
         Augment simulation data by activating only a single coil in clockwise direction and setting phase to zero.
         Requires that num_samples == num_coils.
@@ -997,10 +1041,14 @@ class PointSampling(BaseTransform):
         """
         if isinstance(self.points_sampled, float):
             if self.points_sampled > 1.0:
-                raise ValueError("In the case of the ratio sampling the ration should be less than 1.0")
+                raise ValueError(
+                    "In the case of the ratio sampling the ration should be less than 1.0"
+                )
             num_points_sampled = int(self.points_sampled * total_num_points)
         else:
             if self.points_sampled > total_num_points:
-                raise ValueError("The number of points to sample should be less than the total number of points")
+                raise ValueError(
+                    "The number of points to sample should be less than the total number of points"
+                )
             num_points_sampled = self.points_sampled
         return np.random.choice(total_num_points, num_points_sampled, replace=False)

@@ -16,9 +16,7 @@ from magnet_pinn.preprocessing.reading_field import (
 
 
 def test_valid_grid_e_field(e_field_grid_data):
-    reader = FieldReaderFactory(
-        e_field_grid_data, E_FIELD_DATABASE_KEY
-    ).create_reader()
+    reader = FieldReaderFactory(e_field_grid_data, E_FIELD_DATABASE_KEY).create_reader()
 
     assert isinstance(reader, GridReader)
 
@@ -35,9 +33,7 @@ def test_valid_grid_e_field(e_field_grid_data):
 
 
 def test_valid_grid_h_field(h_field_grid_data):
-    reader = FieldReaderFactory(
-        h_field_grid_data, H_FIELD_DATABASE_KEY
-    ).create_reader()
+    reader = FieldReaderFactory(h_field_grid_data, H_FIELD_DATABASE_KEY).create_reader()
 
     assert isinstance(reader, GridReader)
 
@@ -91,7 +87,9 @@ def test_valid_grid_h_field_with_mixed_axis_order(h_field_grid_data_with_mixed_a
     assert data.dtype == np.complex64
 
 
-def test_grid_e_field_with_inconsistent_shape(e_field_grid_data_with_inconsistent_shape):
+def test_grid_e_field_with_inconsistent_shape(
+    e_field_grid_data_with_inconsistent_shape,
+):
     reader = FieldReaderFactory(
         e_field_grid_data_with_inconsistent_shape, E_FIELD_DATABASE_KEY
     ).create_reader()
@@ -100,7 +98,9 @@ def test_grid_e_field_with_inconsistent_shape(e_field_grid_data_with_inconsisten
         reader.extract_data()
 
 
-def test_grid_h_field_with_inconsistent_shape(h_field_grid_data_with_inconsistent_shape):
+def test_grid_h_field_with_inconsistent_shape(
+    h_field_grid_data_with_inconsistent_shape,
+):
     reader = FieldReaderFactory(
         h_field_grid_data_with_inconsistent_shape, E_FIELD_DATABASE_KEY
     ).create_reader()
@@ -110,9 +110,9 @@ def test_grid_h_field_with_inconsistent_shape(h_field_grid_data_with_inconsisten
 
 
 def test_valid_grid_to_pointslist(e_field_grid_data):
-    reader = FieldReaderFactory(
-        e_field_grid_data, E_FIELD_DATABASE_KEY
-    ).create_reader(keep_grid_output_format=False)
+    reader = FieldReaderFactory(e_field_grid_data, E_FIELD_DATABASE_KEY).create_reader(
+        keep_grid_output_format=False
+    )
 
     assert isinstance(reader, GridReader)
     assert not reader.is_grid
@@ -131,10 +131,12 @@ def test_grid_pointslist_extract_data(tmp_path):
         E_FIELD_DATABASE_KEY,
         (2, 2, 2),
         bounds,
-        0
+        0,
     )
 
-    reader = FieldReaderFactory(tmp_path, E_FIELD_DATABASE_KEY).create_reader(keep_grid_output_format=False)
+    reader = FieldReaderFactory(tmp_path, E_FIELD_DATABASE_KEY).create_reader(
+        keep_grid_output_format=False
+    )
 
     data = reader.extract_data()
     assert data.shape == (1, 3, 8)
@@ -167,22 +169,16 @@ def test_valid_pointslist_h_field(h_field_pointslist_data):
 
 def test_invalid_path_reader(e_field_grid_data):
     with pytest.raises(FileNotFoundError):
-        FieldReaderFactory(
-            e_field_grid_data / "invalid_path", E_FIELD_DATABASE_KEY
-        )
+        FieldReaderFactory(e_field_grid_data / "invalid_path", E_FIELD_DATABASE_KEY)
 
 
 def test_invalid_key_reader(e_field_grid_data):
     with pytest.raises(KeyError):
-        FieldReaderFactory(
-            e_field_grid_data, "INVALID_KEY"
-        )
+        FieldReaderFactory(e_field_grid_data, "INVALID_KEY")
 
 
 def test_grid_coordinates_dtype(e_field_grid_data):
-    reader = FieldReaderFactory(
-        e_field_grid_data, E_FIELD_DATABASE_KEY
-    ).create_reader()
+    reader = FieldReaderFactory(e_field_grid_data, E_FIELD_DATABASE_KEY).create_reader()
 
     coordinates = reader.coordinates
     assert coordinates[0].dtype == np.float64
@@ -203,9 +199,7 @@ def test_pointslist_coordinates_consistency(e_field_pointslist_data):
 
 
 def test_grid_coordinates_are_consistent_across_files(e_field_grid_data):
-    reader = FieldReaderFactory(
-        e_field_grid_data, E_FIELD_DATABASE_KEY
-    ).create_reader()
+    reader = FieldReaderFactory(e_field_grid_data, E_FIELD_DATABASE_KEY).create_reader()
 
     assert len(reader.files_list) == 2
 
@@ -216,7 +210,9 @@ def test_grid_coordinates_are_consistent_across_files(e_field_grid_data):
     assert coordinates[2].shape[0] == 126
 
 
-def test_grid_e_and_h_fields_have_same_coordinates(e_field_grid_data, h_field_grid_data):
+def test_grid_e_and_h_fields_have_same_coordinates(
+    e_field_grid_data, h_field_grid_data
+):
     e_reader = FieldReaderFactory(
         e_field_grid_data, E_FIELD_DATABASE_KEY
     ).create_reader()
@@ -234,9 +230,9 @@ def test_grid_e_and_h_fields_have_same_coordinates(e_field_grid_data, h_field_gr
 
 
 def test_grid_to_pointslist_coordinates_shape(e_field_grid_data):
-    reader = FieldReaderFactory(
-        e_field_grid_data, E_FIELD_DATABASE_KEY
-    ).create_reader(keep_grid_output_format=False)
+    reader = FieldReaderFactory(e_field_grid_data, E_FIELD_DATABASE_KEY).create_reader(
+        keep_grid_output_format=False
+    )
 
     coordinates = reader.coordinates
 
@@ -260,7 +256,7 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
         E_FIELD_DATABASE_KEY,
         (10, 10, 10),
         bounds1,
-        0
+        0,
     )
 
     create_grid_field(
@@ -268,7 +264,7 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
         E_FIELD_DATABASE_KEY,
         (10, 10, 10),
         bounds2,
-        0
+        0,
     )
 
     with pytest.raises(Exception, match="Different positions"):
@@ -277,7 +273,10 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
 
 def test_pointslist_mismatched_coordinates_raises_exception(tmp_path):
     from tests.preprocessing.helpers import create_pointslist_field
-    from magnet_pinn.preprocessing.reading_field import FIELD_DIR_PATH, POSITIONS_DATABASE_KEY
+    from magnet_pinn.preprocessing.reading_field import (
+        FIELD_DIR_PATH,
+        POSITIONS_DATABASE_KEY,
+    )
     from h5py import File
 
     field_path = tmp_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
@@ -294,9 +293,8 @@ def test_pointslist_mismatched_coordinates_raises_exception(tmp_path):
         f.create_dataset(
             POSITIONS_DATABASE_KEY,
             data=np.array(
-                np.ones(100),
-                dtype=[('x', '<f8'), ('y', '<f8'), ('z', '<f8')]
-            )
+                np.ones(100), dtype=[("x", "<f8"), ("y", "<f8"), ("z", "<f8")]
+            ),
         )
 
     with pytest.raises(Exception, match="Different positions"):
@@ -317,7 +315,7 @@ def test_grid_single_ac_file(tmp_path):
         E_FIELD_DATABASE_KEY,
         (10, 10, 10),
         bounds,
-        0
+        0,
     )
 
     reader = FieldReaderFactory(tmp_path, E_FIELD_DATABASE_KEY).create_reader()
@@ -337,8 +335,7 @@ def test_pointslist_single_ac_file(tmp_path):
     field_path.mkdir(parents=True, exist_ok=True)
 
     create_pointslist_field(
-        field_path / "e-field (f=297.2) [AC1].h5",
-        E_FIELD_DATABASE_KEY
+        field_path / "e-field (f=297.2) [AC1].h5", E_FIELD_DATABASE_KEY
     )
 
     reader = FieldReaderFactory(tmp_path, E_FIELD_DATABASE_KEY).create_reader()
@@ -379,7 +376,7 @@ def test_pointslist_compose_field_components(e_field_pointslist_data):
     batch_size = reader.coordinates.shape[0]
     field_components = [
         np.ones((batch_size, 3), dtype=np.complex64),
-        np.full((batch_size, 3), 2, dtype=np.complex64)
+        np.full((batch_size, 3), 2, dtype=np.complex64),
     ]
 
     data = reader._compose_field_components(field_components)
@@ -426,9 +423,7 @@ def test_field_reader_base_methods_are_noops():
     reader = DummyFieldReader()
 
     assert reader.coordinates is None
-    assert np.array_equal(
-        reader._read_coordinates("any"), reader._test_coordinates
-    )
+    assert np.array_equal(reader._read_coordinates("any"), reader._test_coordinates)
     assert reader._check_coordinates(reader._test_coordinates)
     assert reader._compose_field_pattern((1,)) == "ax batch -> batch ax"
     components = reader._compose_field_components([np.zeros((1, 3))])

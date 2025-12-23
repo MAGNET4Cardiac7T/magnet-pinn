@@ -334,7 +334,9 @@ def test_validate_arguments_conductivity_min_greater_than_max():
         permittivity_min=50.0,
         permittivity_max=100.0,
     )
-    with pytest.raises(ValueError, match="conductivity_min must be less than conductivity_max"):
+    with pytest.raises(
+        ValueError, match="conductivity_min must be less than conductivity_max"
+    ):
         validate_arguments(args)
 
 
@@ -351,7 +353,9 @@ def test_validate_arguments_conductivity_min_equal_to_max():
         permittivity_min=50.0,
         permittivity_max=100.0,
     )
-    with pytest.raises(ValueError, match="conductivity_min must be less than conductivity_max"):
+    with pytest.raises(
+        ValueError, match="conductivity_min must be less than conductivity_max"
+    ):
         validate_arguments(args)
 
 
@@ -368,7 +372,9 @@ def test_validate_arguments_permittivity_min_greater_than_max():
         permittivity_min=120.0,
         permittivity_max=100.0,
     )
-    with pytest.raises(ValueError, match="permittivity_min must be less than permittivity_max"):
+    with pytest.raises(
+        ValueError, match="permittivity_min must be less than permittivity_max"
+    ):
         validate_arguments(args)
 
 
@@ -385,7 +391,9 @@ def test_validate_arguments_permittivity_min_equal_to_max():
         permittivity_min=100.0,
         permittivity_max=100.0,
     )
-    with pytest.raises(ValueError, match="permittivity_min must be less than permittivity_max"):
+    with pytest.raises(
+        ValueError, match="permittivity_min must be less than permittivity_max"
+    ):
         validate_arguments(args)
 
 
@@ -668,7 +676,10 @@ def test_validate_arguments_relative_tube_min_greater_than_max():
         relative_tube_min_radius=0.6,
         relative_tube_max_radius=0.5,
     )
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be less than relative_tube_max_radius"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be less than relative_tube_max_radius",
+    ):
         validate_arguments(args)
 
 
@@ -687,7 +698,10 @@ def test_validate_arguments_relative_tube_min_equal_to_max():
         relative_tube_min_radius=0.5,
         relative_tube_max_radius=0.5,
     )
-    with pytest.raises(ValueError, match="relative_tube_min_radius must be less than relative_tube_max_radius"):
+    with pytest.raises(
+        ValueError,
+        match="relative_tube_min_radius must be less than relative_tube_max_radius",
+    ):
         validate_arguments(args)
 
 
@@ -926,7 +940,9 @@ def test_validate_custom_arguments_stl_file_wrong_extension(generation_output_di
         validate_arguments(args)
 
 
-def test_validate_custom_arguments_child_blobs_batch_size_zero(generation_output_dir_path):
+def test_validate_custom_arguments_child_blobs_batch_size_zero(
+    generation_output_dir_path,
+):
     """
     Case when child_blobs_batch_size is zero
     """
@@ -948,7 +964,9 @@ def test_validate_custom_arguments_child_blobs_batch_size_zero(generation_output
         validate_arguments(args)
 
 
-def test_validate_custom_arguments_child_blobs_batch_size_negative(generation_output_dir_path):
+def test_validate_custom_arguments_child_blobs_batch_size_negative(
+    generation_output_dir_path,
+):
     """
     Case when child_blobs_batch_size is negative
     """

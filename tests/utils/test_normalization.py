@@ -37,7 +37,9 @@ class ConcreteMetaNormalizer(MetaNormalizer):
 def test_random_batch(random_iterator, random_batch):
     iterator = random_iterator(seed=42, num_batches=20, batch_size=10, num_features=3)
     first_batch = next(iterator)["input"]
-    assert torch.allclose(random_batch, first_batch), "random_batch does not match the first batch of random_iterator"
+    assert torch.allclose(
+        random_batch, first_batch
+    ), "random_batch does not match the first batch of random_iterator"
     assert isinstance(random_batch, torch.Tensor)
     assert random_batch.ndim == 2
 
@@ -78,7 +80,9 @@ def test_standard_normalizer_fit(random_iterator, random_batch):
 def test_minmax_normalizer_param_shape(random_iterator):
     normalizer = MinMaxNormalizer()
     num_features = 3
-    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=num_features)
+    iterator = random_iterator(
+        seed=42, num_batches=10, batch_size=10, num_features=num_features
+    )
     normalizer.fit_params(iterator, axis=1)
 
     params = normalizer.params
@@ -90,7 +94,9 @@ def test_minmax_normalizer_param_shape(random_iterator):
 def test_standard_normalizer_param_shape(random_iterator):
     normalizer = StandardNormalizer()
     num_features = 3
-    iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=num_features)
+    iterator = random_iterator(
+        seed=42, num_batches=10, batch_size=10, num_features=num_features
+    )
     normalizer.fit_params(iterator, axis=1)
 
     params = normalizer.params
@@ -119,7 +125,9 @@ def test_standard_normalizer_correctness(random_iterator, random_batch):
 
     normalized = normalizer.forward(random_batch, axis=1)
     assert torch.allclose(normalized.mean(dim=0), torch.tensor(0.0), atol=1e-6)
-    assert torch.allclose(normalized.std(dim=0, correction=0), torch.tensor(1.0), atol=1e-6)
+    assert torch.allclose(
+        normalized.std(dim=0, correction=0), torch.tensor(1.0), atol=1e-6
+    )
 
     denormalized = normalizer.inverse(normalized, axis=1)
     assert torch.allclose(random_batch, denormalized, atol=1e-6)
@@ -137,7 +145,9 @@ def test_save_and_load_minmax_normalizer(tmp_path, random_iterator):
     loaded_normalizer = MinMaxNormalizer.load_from_json(str(save_path))
     loaded_params = loaded_normalizer.params  # Load parameters from the saved file
 
-    assert original_params == loaded_params, "Loaded parameters do not match the original parameters"
+    assert (
+        original_params == loaded_params
+    ), "Loaded parameters do not match the original parameters"
 
 
 def test_save_and_load_standard_normalizer(tmp_path, random_iterator):
@@ -152,7 +162,9 @@ def test_save_and_load_standard_normalizer(tmp_path, random_iterator):
     loaded_normalizer = StandardNormalizer.load_from_json(str(save_path))
     loaded_params = loaded_normalizer.params  # Load parameters from the saved file
 
-    assert original_params == loaded_params, "Loaded parameters do not match the original parameters"
+    assert (
+        original_params == loaded_params
+    ), "Loaded parameters do not match the original parameters"
 
 
 def test_meta_normalizer_fit(random_iterator, random_batch):
@@ -172,7 +184,9 @@ def test_meta_normalizer_fit(random_iterator, random_batch):
     standard_normalizer_individual.fit_params(iterator, axis=1)
 
     # Compare parameters
-    assert minmax_normalizer.params == minmax_normalizer_individual.params, "MinMaxNormalizer parameters do not match"
+    assert (
+        minmax_normalizer.params == minmax_normalizer_individual.params
+    ), "MinMaxNormalizer parameters do not match"
     assert (
         standard_normalizer.params == standard_normalizer_individual.params
     ), "StandardNormalizer parameters do not match"
@@ -189,12 +203,16 @@ def test_meta_normalizer_forward_inverse(random_iterator, random_batch):
     # Test forward and inverse for MinMaxNormalizer
     normalized_minmax = minmax_normalizer.forward(random_batch, axis=1)
     denormalized_minmax = minmax_normalizer.inverse(normalized_minmax, axis=1)
-    assert torch.allclose(random_batch, denormalized_minmax, atol=1e-6), "MinMaxNormalizer forward/inverse mismatch"
+    assert torch.allclose(
+        random_batch, denormalized_minmax, atol=1e-6
+    ), "MinMaxNormalizer forward/inverse mismatch"
 
     # Test forward and inverse for StandardNormalizer
     normalized_standard = standard_normalizer.forward(random_batch, axis=1)
     denormalized_standard = standard_normalizer.inverse(normalized_standard, axis=1)
-    assert torch.allclose(random_batch, denormalized_standard, atol=1e-6), "StandardNormalizer forward/inverse mismatch"
+    assert torch.allclose(
+        random_batch, denormalized_standard, atol=1e-6
+    ), "StandardNormalizer forward/inverse mismatch"
 
 
 def test_meta_normalizer_different_keys(random_iterator):
@@ -210,7 +228,8 @@ def test_meta_normalizer_different_keys(random_iterator):
         "x_min" in minmax_normalizer.params and "x_max" in minmax_normalizer.params
     ), "MinMaxNormalizer parameters missing"
     assert (
-        "x_mean" in standard_normalizer.params and "x_mean_sq" in standard_normalizer.params
+        "x_mean" in standard_normalizer.params
+        and "x_mean_sq" in standard_normalizer.params
     ), "StandardNormalizer parameters missing"
 
 
@@ -234,20 +253,33 @@ def test_save_and_load_meta_normalizer(tmp_path, random_iterator):
     loaded_standard = StandardNormalizer.load_from_json(base_path / file_names[1])
 
     # Compare parameters
-    assert minmax_normalizer.params == loaded_minmax.params, "MinMaxNormalizer parameters do not match after loading"
-    assert standard_normalizer.params == loaded_standard.params, "StandardNormalizer parameters do not match after loading"
+    assert (
+        minmax_normalizer.params == loaded_minmax.params
+    ), "MinMaxNormalizer parameters do not match after loading"
+    assert (
+        standard_normalizer.params == loaded_standard.params
+    ), "StandardNormalizer parameters do not match after loading"
+
 
 @pytest.mark.parametrize("normalizer_class", [StandardNormalizer, MinMaxNormalizer])
 @pytest.mark.parametrize("nonlinearity_class", [Identity, Power, Log, Tanh, Arcsinh])
 @pytest.mark.parametrize("nonlinearity_before", [True, False])
-def test_normalizer_with_nonlinearity(random_iterator, random_batch, normalizer_class, nonlinearity_class, nonlinearity_before):
+def test_normalizer_with_nonlinearity(
+    random_iterator,
+    random_batch,
+    normalizer_class,
+    nonlinearity_class,
+    nonlinearity_before,
+):
     """Test that normalizers correctly apply nonlinearity transformations."""
     if nonlinearity_class == Power:
         nonlinearity = nonlinearity_class(power=2.0)
     else:
         nonlinearity = nonlinearity_class()
 
-    normalizer = normalizer_class(nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before)
+    normalizer = normalizer_class(
+        nonlinearity=nonlinearity, nonlinearity_before=nonlinearity_before
+    )
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
     normalizer.fit_params(iterator, axis=1)
 
@@ -256,11 +288,14 @@ def test_normalizer_with_nonlinearity(random_iterator, random_batch, normalizer_
     denormalized = normalizer.inverse(normalized, axis=1)
 
     # Should reconstruct original data
-    assert torch.allclose(random_batch, denormalized, atol=1e-5), \
-        f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
+    assert torch.allclose(
+        random_batch, denormalized, atol=1e-5
+    ), f"Failed to reconstruct with {normalizer_class.__name__}, {nonlinearity_class.__name__}, before={nonlinearity_before}"
 
 
-def test_standard_normalizer_nonlinearity_after_normalization(random_iterator, random_batch):
+def test_standard_normalizer_nonlinearity_after_normalization(
+    random_iterator, random_batch
+):
     """Test that nonlinearity is applied after normalization when nonlinearity_before=False."""
     normalizer = StandardNormalizer(nonlinearity=Tanh(), nonlinearity_before=False)
     iterator = random_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
@@ -270,16 +305,21 @@ def test_standard_normalizer_nonlinearity_after_normalization(random_iterator, r
     normalized = normalizer.forward(random_batch, axis=1)
 
     # With Tanh applied after normalization, all values should be in [-1, 1]
-    assert (normalized >= -1.0).all() and (normalized <= 1.0).all(), \
-        "Tanh nonlinearity should bound values to [-1, 1]"
+    assert (normalized >= -1.0).all() and (
+        normalized <= 1.0
+    ).all(), "Tanh nonlinearity should bound values to [-1, 1]"
+
 
 def test_standard_normalizer_nonlinearity_before_normalization(random_iterator):
     """Test that nonlinearity is applied before normalization when nonlinearity_before=True."""
+
     # Use positive data to test with Log nonlinearity
     def positive_iterator(seed=42, num_batches=10, batch_size=5, num_features=3):
         torch.manual_seed(seed)
         for _ in range(num_batches):
-            yield {"input": torch.rand(batch_size, num_features) + 0.1}  # Ensure positive
+            yield {
+                "input": torch.rand(batch_size, num_features) + 0.1
+            }  # Ensure positive
 
     normalizer = StandardNormalizer(nonlinearity=Log(), nonlinearity_before=True)
     iterator = positive_iterator(seed=42, num_batches=10, batch_size=10, num_features=3)
@@ -291,8 +331,9 @@ def test_standard_normalizer_nonlinearity_before_normalization(random_iterator):
     denormalized = normalizer.inverse(normalized, axis=1)
 
     # Should reconstruct original data
-    assert torch.allclose(test_data, denormalized, atol=1e-5), \
-        "Failed to reconstruct with Log nonlinearity before normalization"
+    assert torch.allclose(
+        test_data, denormalized, atol=1e-5
+    ), "Failed to reconstruct with Log nonlinearity before normalization"
 
 
 def test_nonlinearity_base_methods_raise():

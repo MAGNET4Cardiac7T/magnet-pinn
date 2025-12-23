@@ -155,7 +155,9 @@ class Blob(Structure3D):
         self.relative_disruption_strength = relative_disruption_strength
 
         if perlin_scale == 0:
-            raise ValueError("perlin_scale cannot be zero as it causes division by zero in offset calculations.")
+            raise ValueError(
+                "perlin_scale cannot be zero as it causes division by zero in offset calculations."
+            )
         self.perlin_scale = perlin_scale
 
         self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
@@ -225,7 +227,13 @@ class Tube(Structure3D):
     direction: np.ndarray
     height: float
 
-    def __init__(self, position: np.ndarray, direction: np.ndarray, radius: float, height: float = 10000):
+    def __init__(
+        self,
+        position: np.ndarray,
+        direction: np.ndarray,
+        radius: float,
+        height: float = 10000,
+    ):
         """
         Initialize a Tube structure with position, direction, and geometric parameters.
         The direction vector is automatically normalized to unit length, so the
@@ -280,10 +288,14 @@ class Tube(Structure3D):
         normal = np.cross(tube_1.direction, tube_2.direction)
         if np.linalg.norm(normal) == 0:
             position_diff = tube_2.position - tube_1.position
-            parallel_component = np.dot(position_diff, tube_1.direction) * tube_1.direction
+            parallel_component = (
+                np.dot(position_diff, tube_1.direction) * tube_1.direction
+            )
             perpendicular_component = position_diff - parallel_component
             return np.linalg.norm(perpendicular_component)
-        return abs(np.dot(normal, tube_1.position - tube_2.position)) / np.linalg.norm(normal)
+        return abs(np.dot(normal, tube_1.position - tube_2.position)) / np.linalg.norm(
+            normal
+        )
 
 
 class CustomMeshStructure(Structure3D):
@@ -354,4 +366,6 @@ class CustomMeshStructure(Structure3D):
         For large meshes, this calculation may take some time during initialization
         but is performed only once per structure creation.
         """
-        return np.max(np.linalg.norm(self.mesh.vertices - self.mesh.center_mass, axis=1))
+        return np.max(
+            np.linalg.norm(self.mesh.vertices - self.mesh.center_mass, axis=1)
+        )

@@ -72,7 +72,9 @@ class FieldReaderFactory:
         Creates a reader for the field
     """
 
-    def __init__(self, simulation_dir_path: Path, field_type: str = E_FIELD_DATABASE_KEY):
+    def __init__(
+        self, simulation_dir_path: Path, field_type: str = E_FIELD_DATABASE_KEY
+    ):
         """
         It collects the list of source files and check if they exist.
 
@@ -202,7 +204,9 @@ class FieldReader(ABC):
         for other_file in self.files_list[1:]:
             other_coordinates = self._read_coordinates(other_file)
             if not self._check_coordinates(other_coordinates):
-                raise Exception(f"Different positions in the field value file {other_file}")
+                raise Exception(
+                    f"Different positions in the field value file {other_file}"
+                )
 
     @property
     @abstractmethod
@@ -290,7 +294,10 @@ class FieldReader(ABC):
         Ey = values["y"]["re"] + 1j * values["y"]["im"]
         Ez = values["z"]["re"] + 1j * values["z"]["im"]
 
-        return np.ascontiguousarray(rearrange([Ex, Ey, Ez], self._compose_field_pattern(Ex.shape)), dtype=np.complex64)
+        return np.ascontiguousarray(
+            rearrange([Ex, Ey, Ez], self._compose_field_pattern(Ex.shape)),
+            dtype=np.complex64,
+        )
 
     @abstractmethod
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
@@ -422,7 +429,9 @@ class GridReader(FieldReader):
 
         x, y, z = self._coordinates
         xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
-        values = np.ascontiguousarray(rearrange([xx, yy, zz], "ax x y z -> (x y z) ax"), dtype=np.float32)
+        values = np.ascontiguousarray(
+            rearrange([xx, yy, zz], "ax x y z -> (x y z) ax"), dtype=np.float32
+        )
         return values
 
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
@@ -446,7 +455,9 @@ class GridReader(FieldReader):
         }
         if data_shape == tuple(expected_shape.values()):
             axis_order = "x y z"
-        elif not np.array_equal(np.sort(data_shape), np.sort(list(expected_shape.values()))):
+        elif not np.array_equal(
+            np.sort(data_shape), np.sort(list(expected_shape.values()))
+        ):
             raise ValueError("Inconsistent data shape")
         else:
             indices_we_got = np.array(data_shape).argsort()
@@ -475,9 +486,13 @@ class GridReader(FieldReader):
             The field values
         """
         if self.is_grid:
-            result = rearrange(field_components, "components ax x y z -> components ax x y z")
+            result = rearrange(
+                field_components, "components ax x y z -> components ax x y z"
+            )
         else:
-            result = rearrange(field_components, "components ax x y z -> components ax (x y z)")
+            result = rearrange(
+                field_components, "components ax x y z -> components ax (x y z)"
+            )
 
         return np.ascontiguousarray(result, dtype=np.complex64)
 
@@ -531,7 +546,9 @@ class PointReader(FieldReader):
             x = f[POSITIONS_DATABASE_KEY]["x"][:]
             y = f[POSITIONS_DATABASE_KEY]["y"][:]
             z = f[POSITIONS_DATABASE_KEY]["z"][:]
-        return np.ascontiguousarray(rearrange([x, y, z], "ax batch -> batch ax"), dtype=np.float32)
+        return np.ascontiguousarray(
+            rearrange([x, y, z], "ax batch -> batch ax"), dtype=np.float32
+        )
 
     def _check_coordinates(self, other_coordinates) -> bool:
         """
@@ -603,5 +620,6 @@ class PointReader(FieldReader):
             The field values
         """
         return np.ascontiguousarray(
-            rearrange(field_components, "components batch ax -> components ax batch"), dtype=np.complex64
+            rearrange(field_components, "components batch ax -> components ax batch"),
+            dtype=np.complex64,
         )

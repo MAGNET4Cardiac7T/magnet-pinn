@@ -36,7 +36,8 @@ class MagnetGridIterator(MagnetBaseIterator):
             This class is deprecated. Use MagnetBaseIterator directly.
         """
         warnings.warn(
-            "MagnetGridIterator is deprecated and will be removed. " "Use MagnetBaseIterator directly instead.",
+            "MagnetGridIterator is deprecated and will be removed. "
+            "Use MagnetBaseIterator directly instead.",
             DeprecationWarning,
             stacklevel=2,
         )

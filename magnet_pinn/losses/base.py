@@ -1,4 +1,5 @@
 """Base regression loss classes for neural network training."""
+
 from abc import ABC, abstractmethod
 import torch
 from typing import Optional, Union, Tuple
@@ -10,9 +11,10 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
     """
     Base class for regression losses.
     """
-    def __init__(self,
-                 feature_dims: Union[int, Tuple[int, ...]] = 1,
-                 reduction: str = "mean"):
+
+    def __init__(
+        self, feature_dims: Union[int, Tuple[int, ...]] = 1, reduction: str = "mean"
+    ):
         """
         Initialize BaseRegressionLoss.
 
@@ -26,7 +28,7 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
         super(BaseRegressionLoss, self).__init__()
         self.feature_dims = feature_dims
 
-        if reduction is None or reduction == 'none':
+        if reduction is None or reduction == "none":
             self.reduction = lambda loss, mask: loss
         else:
             self.reduction = LossReducer(agg=reduction)
@@ -82,6 +84,7 @@ class MSELoss(BaseRegressionLoss):
         L = \\frac{1}{n_{\\text{samples}}} \\sum_{i=1}^{n_{\\text{samples}}}
             (y_i - \\hat{y}_i)^2
     """
+
     def _base_loss_fn(self, pred, target):
         """
         Compute squared error.
@@ -110,6 +113,7 @@ class MAELoss(BaseRegressionLoss):
         L = \\frac{1}{n_{\\text{samples}}} \\sum_{i=1}^{n_{\\text{samples}}}
             \\lvert y_i - \\hat{y}_i \\rvert
     """
+
     def _base_loss_fn(self, pred, target):
         """
         Compute absolute error.
@@ -133,6 +137,7 @@ class HuberLoss(BaseRegressionLoss):
     """
     Huber Loss
     """
+
     def __init__(
         self,
         delta: float = 1.0,
@@ -170,7 +175,7 @@ class HuberLoss(BaseRegressionLoss):
         loss = torch.abs(pred - target)
         return torch.where(
             loss < self.delta,
-            0.5 * loss ** 2,
+            0.5 * loss**2,
             self.delta * (loss - 0.5 * self.delta),
         )
 
@@ -186,6 +191,7 @@ class LogCoshLoss(BaseRegressionLoss):
             \\log\\left( \\cosh\\big( \\hat{y}_i - y_i \\big)
             \\right)
     """
+
     def _base_loss_fn(self, pred, target):
         """
         Compute log-cosh loss.

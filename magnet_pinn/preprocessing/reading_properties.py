@@ -8,6 +8,7 @@ DESCRIPTION
 CLASSES
     PropertyReader
 """
+
 import os.path as osp
 from typing import List
 
@@ -67,7 +68,9 @@ class PropertyReader:
 
         prop = pd.read_csv(materials_file)
         if not set([FILE_COLUMN_NAME] + FEATURE_NAMES).issubset(prop.columns):
-            raise ValueError(f"File {materials_file} does not have the required columns")
+            raise ValueError(
+                f"File {materials_file} does not have the required columns"
+            )
         self.properties = prop
 
     def read_meshes(self) -> List[Trimesh]:

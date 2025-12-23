@@ -51,7 +51,10 @@ class PropertySampler:
         self.properties_cfg = properties_cfg
 
     def sample_like(
-        self, item: Union[StructurePhantom, MeshPhantom], rng: Generator, properties_list: List = None
+        self,
+        item: Union[StructurePhantom, MeshPhantom],
+        rng: Generator,
+        properties_list: List = None,
     ) -> PropertyPhantom:
         """
         Sample material properties for all components of a phantom structure.
@@ -97,7 +100,9 @@ class PropertySampler:
             properties_list = list(self.properties_cfg.keys())
         return PropertyItem(
             **{
-                key: rng.uniform(min(dim["min"], dim["max"]), max(dim["min"], dim["max"]))
+                key: rng.uniform(
+                    min(dim["min"], dim["max"]), max(dim["min"], dim["max"])
+                )
                 for key, dim in self.properties_cfg.items()
                 if key in properties_list
             }
@@ -173,7 +178,11 @@ class PointSampler:
         points = rng.normal(size=(num_points, len(self.center)))
 
         points = points / np.linalg.norm(points, axis=1)[:, None]
-        points = points * self.radius * rng.uniform(0, 1, size=(num_points, 1)) ** (1 / len(self.center))
+        points = (
+            points
+            * self.radius
+            * rng.uniform(0, 1, size=(num_points, 1)) ** (1 / len(self.center))
+        )
         points = points + self.center
         return points
 
@@ -245,7 +254,11 @@ class BlobSampler:
         return True
 
     def sample_children_blobs(
-        self, parent_blob: Blob, num_children: int, rng: Generator, max_iterations: int = 1000000
+        self,
+        parent_blob: Blob,
+        num_children: int,
+        rng: Generator,
+        max_iterations: int = 1000000,
     ) -> list[Blob]:
         """
         Sample child blobs within a parent blob using progressive positioning.
@@ -286,12 +299,21 @@ class BlobSampler:
 
         child_radius = parent_blob.radius * self.radius_decrease_factor
         zero_center = np.zeros_like(parent_blob.position)
-        blobs = [Blob(zero_center, child_radius, seed=rng.integers(0, 2**32 - 1).item()) for _ in range(num_children)]
+        blobs = [
+            Blob(zero_center, child_radius, seed=rng.integers(0, 2**32 - 1).item())
+            for _ in range(num_children)
+        ]
 
-        child_radius_with_margin = self._calculate_safe_child_radius(blobs, child_radius)
-        parent_allowed_radius = self._calculate_parent_sampling_radius(parent_blob, child_radius_with_margin)
+        child_radius_with_margin = self._calculate_safe_child_radius(
+            blobs, child_radius
+        )
+        parent_allowed_radius = self._calculate_parent_sampling_radius(
+            parent_blob, child_radius_with_margin
+        )
 
-        self._validate_packing_constraints(parent_blob, child_radius_with_margin, num_children)
+        self._validate_packing_constraints(
+            parent_blob, child_radius_with_margin, num_children
+        )
 
         positions = self._find_valid_positions_progressive(
             target_positions=num_children,
@@ -307,7 +329,9 @@ class BlobSampler:
 
         return blobs
 
-    def _calculate_safe_child_radius(self, blobs: list[Blob], base_radius: float) -> float:
+    def _calculate_safe_child_radius(
+        self, blobs: list[Blob], base_radius: float
+    ) -> float:
         """
         Calculate child radius with safety margins for surface deformation.
 
@@ -329,7 +353,9 @@ class BlobSampler:
         max_offset = np.max([blob.empirical_max_offset for blob in blobs])
         return base_radius * (1 + max_offset)
 
-    def _calculate_parent_sampling_radius(self, parent_blob: Blob, child_radius_with_margin: float) -> float:
+    def _calculate_parent_sampling_radius(
+        self, parent_blob: Blob, child_radius_with_margin: float
+    ) -> float:
         """
         Calculate the effective sampling radius within the parent blob.
 
@@ -354,7 +380,9 @@ class BlobSampler:
             If calculated sampling radius is negative, indicating the parent
             is too small to accommodate children of the specified size.
         """
-        parent_inner_radius = parent_blob.radius * (1 + parent_blob.empirical_min_offset)
+        parent_inner_radius = parent_blob.radius * (
+            1 + parent_blob.empirical_min_offset
+        )
         parent_allowed_radius = parent_inner_radius - child_radius_with_margin
         safety_margin = 0.02
         final_radius = parent_allowed_radius * (1 - safety_margin)
@@ -367,7 +395,9 @@ class BlobSampler:
 
         return final_radius
 
-    def _validate_packing_constraints(self, parent_blob: Blob, child_radius: float, num_children: int):
+    def _validate_packing_constraints(
+        self, parent_blob: Blob, child_radius: float, num_children: int
+    ):
         """
         Validate that sphere packing constraints can be satisfied.
 
@@ -388,9 +418,13 @@ class BlobSampler:
         RuntimeError
             If sphere packing constraints cannot be satisfied geometrically.
         """
-        parent_inner_radius = parent_blob.radius * (1 + parent_blob.empirical_min_offset)
+        parent_inner_radius = parent_blob.radius * (
+            1 + parent_blob.empirical_min_offset
+        )
 
-        if not spheres_packable(parent_inner_radius, child_radius, num_inner=num_children):
+        if not spheres_packable(
+            parent_inner_radius, child_radius, num_inner=num_children
+        ):
             raise RuntimeError(
                 f"Cannot pack {num_children} spheres of radius {child_radius:.3f} "
                 f"into parent radius {parent_inner_radius:.3f}"
@@ -454,7 +488,9 @@ class BlobSampler:
             attempts_with_batch = min(max_iterations // 3, 100000)
 
             for attempt in range(attempts_with_batch):
-                candidate_positions = point_sampler.sample_points(num_points=batch_size, rng=rng)
+                candidate_positions = point_sampler.sample_points(
+                    num_points=batch_size, rng=rng
+                )
 
                 positions_subset = candidate_positions[:target_positions]
                 if self.check_points_distance(positions_subset, min_distance):
@@ -491,7 +527,9 @@ class TubeSampler:
         Minimum radius for generated tubes. Must be positive and less than max_radius.
     """
 
-    def __init__(self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250):
+    def __init__(
+        self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250
+    ):
         """
         Initialize tube sampler with configuration parameters.
 
@@ -526,7 +564,9 @@ class TubeSampler:
         self.tube_min_radius = tube_min_radius
         self.parent_radius = parent_radius
 
-    def _sample_line(self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator) -> Tube:
+    def _sample_line(
+        self, center: np.ndarray, ball_radius: float, tube_radius: float, rng: Generator
+    ) -> Tube:
         """
         Sample a tube line within a ball. Defines a fixed line height as 4 times the parent radius.
         """
@@ -539,13 +579,23 @@ class TubeSampler:
         center_to_point_norm = np.linalg.norm(center_to_point)
 
         if center_to_point_norm > 1e-10:
-            direction = direction - np.dot(direction, center_to_point) / (center_to_point_norm**2) * center_to_point
+            direction = (
+                direction
+                - np.dot(direction, center_to_point)
+                / (center_to_point_norm**2)
+                * center_to_point
+            )
 
         direction = direction / np.linalg.norm(direction)
         return Tube(point, direction, tube_radius, height=4 * self.parent_radius)
 
     def sample_tubes(
-        self, center: np.ndarray, radius: float, num_tubes: int, rng: Generator, max_iterations: int = 10000
+        self,
+        center: np.ndarray,
+        radius: float,
+        num_tubes: int,
+        rng: Generator,
+        max_iterations: int = 10000,
     ) -> list[Tube]:
         """
         Sample tubes within a ball with collision detection.
@@ -584,7 +634,10 @@ class TubeSampler:
 
                 is_intersecting = False
                 for existing_tube in tubes:
-                    if Tube.distance_to_tube(tube, existing_tube) < tube.radius + existing_tube.radius:
+                    if (
+                        Tube.distance_to_tube(tube, existing_tube)
+                        < tube.radius + existing_tube.radius
+                    ):
                         is_intersecting = True
                         break
 
@@ -633,7 +686,11 @@ class MeshBlobSampler:
         self.sample_children_only_inside = sample_children_only_inside
 
     def _sample_inside_volume(
-        self, mesh: Trimesh, rng: Generator, batch_size: int = 50000, points_to_return: int = 50000
+        self,
+        mesh: Trimesh,
+        rng: Generator,
+        batch_size: int = 50000,
+        points_to_return: int = 50000,
     ) -> np.ndarray:
         """
         Sample points uniformly inside the mesh volume using winding number method to check if the point is inside the mesh.
@@ -656,14 +713,20 @@ class MeshBlobSampler:
         """
         points = (rng.random((batch_size, 3)) * mesh.extents) + mesh.bounds[0]
         winding_number = fast_winding_number(mesh.vertices, mesh.faces, points)
-        contained = np.logical_and(~np.isclose(winding_number, 0.5), winding_number > 0.5)
+        contained = np.logical_and(
+            ~np.isclose(winding_number, 0.5), winding_number > 0.5
+        )
         if points[contained].size > 0:
             return points[contained][:points_to_return]
 
         raise RuntimeError("Failed to sample a valid position inside the mesh")
 
     def sample_children_blobs(
-        self, parent_mesh_structure: CustomMeshStructure, num_children: int, rng: Generator, batch_size: int = 10000000
+        self,
+        parent_mesh_structure: CustomMeshStructure,
+        num_children: int,
+        rng: Generator,
+        batch_size: int = 10000000,
     ) -> list[Blob]:
         """
         Sample child blobs inside a mesh volume with collision detection.
@@ -693,15 +756,22 @@ class MeshBlobSampler:
 
         mesh = parent_mesh_structure.mesh
         placed_blobs = [
-            Blob(np.zeros(3), self.child_radius, seed=rng.integers(0, 2**32 - 1).item()) for _ in range(num_children)
+            Blob(np.zeros(3), self.child_radius, seed=rng.integers(0, 2**32 - 1).item())
+            for _ in range(num_children)
         ]
 
-        potential_centers = self._sample_inside_volume(mesh, rng, batch_size=batch_size, points_to_return=batch_size)
+        potential_centers = self._sample_inside_volume(
+            mesh, rng, batch_size=batch_size, points_to_return=batch_size
+        )
         w = sliding_window_view(potential_centers, window_shape=num_children, axis=0)
         w = np.swapaxes(w, 1, 2)
         w_squared_norms = np.sum(w**2, axis=-1)
         dot_products = w @ w.swapaxes(-1, -2)
-        squared_distances = w_squared_norms[..., :, None] + w_squared_norms[..., None, :] - 2 * dot_products
+        squared_distances = (
+            w_squared_norms[..., :, None]
+            + w_squared_norms[..., None, :]
+            - 2 * dot_products
+        )
         mask = np.triu(np.ones((num_children, num_children), dtype=bool), k=1)
         D_squared = np.maximum(squared_distances, 0)
         D = np.zeros_like(squared_distances)
@@ -722,12 +792,15 @@ class MeshBlobSampler:
         if self.sample_children_only_inside:
             # n, children, 3
             dist_to_mesh_surface = np.vectorize(
-                parent_mesh_structure.mesh.nearest.signed_distance, signature="(n,3)->(n)"
+                parent_mesh_structure.mesh.nearest.signed_distance,
+                signature="(n,3)->(n)",
             )(valid_centers)
             valid_samples_indices = (dist_to_mesh_surface > effective_radii).all(axis=1)
 
             if valid_samples_indices.sum() == 0:
-                raise RuntimeError("No valid blob placements found inside the parental mesh")
+                raise RuntimeError(
+                    "No valid blob placements found inside the parental mesh"
+                )
 
             valid_centers = valid_centers[valid_samples_indices]
 
@@ -756,7 +829,9 @@ class MeshTubeSampler:
         Minimum radius for generated tubes. Must be positive and less than max_radius.
     """
 
-    def __init__(self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250):
+    def __init__(
+        self, tube_max_radius: float, tube_min_radius: float, parent_radius: float = 250
+    ):
         """Initialize mesh tube sampler.
 
         Parameters
@@ -783,7 +858,9 @@ class MeshTubeSampler:
         self.tube_min_radius = tube_min_radius
         self.parent_radius = parent_radius
 
-    def _sample_inside_position(self, mesh: Trimesh, rng: Generator, max_iter=10000) -> np.ndarray:
+    def _sample_inside_position(
+        self, mesh: Trimesh, rng: Generator, max_iter=10000
+    ) -> np.ndarray:
         """
         Sample a single start point uniformly from the mesh volume.
 
@@ -806,10 +883,16 @@ class MeshTubeSampler:
             contained = mesh.contains(points)
             if points[contained].size > 0:
                 return points[contained][0]
-        raise RuntimeError("Failed to sample a valid position inside the mesh after maximum iterations")
+        raise RuntimeError(
+            "Failed to sample a valid position inside the mesh after maximum iterations"
+        )
 
     def sample_tubes(
-        self, parent_mesh_structure: CustomMeshStructure, num_tubes: int, rng: Generator, max_iterations: int = 10000
+        self,
+        parent_mesh_structure: CustomMeshStructure,
+        num_tubes: int,
+        rng: Generator,
+        max_iterations: int = 10000,
     ) -> list[Tube]:
         """
         Sample tubes inside a mesh volume with collision detection.
@@ -848,7 +931,8 @@ class MeshTubeSampler:
                 tube = Tube(start, direction, radius, height=4 * self.parent_radius)
                 # collision check using Tube.distance_to_tube
                 is_intersecting = any(
-                    Tube.distance_to_tube(tube, other) < tube.radius + other.radius for other in placed_tubes
+                    Tube.distance_to_tube(tube, other) < tube.radius + other.radius
+                    for other in placed_tubes
                 )
                 if not is_intersecting:
                     placed_tubes.append(tube)

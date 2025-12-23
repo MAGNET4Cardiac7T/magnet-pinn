@@ -1,8 +1,14 @@
 """UNet architecture implementations for 2D and 3D segmentation tasks."""
+
 import torch.nn as nn
 
-from .buildingblocks import DoubleConv, ResNetBlock, ResNetBlockSE, \
-    create_decoders, create_encoders
+from .buildingblocks import (
+    DoubleConv,
+    ResNetBlock,
+    ResNetBlockSE,
+    create_decoders,
+    create_encoders,
+)
 from .utils import get_class, number_of_features_per_level
 
 
@@ -39,9 +45,23 @@ class AbstractUNet(nn.Module):
         is3d (bool): if True the model is 3D, otherwise 2D, default: True
     """
 
-    def __init__(self, in_channels, out_channels, basic_module, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=4, conv_kernel_size=3, pool_kernel_size=2,
-                 conv_padding=1, conv_upscale=2, upsample='default', dropout_prob=0.1, is3d=True):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        basic_module,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=4,
+        conv_kernel_size=3,
+        pool_kernel_size=2,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        is3d=True,
+    ):
         """
         Initialize AbstractUNet.
 
@@ -83,25 +103,44 @@ class AbstractUNet(nn.Module):
 
         assert isinstance(f_maps, list) or isinstance(f_maps, tuple)
         assert len(f_maps) > 1, "Required at least 2 levels in the U-Net"
-        if 'g' in layer_order:
-            assert num_groups is not None, "num_groups must be specified if GroupNorm is used"
+        if "g" in layer_order:
+            assert (
+                num_groups is not None
+            ), "num_groups must be specified if GroupNorm is used"
 
         # create encoder path
-        self.encoders = create_encoders(in_channels, f_maps, basic_module, conv_kernel_size,
-                                        conv_padding, conv_upscale, dropout_prob,
-                                        layer_order, num_groups, pool_kernel_size, is3d)
+        self.encoders = create_encoders(
+            in_channels,
+            f_maps,
+            basic_module,
+            conv_kernel_size,
+            conv_padding,
+            conv_upscale,
+            dropout_prob,
+            layer_order,
+            num_groups,
+            pool_kernel_size,
+            is3d,
+        )
 
         # create decoder path
-        self.decoders = create_decoders(f_maps, basic_module, conv_kernel_size, conv_padding,
-                                        layer_order, num_groups, upsample, dropout_prob,
-                                        is3d)
+        self.decoders = create_decoders(
+            f_maps,
+            basic_module,
+            conv_kernel_size,
+            conv_padding,
+            layer_order,
+            num_groups,
+            upsample,
+            dropout_prob,
+            is3d,
+        )
 
         # in the last layer a 1×1 convolution reduces the number of output channels to the number of labels
         if is3d:
             self.final_conv = nn.Conv3d(f_maps[0], out_channels, 1)
         else:
             self.final_conv = nn.Conv2d(f_maps[0], out_channels, 1)
-
 
     def forward(self, x):
         """
@@ -170,9 +209,20 @@ class UNet3D(AbstractUNet):
             dropout probability, default: 0.1
     """
 
-    def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=4, conv_padding=1,
-                 conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=4,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        **kwargs
+    ):
         """
         Initialize UNet3D model.
 
@@ -201,18 +251,20 @@ class UNet3D(AbstractUNet):
         **kwargs : dict
             Additional keyword arguments
         """
-        super(UNet3D, self).__init__(in_channels=in_channels,
-                                     out_channels=out_channels,
-                                     basic_module=DoubleConv,
-                                     f_maps=f_maps,
-                                     layer_order=layer_order,
-                                     num_groups=num_groups,
-                                     num_levels=num_levels,
-                                     conv_padding=conv_padding,
-                                     conv_upscale=conv_upscale,
-                                     upsample=upsample,
-                                     dropout_prob=dropout_prob,
-                                     is3d=True)
+        super(UNet3D, self).__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            basic_module=DoubleConv,
+            f_maps=f_maps,
+            layer_order=layer_order,
+            num_groups=num_groups,
+            num_levels=num_levels,
+            conv_padding=conv_padding,
+            conv_upscale=conv_upscale,
+            upsample=upsample,
+            dropout_prob=dropout_prob,
+            is3d=True,
+        )
 
 
 class ResidualUNet3D(AbstractUNet):
@@ -223,9 +275,20 @@ class ResidualUNet3D(AbstractUNet):
     Since the model effectively becomes a residual net, in theory it allows for deeper UNet.
     """
 
-    def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=5, conv_padding=1,
-                 conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=5,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        **kwargs
+    ):
         """
         Initialize ResidualUNet3D model.
 
@@ -254,18 +317,20 @@ class ResidualUNet3D(AbstractUNet):
         **kwargs : dict
             Additional keyword arguments
         """
-        super(ResidualUNet3D, self).__init__(in_channels=in_channels,
-                                             out_channels=out_channels,
-                                             basic_module=ResNetBlock,
-                                             f_maps=f_maps,
-                                             layer_order=layer_order,
-                                             num_groups=num_groups,
-                                             num_levels=num_levels,
-                                             conv_padding=conv_padding,
-                                             conv_upscale=conv_upscale,
-                                             upsample=upsample,
-                                             dropout_prob=dropout_prob,
-                                             is3d=True)
+        super(ResidualUNet3D, self).__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            basic_module=ResNetBlock,
+            f_maps=f_maps,
+            layer_order=layer_order,
+            num_groups=num_groups,
+            num_levels=num_levels,
+            conv_padding=conv_padding,
+            conv_upscale=conv_upscale,
+            upsample=upsample,
+            dropout_prob=dropout_prob,
+            is3d=True,
+        )
 
 
 class ResidualUNetSE3D(AbstractUNet):
@@ -278,9 +343,20 @@ class ResidualUNetSE3D(AbstractUNet):
     net, in theory it allows for deeper UNet.
     """
 
-    def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=5, conv_padding=1,
-                 conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=5,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        **kwargs
+    ):
         """
         Initialize ResidualUNetSE3D model.
 
@@ -309,18 +385,20 @@ class ResidualUNetSE3D(AbstractUNet):
         **kwargs : dict
             Additional keyword arguments
         """
-        super(ResidualUNetSE3D, self).__init__(in_channels=in_channels,
-                                               out_channels=out_channels,
-                                               basic_module=ResNetBlockSE,
-                                               f_maps=f_maps,
-                                               layer_order=layer_order,
-                                               num_groups=num_groups,
-                                               num_levels=num_levels,
-                                               conv_padding=conv_padding,
-                                               conv_upscale=conv_upscale,
-                                               upsample=upsample,
-                                               dropout_prob=dropout_prob,
-                                               is3d=True)
+        super(ResidualUNetSE3D, self).__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            basic_module=ResNetBlockSE,
+            f_maps=f_maps,
+            layer_order=layer_order,
+            num_groups=num_groups,
+            num_levels=num_levels,
+            conv_padding=conv_padding,
+            conv_upscale=conv_upscale,
+            upsample=upsample,
+            dropout_prob=dropout_prob,
+            is3d=True,
+        )
 
 
 class UNet2D(AbstractUNet):
@@ -329,9 +407,20 @@ class UNet2D(AbstractUNet):
     `"U-Net: Convolutional Networks for Biomedical Image Segmentation" <https://arxiv.org/abs/1505.04597>`
     """
 
-    def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=4, conv_padding=1,
-                 conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=4,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        **kwargs
+    ):
         """
         Initialize UNet2D model.
 
@@ -360,18 +449,20 @@ class UNet2D(AbstractUNet):
         **kwargs : dict
             Additional keyword arguments
         """
-        super(UNet2D, self).__init__(in_channels=in_channels,
-                                     out_channels=out_channels,
-                                     basic_module=DoubleConv,
-                                     f_maps=f_maps,
-                                     layer_order=layer_order,
-                                     num_groups=num_groups,
-                                     num_levels=num_levels,
-                                     conv_padding=conv_padding,
-                                     conv_upscale=conv_upscale,
-                                     upsample=upsample,
-                                     dropout_prob=dropout_prob,
-                                     is3d=False)
+        super(UNet2D, self).__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            basic_module=DoubleConv,
+            f_maps=f_maps,
+            layer_order=layer_order,
+            num_groups=num_groups,
+            num_levels=num_levels,
+            conv_padding=conv_padding,
+            conv_upscale=conv_upscale,
+            upsample=upsample,
+            dropout_prob=dropout_prob,
+            is3d=False,
+        )
 
 
 class ResidualUNet2D(AbstractUNet):
@@ -379,9 +470,20 @@ class ResidualUNet2D(AbstractUNet):
     Residual 2DUnet model implementation based on https://arxiv.org/pdf/1706.00120.pdf.
     """
 
-    def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
-                 num_groups=8, num_levels=5, conv_padding=1,
-                 conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        f_maps=64,
+        layer_order="gcr",
+        num_groups=8,
+        num_levels=5,
+        conv_padding=1,
+        conv_upscale=2,
+        upsample="default",
+        dropout_prob=0.1,
+        **kwargs
+    ):
         """
         Initialize ResidualUNet2D model.
 
@@ -410,18 +512,20 @@ class ResidualUNet2D(AbstractUNet):
         **kwargs : dict
             Additional keyword arguments
         """
-        super(ResidualUNet2D, self).__init__(in_channels=in_channels,
-                                             out_channels=out_channels,
-                                             basic_module=ResNetBlock,
-                                             f_maps=f_maps,
-                                             layer_order=layer_order,
-                                             num_groups=num_groups,
-                                             num_levels=num_levels,
-                                             conv_padding=conv_padding,
-                                             conv_upscale=conv_upscale,
-                                             upsample=upsample,
-                                             dropout_prob=dropout_prob,
-                                             is3d=False)
+        super(ResidualUNet2D, self).__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            basic_module=ResNetBlock,
+            f_maps=f_maps,
+            layer_order=layer_order,
+            num_groups=num_groups,
+            num_levels=num_levels,
+            conv_padding=conv_padding,
+            conv_upscale=conv_upscale,
+            upsample=upsample,
+            dropout_prob=dropout_prob,
+            is3d=False,
+        )
 
 
 def get_model(model_config):
@@ -438,7 +542,7 @@ def get_model(model_config):
     nn.Module
         Instantiated model
     """
-    model_class = get_class(model_config['name'], modules=[
-        'pytorch3dunet.unet3d.model'
-    ])
+    model_class = get_class(
+        model_config["name"], modules=["pytorch3dunet.unet3d.model"]
+    )
     return model_class(**model_config)
