@@ -577,7 +577,8 @@ class PointReader(FieldReader):
         Raises
         ------
         ValueError
-            If data shape doesn't match coordinates.
+            If the number of data points (first dimension of ``data_shape``) does not match
+            the number of coordinate points.
         """
         # This property ignores the existing data because of assumption of 1d
         if data_shape[0] != self._coordinates.shape[0]:

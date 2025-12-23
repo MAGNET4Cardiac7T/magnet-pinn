@@ -179,7 +179,7 @@ class DivergenceLoss(BasePhysicsLoss):
     to enforce physical consistency of the predicted fields.
 
     .. math::
-        \\nabla \\cdot \\mathbf{E} = \\frac{\\ro}{\\epsilon_0} \\\\
+        \\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\epsilon_0} \\\\
         \\nabla \\cdot \\mathbf{B} = 0
 
     In the forward pass, expects the predicted fields to be of shape
