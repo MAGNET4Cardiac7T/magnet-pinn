@@ -229,7 +229,7 @@ def test_diff_filter_factory_mismatched_dim_names():
 def test_mask_padding_default_padding():
     mask = torch.ones([1, 1, 10, 10, 10])
     mask[:, :, 3:7, 3:7, 3:7] = 0
-
+    
     mask_padding = ObjectMaskCropping()
 
     result = mask_padding(mask)

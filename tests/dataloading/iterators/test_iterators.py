@@ -329,7 +329,7 @@ def test_grid_iteartor_check_multiple_samples(grid_processed_dir, random_grid_it
             check_values_between_item_result_and_supposed_simulation(result, zero_grid_item)
         else:
             raise ValueError("Unexpected simulation name.")
-
+        
 
 def test_point_iterator_check_not_existing_coils_dir(pointcloud_processed_dir_short_term, pointcloud_aug):
     antenna_dir_path = pointcloud_processed_dir_short_term / PROCESSED_ANTENNA_DIR_PATH
@@ -476,7 +476,7 @@ def test_point_iterator_check_sampled_data_items_values(pointcloud_processed_dir
             check_values_between_item_result_and_supposed_simulation(result, zero_pointcloud_item)
         else:
             raise ValueError("Unexpected simulation name.")
-
+        
 
 def test_point_iterator_check_sampled_data_rate(pointcloud_processed_dir, random_pointcloud_item, zero_pointcloud_item, pointcloud_aug):
     iter = MagnetPointIterator(pointcloud_processed_dir, transforms=pointcloud_aug, num_samples=3)

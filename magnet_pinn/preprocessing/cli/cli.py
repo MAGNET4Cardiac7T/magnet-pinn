@@ -75,14 +75,14 @@ def parse_arguments() -> Namespace:
         help="Paths/names of simulations to preprocess, by default gets `None` value and preprocesses all the simulations in the batch directories"
     )
 
-
+    
     main_parser = argparse.ArgumentParser(
         prog="magnet_pinn.preprocessing",
         description="Preprocess the simulation data",
         parents=[global_parser]
     )
 
-
+    
     subparsers = main_parser.add_subparsers(
         dest="preprocessing_type",
         title="Subcommands",

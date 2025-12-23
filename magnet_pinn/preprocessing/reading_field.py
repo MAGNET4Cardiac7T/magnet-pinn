@@ -83,7 +83,7 @@ class FieldReaderFactory:
             Path to the simulation directory
         field_type: str
             Field type
-
+        
         Raises
         ------
         Exception
@@ -132,7 +132,7 @@ class FieldReaderFactory:
 
         else:
             instance = PointReader(self.files_list, self.field_type)
-
+    
         return instance
 
     def __is_grid(self):
@@ -142,7 +142,7 @@ class FieldReaderFactory:
 
         with File(self.files_list[0]) as f:
             database_keys = list(f.keys())
-
+        
         return POSITIONS_DATABASE_KEY not in database_keys
 
 
@@ -207,7 +207,7 @@ class FieldReader(ABC):
                     f"Different positions in the field value file {other_file}"
                 )
 
-    @property
+    @property        
     @abstractmethod
     def coordinates(self):
         pass
@@ -251,7 +251,7 @@ class FieldReader(ABC):
         """
         Extracts field values from the files
 
-        This is a main method of the class.
+        This is a main method of the class. 
         It reads field values from files and compose it into a single array
 
         Returns
@@ -349,14 +349,14 @@ class GridReader(FieldReader):
             The type of the field we read
         _coordinates: np.ndarray
             The coordinates of the field points
-
+        
         Methods
         -------
         __init__(files_list, field_type)
             It reads coordinates and validates if the coordinates are the same in all files
         extract_data()
             Extracts field values from the files
-
+        
     """
     is_grid = True #TODO: why is this here and when is it changed?
 
@@ -364,8 +364,8 @@ class GridReader(FieldReader):
         """
         Read coordinates from the h5 file
 
-        In the grid case coordinates are given by the mesh lines.
-        Their access keys are saved in the
+        In the grid case coordinates are given by the mesh lines. 
+        Their access keys are saved in the 
         `X_BOUNDS_DATABASE_KEY`, `Y_BOUNDS_DATABASE_KEY`, `Z_BOUNDS_DATABASE_KEY`.
 
         Parameters
@@ -384,7 +384,7 @@ class GridReader(FieldReader):
             z_bounds = f[Z_BOUNDS_DATABASE_KEY][:].astype(np.float64)
 
         return x_bounds, y_bounds, z_bounds
-
+    
     def _check_coordinates(self, other_coordinates: Tuple) -> bool:
         """
         Checks if the given coordinates are the same as the coordinates saved in the instance
@@ -408,18 +408,18 @@ class GridReader(FieldReader):
             and np.array_equal(y_default_bound, y_other_bound)
             and np.array_equal(z_default_bound, z_other_bound)
             )
-
+    
     @property
     def coordinates(self):
         """
         TODO: Rewrite description?
-        It suppose just to give back the coordinates list. But if the grid trigger is
+        It suppose just to give back the coordinates list. But if the grid trigger is 
         off, then we give the data back in the pointslist form, that is why we create
         a grid form and reshape it into the form of the pointslist.
         """
         if self.is_grid:
             return self._coordinates
-
+        
         x, y, z = self._coordinates
         xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
         values = np.ascontiguousarray(rearrange(
@@ -427,7 +427,7 @@ class GridReader(FieldReader):
             "ax x y z -> (x y z) ax"
         ), dtype=np.float32)
         return values
-
+    
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
         """
         The grid data field is an array with 3d grid structure (x, y, z). It checks and fixes axis order.
@@ -464,7 +464,7 @@ class GridReader(FieldReader):
         """
         Compose together field components from different files
 
-        In the grid regime of work we give back the grid data, but if
+        In the grid regime of work we give back the grid data, but if 
         the grid trigger is off, we will give back the data in the pointslist form.
 
         Parameters
@@ -501,7 +501,7 @@ class PointReader(FieldReader):
         The list of files paths which should be processed
     field_type: str
         The type of the field we process
-
+        
     Attributes
     ----------
     files_list: list
@@ -523,7 +523,7 @@ class PointReader(FieldReader):
         """
         Read coordinates from the h5 file
 
-        In the pointslist case coordinates have no structure so we just compose them
+        In the pointslist case coordinates have no structure so we just compose them 
         as a list of points.
 
         Parameters
@@ -544,7 +544,7 @@ class PointReader(FieldReader):
             [x, y, z],
             "ax batch -> batch ax"
         ), dtype=np.float32)
-
+    
     def _check_coordinates(self, other_coordinates) -> bool:
         """
         Checks if the given coordinates are the same as the coordinates saved in the instance
@@ -560,19 +560,19 @@ class PointReader(FieldReader):
             True if the coordinates are the same
         """
         return np.array_equal(self._coordinates, other_coordinates)
-
+    
     @property
     def coordinates(self):
         return self._coordinates
-
+    
     @property
     def _compose_field_pattern(self, data_shape: Tuple) -> str:
         # This property ignores the existing data because of assumption of 1d
         if data_shape[0] != self._coordinates.shape[0]:
             raise ValueError("Inconsistent data shape")
-
+        
         return "ax batch -> batch ax"
-
+    
     def _compose_field_components(self, field_components: List) -> np.array:
         """
         Compose together field components from different files

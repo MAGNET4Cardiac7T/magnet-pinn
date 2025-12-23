@@ -18,7 +18,7 @@ class MagnetGridIterator(MagnetBaseIterator):
     Alias for the iterator of the voxelized electromagnetic simulation data, so it is in the 3d grid format.
     A class is deprecated and will be removed.
     """
-
+    
     def __init__(self, *args, **kwargs):
         warnings.warn(
             "MagnetGridIterator is deprecated and will be removed. "

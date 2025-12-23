@@ -37,7 +37,7 @@ def prepare_data():
         batch_size=1,
         num_workers=1,
     )
-
+    
     mask_cropper = ObjectMaskCropping(padding=1)
 
     item = next(iter(dataloader))
@@ -55,7 +55,7 @@ field_dict = {
     'efield_imag': field[:, 0, 1],
     'hfield_real': field[:, 1, 0],
     'hfield_imag': field[:, 1, 1]
-
+    
 }
 efield_abs = torch.linalg.norm(field_dict['efield_real'] + 1j*field_dict['efield_imag'], dim=1)
 hfield_abs = torch.linalg.norm(field_dict['hfield_real'] + 1j*field_dict['hfield_imag'], dim=1)
@@ -68,7 +68,7 @@ divergence_cropped_dict = {
     key: divergence_dict[key]*item['subject'] for key in divergence_dict
 }
 hfield_divergence = divergence_cropped_dict['hfield_real'] + divergence_cropped_dict['hfield_imag']
-efield_divergence = divergence_cropped_dict['efield_real'] + divergence_cropped_dict['efield_imag']
+efield_divergence = divergence_cropped_dict['efield_real'] + divergence_cropped_dict['efield_imag'] 
 
 
 fig, ax = plt.subplots(2, 2, figsize=(10, 10))

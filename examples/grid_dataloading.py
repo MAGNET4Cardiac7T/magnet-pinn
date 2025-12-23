@@ -25,3 +25,4 @@ iterator = MagnetGridIterator(
 for item in tqdm.tqdm(iterator, smoothing=0):
     print(item['field'].shape)
     print(item['coils'].shape)
+

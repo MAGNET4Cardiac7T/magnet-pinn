@@ -50,7 +50,7 @@ def parse_arguments() -> Namespace:
         The parsed arguments
     """
     global_parser = argparse.ArgumentParser(add_help=False)
-
+    
     # Common arguments for all phantom types
     global_parser.add_argument(
         "-o",
@@ -66,7 +66,7 @@ def parse_arguments() -> Namespace:
         default=SEED,
         help="Random seed for reproducible generation, by default is 42"
     )
-
+    
     # Property sampling arguments
     global_parser.add_argument(
         "--density-min",
@@ -104,7 +104,7 @@ def parse_arguments() -> Namespace:
         default=PERMITTIVITY_MAX,
         help="Maximum permittivity value for property sampling, by default is 71.0"
     )
-
+    
     # Workflow configuration preset
     global_parser.add_argument(
         "--transforms-mode",
@@ -113,7 +113,7 @@ def parse_arguments() -> Namespace:
         help=("Preset selection of transforms: 'none' for no transforms, 'all' for all transforms, "
               "'no-clipping' to skip tube and children clipping, default value is 'all'. For more fine-grained workflows please modify the code directly.")
     )
-
+    
     # Structure generation arguments (common to tissue and custom)
     global_parser.add_argument(
         "--num-children-blobs",
@@ -145,13 +145,13 @@ def parse_arguments() -> Namespace:
         default=RELATIVE_TUBE_MAX_RADIUS,
         help="Maximum tube radius as fraction of parent blob radius, by default is 0.1"
     )
-
+    
     main_parser = argparse.ArgumentParser(
         prog="magnet_pinn.generator",
         description="Generate phantom data for MRI simulations",
         parents=[global_parser]
     )
-
+    
     subparsers = main_parser.add_subparsers(
         dest="phantom_type",
         title="Phantom Types",
@@ -159,7 +159,7 @@ def parse_arguments() -> Namespace:
         help="Sub-command to run (tissue or custom)"
     )
     subparsers.required = True
-
+    
     # Tissue phantom subcommand
     tissue_parser = subparsers.add_parser(
         "tissue",
@@ -208,7 +208,7 @@ def parse_arguments() -> Namespace:
         default=Z_MAX,
         help="Maximum z-coordinate for parent blob center, by default is 50.0"
     )
-
+    
     # Custom phantom subcommand
     custom_parser = subparsers.add_parser(
         "custom",
@@ -233,5 +233,5 @@ def parse_arguments() -> Namespace:
         default=CHILD_BLOBS_BATCH_SIZE,
         help="Number of points to sample in batch for child blob placement, by default is 1000000"
     )
-
+    
     return main_parser.parse_args()

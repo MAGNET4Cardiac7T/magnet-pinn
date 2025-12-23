@@ -68,11 +68,11 @@ TRUNCATION_COEFFICIENTS_OUT_KEY = "truncation_coefficients"
 
 class Preprocessing(ABC):
     """
-    Abstract class for preprocessing.
+    Abstract class for preprocessing. 
     Describes the general structure of the preprocessing pipeline.
 
-    First of all we check input and output directory structures and read antenna
-    data which will be used for the whole batch. The main method `process_simulations`
+    First of all we check input and output directory structures and read antenna 
+    data which will be used for the whole batch. The main method `process_simulations` 
     make some calculations and save processed data to the output directory.
 
     Parameters
@@ -91,7 +91,7 @@ class Preprocessing(ABC):
     Attributes
     ----------
     all_sim_paths : List[Path]
-        A list of all simulation directories
+        A list of all simulation directories 
     field_dtype : np.dtype
         type of saving field data
     simulations_dir_path : str
@@ -133,7 +133,7 @@ class Preprocessing(ABC):
                 self.dipoles_properties, self.dipoles_meshes
             )
         return self.__dipoles_masks
-
+    
     @property
     def _dipoles_features(self) -> np.array:
         """
@@ -146,17 +146,17 @@ class Preprocessing(ABC):
         return self.__dipoles_features
 
 
-    def __init__(self,
-                 batches_dir_paths: Union[str, Path, List[str], List[Path]],
+    def __init__(self, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
                  antenna_dir_path: Union[str, Path],
                  output_dir_path: Union[str, Path],
                  field_dtype: np.dtype = np.complex64,
                  coil_thick_coef: Optional[float] = 2.0) -> None:
         """
-        The method checks the input and output directories, reads antenna data and
+        The method checks the input and output directories, reads antenna data and 
         prepares the output directories. It also checks if simulations have unique names.
-        If simulation do not have unique names a warning is raised.
-
+        If simulation do not have unique names a warning is raised.    
+        
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -171,7 +171,7 @@ class Preprocessing(ABC):
             colis are mostly flat, this parameters controlls thickering
         """
         field_dtype = np.dtype(field_dtype)
-
+        
         if field_dtype.kind == COMPLEX_DTYPE_KIND:
             warnings.warn(
                 f"Complex data types are deprecated and will be removed in a future version. "
@@ -192,7 +192,7 @@ class Preprocessing(ABC):
             batches = batches_dir_paths
         else:
             raise TypeError("Source/s should be a string/list of strings")
-
+        
         self.all_sim_paths = self.__extract_simulations(batches)
 
         # check for unique simulation names
@@ -276,15 +276,15 @@ class Preprocessing(ABC):
     @abstractmethod
     def _output_target_dir(self) -> str:
         """
-        Gives the name of the simulations output directory
+        Gives the name of the simulations output directory 
         in the batch output directory
         """
         pass
 
     def __get_properties_and_meshes(self, dir_path: str) -> Tuple[pd.DataFrame, List[Trimesh]]:
         """
-        Reads properties file `materials.txt` as csv file and then
-        loads meshes files which are mentioned in the dataframe and
+        Reads properties file `materials.txt` as csv file and then 
+        loads meshes files which are mentioned in the dataframe and 
         located in the same directory.
         Parameters
         ----------
@@ -315,18 +315,18 @@ class Preprocessing(ABC):
         - save processed antenna data (dipoles)
         - process each simulation
 
-        This method first calls `_write_dipoles` method to save processed
+        This method first calls `_write_dipoles` method to save processed 
         antenna data before processing simulations.
-        Then it makes iteration over all simulation directories found in the
+        Then it makes iteration over all simulation directories found in the 
         `dir_path` and calls `__process_simulation` method for each of it.
 
-        Simulation names in different batches can not be the same,
-        if they are we would choose a random one would be chosen to preprocess.
+        Simulation names in different batches can not be the same, 
+        if they are we would choose a random one would be chosen to preprocess. 
 
         Parameters
         ----------
         simulations : List[Union[str, Path]] | None
-            A list of simulation names which should be processed.
+            A list of simulation names which should be processed. 
             If None, all simulations will be processed.
         """
         simulations = self.__resolve_simulations(simulations) if simulations is not None else self.all_sim_paths
@@ -338,7 +338,7 @@ class Preprocessing(ABC):
 
         pbar = tqdm(total=len(simulations), desc="Simulations processing")
         for i in simulations:
-            sim_res_path = self._process_simulation(i)
+            sim_res_path = self._process_simulation(i)           
             pbar.set_postfix({"done": sim_res_path}, refresh=True)
             pbar.update(1)
 
@@ -355,7 +355,7 @@ class Preprocessing(ABC):
         def resolve_simulation(simulation: Union[str, Path]) -> Path:
             """
             Resolves the path to the simulation directory.
-            If it is path it is resolved and saved in the abs form,
+            If it is path it is resolved and saved in the abs form, 
             if a name - check if it is in the list and return the path, which
             satisfies the name.
             """
@@ -363,30 +363,30 @@ class Preprocessing(ABC):
                 simulation = simulation.resolve().absolute()
                 if not simulation in self.all_sim_paths:
                     raise Exception(f"Simulation is not in the batches")
-
+                
             elif isinstance(simulation, str):
                 if simulation not in all_sim_names:
                     raise Exception(f"Simulation is not in the batches")
-
+                
                 simulation = self.all_sim_paths[all_sim_names.index(simulation)]
 
             else:
                 raise TypeError("Simulation should be a string or a path")
-
+            
             if not simulation.exists():
                 raise FileNotFoundError(f"Simulation {simulation} does not exist")
-
+            
             return simulation
-
+        
         return list(map(resolve_simulation, simulations))
-
+            
     def _process_simulation(self, sim_path: Path):
         """
         The main internal method to make simulation processing.
 
         It creates a `Simulation` instance and then passes it one by one
-        into preprocessing steps, which save data into the instance
-        as properties. After the simulation data is ready it calls
+        into preprocessing steps, which save data into the instance 
+        as properties. After the simulation data is ready it calls 
         `_format_and_write_dataset` method to save the data into the output directory.
 
         Parameters
@@ -409,7 +409,7 @@ class Preprocessing(ABC):
 
     def _extract_fields_data(self, out_simulation: Simulation):
         """
-        Extracts field data from the simulation directory
+        Extracts field data from the simulation directory 
         and saves it into the `out_simulation` instance.
 
         Parameters
@@ -423,7 +423,7 @@ class Preprocessing(ABC):
         h_field_reader = FieldReaderFactory(
             out_simulation.path, H_FIELD_DATABASE_KEY
         ).create_reader(not isinstance(self, PointPreprocessing))
-
+        
         self._check_coordinates(e_field_reader, h_field_reader)
 
         out_simulation.e_field = e_field_reader.extract_data()
@@ -447,9 +447,9 @@ class Preprocessing(ABC):
         """
         Calculates or extracts masks and features for both subject and antenna.
 
-        The method use `__get_properties_and_meshes` method and
-        `_get_objects_features_and_mask` to finally calculate object features.
-        Also it uses the precomputed antenna data from to calculate the final
+        The method use `__get_properties_and_meshes` method and 
+        `_get_objects_features_and_mask` to finally calculate object features. 
+        Also it uses the precomputed antenna data from to calculate the final 
         features and masks for the simulation.
 
         Parameters
@@ -478,7 +478,7 @@ class Preprocessing(ABC):
         Methods processes air features.
         """
         pass
-
+    
     def _get_features_and_mask(self, properties: pd.DataFrame, meshes: List) -> Tuple:
         """
         Calculates features and masks based on given parameters.
@@ -502,13 +502,13 @@ class Preprocessing(ABC):
             )),
             self._masks_stack_pattern
         ))
-
+        
         features = self._get_features(properties, mask)
         return (
             features,
             mask
         )
-
+    
     @abstractmethod
     def _get_mask(self, mesh: Trimesh) -> np.array:
         """
@@ -593,12 +593,12 @@ class Preprocessing(ABC):
         An einops pattern how to sum features over the component axis.
         """
         pass
-
+    
     def _format_and_write_dataset(self, out_simulation: Simulation):
         """
         The final stage for the simulation processing.
 
-        The method formats data from the `out_simulation` instance
+        The method formats data from the `out_simulation` instance 
         and writes it to the output directory.
 
         Also it writes resulting file path to the `out_simulation` instance.
@@ -626,7 +626,7 @@ class Preprocessing(ABC):
 
     def _feature_truncate_coefficients(self, simulation: Simulation) -> np.array:
         """
-            Calculates the coefficients for truncating the features based on the given feature type, to prevent overflow
+            Calculates the coefficients for truncating the features based on the given feature type, to prevent overflow 
             when saving the data as float16.
         """
         if self.field_dtype.name == "float16":
@@ -649,7 +649,7 @@ class Preprocessing(ABC):
         """
 
         return simulation.object_masks.astype(np.bool_)
-
+    
     @abstractmethod
     def _format_features(self, simulation: Simulation) -> np.array:
         """
@@ -686,19 +686,19 @@ class Preprocessing(ABC):
         """
         if self.field_dtype.kind != FLOAT_DTYPE_KIND:
             raise Exception("Unsupported field data type")
-
+        
         e_field = np.empty_like(simulation.e_field,
                                 dtype=[("re", self.field_dtype),("im", self.field_dtype)])
         e_field["re"] = simulation.e_field.real
         e_field["im"] = simulation.e_field.imag
-
+        
         h_field = np.empty_like(simulation.h_field,
                                 dtype=[("re", self.field_dtype),("im", self.field_dtype)])
         h_field["re"] = simulation.h_field.real
         h_field["im"] = simulation.h_field.imag
 
         return e_field, h_field
-
+    
     def _write_extra_data(self, simulation: Simulation, f: File):
         """
         Writes extra data to the output .h5 file.
@@ -719,7 +719,7 @@ class Preprocessing(ABC):
         Write dipoles masks to the output directory.
         """
         self.out_antenna_dir_path.mkdir(parents=True, exist_ok=True)
-
+        
         target_file_name = TARGET_FILE_NAME.format(name="antenna")
         with File(self.out_antenna_dir_path / target_file_name, "w") as f:
             f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=self._dipoles_masks.astype(np.bool_))
@@ -777,12 +777,12 @@ class GridPreprocessing(Preprocessing):
         Main processing method. It processes all simulations in the batch
     """
     def __init__(
-        self,
+        self, 
         simulations_dir_path: Union[str, List[str]],
         antenna_dir_path: str,
-        output_dir_path: str,
-        voxel_size: int = STANDARD_VOXEL_SIZE,
-        field_dtype: np.dtype = np.complex64,
+        output_dir_path: str, 
+        voxel_size: int = STANDARD_VOXEL_SIZE, 
+        field_dtype: np.dtype = np.complex64, 
         coil_thick_coef: Optional[float] = 1.0,
         **kwargs
     ):
@@ -828,7 +828,7 @@ class GridPreprocessing(Preprocessing):
     @property
     def _output_target_dir(self) -> str:
         """
-        Gives a name of the simulation out directory based on
+        Gives a name of the simulation out directory based on 
         voxel grid and data type we use to save the field data.
         """
         return f"grid_voxel_size_{self.voxel_size}_data_type_{self.field_dtype.name}"
@@ -848,12 +848,12 @@ class GridPreprocessing(Preprocessing):
         h_x_bound, h_y_bound, h_z_bound = h_reader.coordinates
 
         if (
-            not np.array_equal(x_bound, h_x_bound)
-            or not np.array_equal(y_bound, h_y_bound)
+            not np.array_equal(x_bound, h_x_bound) 
+            or not np.array_equal(y_bound, h_y_bound) 
             or not np.array_equal(z_bound, h_z_bound)
         ):
             raise Exception("Different coordinate systems for E and H fields")
-
+        
         data_min = np.array(
             (np.min(x_bound), np.min(y_bound), np.min(z_bound)),
             dtype=np.float32
@@ -876,7 +876,7 @@ class GridPreprocessing(Preprocessing):
         ----------
         features : np.array
             a precalculated features array
-
+        
         Returns
         -------
         np.array
@@ -904,14 +904,14 @@ class GridPreprocessing(Preprocessing):
         ----------
         mesh : Trimesh
             a mesh object
-
+        
         Returns
         -------
         np.array
             a mask array
         """
         return self.voxelizer.process_mesh(mesh)
-
+    
     @property
     def _masks_stack_pattern(self) -> str:
         """
@@ -925,7 +925,7 @@ class GridPreprocessing(Preprocessing):
             an einops pattern
         """
         return "component x y z -> component x y z"
-
+    
     def _extend_props(self, props: np.array, masks: np.array) -> np.array:
         """
         Extends properties array to the same shape as masks.
@@ -946,21 +946,21 @@ class GridPreprocessing(Preprocessing):
             y=masks.shape[2],
             z=masks.shape[3]
         ))
-
+    
     @property
     def _extend_masks_pattern(self) -> str:
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
         return "component x y z -> feature component x y z"
-
+    
     @property
     def _features_sum_pattern(self) -> str:
         """
         An einops pattern how to sum features over the component axis.
         """
         return "feature component x y z -> feature x y z"
-
+    
     def _format_features(self, simulation: Simulation) -> np.array:
         """
         Formats features data.
@@ -979,14 +979,14 @@ class GridPreprocessing(Preprocessing):
         truncation_coefficients = np.expand_dims(truncation_coefficients, axis=(1, 2, 3))
         features = simulation.features / truncation_coefficients
         return features.astype(self.field_dtype.type(0).real)
-
+    
     def _write_extra_data(self, simulation: Simulation, f: File):
         """
         Writes extra data to the output .h5 file.
 
         Grid preprocessing needs to save voxel size and coordinates
         extent as metadata.
-        Also writes coordinates as one more h5 dataset with a shape as
+        Also writes coordinates as one more h5 dataset with a shape as 
         (3, x, y, z).
 
         Parameters
@@ -1059,15 +1059,15 @@ class PointPreprocessing(Preprocessing):
     """
     _coordinates = None
 
-    def __init__(self,
-                 batches_dir_paths: Union[str, Path, List[str], List[Path]],
+    def __init__(self, 
+                 batches_dir_paths: Union[str, Path, List[str], List[Path]], 
                  antenna_dir_path: Union[str, Path],
                  output_dir_path: Union[str, Path],
                  field_dtype: np.dtype = np.complex64,
                  coil_thick_coef: Optional[float] = 2.0) -> None:
         """
         Initializes the point preprocessing object and reads coordinates from the first simulation.
-
+        
         Parameters
         ----------
         batches_dir_paths : str | Path | List[str] | List[Path]
@@ -1091,7 +1091,7 @@ class PointPreprocessing(Preprocessing):
         """
         if len(self.all_sim_paths) == 0:
             return
-
+        
         first_sim_path = self.all_sim_paths[0]
         e_field_reader = FieldReaderFactory(
             first_sim_path, E_FIELD_DATABASE_KEY
@@ -1130,7 +1130,7 @@ class PointPreprocessing(Preprocessing):
             not np.array_equal(e_coordinates, h_coordinates)
         ):
             raise Exception("Different coordinate systems for E and H fields")
-
+        
         if not np.array_equal(self._coordinates, e_coordinates):
             raise Exception("Different coordinate systems for simulations")
 
@@ -1157,14 +1157,14 @@ class PointPreprocessing(Preprocessing):
             "feature component -> feature component points",
             points=masks.shape[1]
         ))
-
+    
     @property
     def _extend_masks_pattern(self) -> str:
         """
         An einops pattern how to shape masks to the expected resulting shape.
         """
         return "component points -> feature component points"
-
+    
     @property
     def _features_sum_pattern(self) -> str:
         """
@@ -1201,7 +1201,7 @@ class PointPreprocessing(Preprocessing):
         A method returns mask for the mesh.
 
         In point preprocessing we check each point if it is inside the mesh.
-        That is why we calculate the fast winding number and set a threshold
+        That is why we calculate the fast winding number and set a threshold 
         to check if is closer to 0 or 1. It happens that point can have a value
         close to 0.5 and it is bigger than 0.5, so we have to check both conditions.
 
@@ -1215,7 +1215,7 @@ class PointPreprocessing(Preprocessing):
         np.array
             a mask array
         """
-
+        
         vertices = np.ascontiguousarray(mesh.vertices)
         faces = np.ascontiguousarray(mesh.faces)
         points = np.ascontiguousarray(self.coordinates, dtype=vertices.dtype)
@@ -1230,14 +1230,14 @@ class PointPreprocessing(Preprocessing):
             ~ np.isclose(winding_number, 0.5),
             winding_number > 0.5
         )
-
+    
     @property
     def _masks_stack_pattern(self) -> str:
         """
         An einops pattern how to stack masks arrys axis.
         """
         return "component points -> component points"
-
+    
     def _format_features(self, simulation: Simulation) -> np.array:
         """
         Formats features data.
@@ -1256,7 +1256,7 @@ class PointPreprocessing(Preprocessing):
         truncation_coefficients = np.expand_dims(truncation_coefficients, axis=-1)
         features = simulation.features / truncation_coefficients
         return features.astype(self.field_dtype.type(0).real)
-
+    
     def _write_extra_data(self, simulation: Simulation, f: File) -> None:
         """
         Writes extra data to the output .h5 file.
@@ -1273,7 +1273,7 @@ class PointPreprocessing(Preprocessing):
         """
         super()._write_extra_data(simulation, f)
         coordinates = np.ascontiguousarray(rearrange(
-            self.coordinates,
+            self.coordinates, 
             "points axis -> axis points"
         ))
         f.create_dataset(COORDINATES_OUT_KEY, data=coordinates)

@@ -18,11 +18,11 @@ class Nonlinearity(ABC,torch.nn.Module):
     def forward(self, x):
         """ """
         raise NotImplementedError
-
+    
     @abstractmethod
     def inverse(self, x):
         raise NotImplementedError
-
+    
 class Identity(Nonlinearity):
     """
     Identity nonlinearity
@@ -30,10 +30,10 @@ class Identity(Nonlinearity):
     def forward(self, x):
         """ """
         return x
-
+    
     def inverse(self, x):
         return x
-
+    
 class Power(Nonlinearity):
     """
     Power nonlinearity
@@ -47,7 +47,7 @@ class Power(Nonlinearity):
         return torch.sign(x) * torch.abs(x)**self.power
     def inverse(self, x):
         return torch.sign(x) * torch.abs(x)**(1/self.power)
-
+    
 class Log(Nonlinearity):
     """
     Logarithmic nonlinearity
@@ -55,10 +55,10 @@ class Log(Nonlinearity):
     def forward(self, x):
         """ """
         return torch.sign(x) * torch.log1p(torch.abs(x))
-
+    
     def inverse(self, x):
         return torch.sign(x) * (torch.expm1(torch.abs(x)))
-
+    
 class Tanh(Nonlinearity):
     """
     Hyperbolic tangent nonlinearity
@@ -66,7 +66,7 @@ class Tanh(Nonlinearity):
     def forward(self, x):
         """ """
         return torch.tanh(x)
-
+    
     def inverse(self, x):
         return 0.5 * torch.log((1 + x) / (1 - x))
 
@@ -77,14 +77,14 @@ class Arcsinh(Nonlinearity):
     def forward(self, x):
         """ """
         return torch.asinh(x)
-
+    
     def inverse(self, x):
         return torch.sinh(x)
 
 class Normalizer(torch.nn.Module):
     """
     Base class for normalizers
-
+    
     Parameters
     ----------
     params : dict
@@ -100,37 +100,37 @@ class Normalizer(torch.nn.Module):
                  nonlinearity_before: bool = False,
                  ):
         super().__init__()
-
+        
         self._params = params.copy() if params else {}
         self.nonlinearity = nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
         self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
         self.nonlinearity_before = nonlinearity_before
         self.counter = 0
-
+    
     def forward(self, x, axis: int = 1):
         """ """
         return self._normalize(x, axis=axis)
-
+    
     def inverse(self,x, axis: int = 1):
         return self._denormalize(x, axis=axis)
-
+    
     @abstractmethod
     def _normalize(self, x):
         raise NotImplementedError
-
+    
     @abstractmethod
     def _denormalize(self, x):
         raise NotImplementedError
-
+    
     @abstractmethod
     def _reset_params(self):
         raise NotImplementedError
-
+    
     @abstractmethod
     def _update_params(self, x):
         raise NotImplementedError
-
-    def fit_params(self,
+    
+    def fit_params(self, 
                    dataset: Iterable,
                    axis: int = 0,
                    key: str = 'input',
@@ -144,14 +144,14 @@ class Normalizer(torch.nn.Module):
             x = batch[key]
             self._update_params(x, axis=axis)
             self.counter += 1
-
+    
     def get_reduction_axes(self, ndims, axis):
         return tuple(i for i in range(ndims) if i != axis)
-
+    
     @property
     def params(self):
         return self._params
-
+    
     def _expand_params(self, params_dict: dict = None, axis: int = 0, ndims: int = 5):
         if params_dict is None:
             params_dict = self._params
@@ -160,9 +160,9 @@ class Normalizer(torch.nn.Module):
         for key, value in params_dict.items():
             pattern = 'c -> ' + ' '.join(['1'] * axis) + ' c ' + ' '.join(['1'] * (ndims - axis - 1))
             expanded_params[key] = einops.rearrange(value, pattern)
-
+            
         return expanded_params
-
+    
     def _cast_params(self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device('cpu')):
         if params_dict is None:
             params_dict = self._params
@@ -170,9 +170,9 @@ class Normalizer(torch.nn.Module):
         casted_params = {}
         for key, value in params_dict.items():
             casted_params[key] = torch.tensor(value, dtype=dtype, device=device)
-
+        
         return casted_params
-
+    
     def save_as_json(self, path: str):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
@@ -200,7 +200,7 @@ class Normalizer(torch.nn.Module):
     @classmethod
     def load_from_json(cls, path: str) -> Self:
         with open(path, 'r') as f:
-            params = json.load(f)
+            params = json.load(f)    
             nonlinearity = params.pop('nonlinearity', 'Identity')
             nonlinearity_before = params.pop('nonlinearity_before', False)
             nonlinearity_fn = cls._get_nonlineartiy_function(nonlinearity)
@@ -225,7 +225,7 @@ class MinMaxNormalizer(Normalizer):
         else:
             x_norm = (x - params['x_min']) / (params['x_max'] - params['x_min'])
             return self.nonlinearity(x_norm)
-
+    
     def _denormalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
@@ -235,7 +235,7 @@ class MinMaxNormalizer(Normalizer):
         else:
             x_nl = self.nonlinearity.inverse(x)
             return x_nl * (params['x_max'] - params['x_min']) + params['x_min']
-
+    
     def _reset_params(self):
         self._params["x_min"] = [float('inf')]
         self._params["x_max"] = [float('-inf')]
@@ -248,7 +248,7 @@ class MinMaxNormalizer(Normalizer):
         cur_max = einops.reduce(x, pattern, reduction='max').tolist()
         self._params['x_min'] = [min(prev, cur) for prev, cur in zip_longest(self._params['x_min'], cur_min, fillvalue=float('inf'))]
         self._params['x_max'] = [max(prev, cur) for prev, cur in zip_longest(self._params['x_max'], cur_max, fillvalue=float('-inf'))]
-
+    
 class StandardNormalizer(Normalizer):
     """
     Standard Normalizer
@@ -268,7 +268,7 @@ class StandardNormalizer(Normalizer):
         else:
             x_norm = (x - params['x_mean']) / params['x_var']**0.5
             return self.nonlinearity(x_norm)
-
+    
     def _denormalize(self, x, axis: int = 0):
         params = self._cast_params(dtype=x.dtype, device=x.device)
         params = self._expand_params(params, axis=axis, ndims=x.ndim)
@@ -279,7 +279,7 @@ class StandardNormalizer(Normalizer):
         else:
             x_nl = self.nonlinearity.inverse(x)
             return x_nl * params['x_var']**0.5 + params['x_mean']
-
+    
     def _reset_params(self):
         self._params["x_mean"] = [0]
         self._params["x_mean_sq"] = [0]
@@ -346,10 +346,10 @@ class MetaNormalizer(Normalizer):
         for normalizer in self.normalizers:
             normalizer._reset_params()
 
-    def fit_params(self,
-                   dataset: Iterable,
-                   axis: int = 0,
-                   keys: Union[str, List[str]] = "input",
+    def fit_params(self, 
+                   dataset: Iterable, 
+                   axis: int = 0, 
+                   keys: Union[str, List[str]] = "input", 
                    verbose: bool = True) -> None:
         """
         Fit parameters for all normalizers in one loop over the dataset.

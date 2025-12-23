@@ -178,7 +178,7 @@ def h_field_pointslist_data(pointslist_simulation_path):
 
     create_pointslist_field(
         field_path / "h-field (f=297.2) [AC1].h5",
-        H_FIELD_DATABASE_KEY
+        H_FIELD_DATABASE_KEY    
     )
 
     create_pointslist_field(

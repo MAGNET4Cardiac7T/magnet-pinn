@@ -12,7 +12,7 @@ Therefore we need to define how the Tissue should look like, e.g. how many blobs
 Then we generate the 3D structures and save thm as meshes.
 
 .. code-block:: python
-
+    
     from numpy.random import default_rng
     from magnet_pinn.generator.io import MeshWriter
     from magnet_pinn.generator.phantoms import Tissue

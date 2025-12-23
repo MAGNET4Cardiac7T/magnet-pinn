@@ -10,8 +10,8 @@ By using the iterator created in the previous example and additionally setting t
 Note, that the normalization needs to be done for both input and target data.
 The following code snippet shows how to normalize the data:
 
-.. code-block:: python
-
+.. code-block:: python 
+    
     from magnet_pinn.utils import MinMaxNormalizer, StandardNormalizer
     import einops
 

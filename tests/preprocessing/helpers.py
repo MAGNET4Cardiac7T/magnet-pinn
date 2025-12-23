@@ -61,10 +61,10 @@ def create_duplicate_batch(data_dir_path):
 
 def create_antenna_test_data(data_path: Union[str, Path], antenna_dir_name: str = INPUT_ANTENNA_DIR_PATH) -> Path:
     """
-    The method creates coils as boxes with their center of mass on
+    The method creates coils as boxes with their center of mass on 
     the X and Y axes correspondently. The are also symmetric to each
-    others considering the point (0, 0, 0). It saves meshes to the antenna
-    directory. It also stores files names in the corresponding materials file
+    others considering the point (0, 0, 0). It saves meshes to the antenna 
+    directory. It also stores files names in the corresponding materials file 
     together with unit values of the features.
     """
     antenna_path = data_path / RAW_DATA_DIR_PATH / antenna_dir_name
@@ -98,13 +98,13 @@ def create_test_properties(prop_dir_path: str, meshes: Tuple[Trimesh]):
     Creates a materials file with feeling each property just with 1.
     """
     prop_dir_path.mkdir(parents=True, exist_ok=True)
-
+    
     mesh_names = []
     for i, mesh in enumerate(meshes):
         mesh_name = f"mesh_{i}.stl"
         mesh.export(prop_dir_path / mesh_name)
         mesh_names.append(mesh_name)
-
+        
 
     df = pd.DataFrame(
         {
@@ -174,8 +174,8 @@ def create_simulation_data(simulations_dir_path: str, sim_name: str, subject_fun
 
 def create_field(sim_path: str, field_type: str, shape: Tuple, fill_value: int = 0):
     """
-    Creates an `.h5` field file with file name defined by `file_name`,
-    type of a field defined by `field_type`. The
+    Creates an `.h5` field file with file name defined by `file_name`, 
+    type of a field defined by `field_type`. The 
     """
     field_dir_path = sim_path / FIELD_DIR_PATH[field_type]
     field_dir_path.mkdir(parents=True, exist_ok=True)
@@ -270,7 +270,7 @@ def create_pointslist_field(path: str, type: str) -> None:
             )
         )
         f.create_dataset(
-            "Position",
+            "Position", 
             data=np.array(
                 np.zeros(100),
                 dtype=[('x', '<f8'), ('y', '<f8'), ('z', '<f8')]

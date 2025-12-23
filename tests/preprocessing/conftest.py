@@ -3,7 +3,7 @@ from shutil import rmtree
 
 from tests.preprocessing.helpers import (
     CENTRAL_BATCH_DIR_NAME, CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME,
-    ANTENNA_SHORT_TERM_DIR_NAME, SHIFTED_SPHERE_SIM_NAME, SHIFTED_BOX_SIM_NAME,
+    ANTENNA_SHORT_TERM_DIR_NAME, SHIFTED_SPHERE_SIM_NAME, SHIFTED_BOX_SIM_NAME, 
     CENTRAL_BATCH_SHORT_TERM_DIR_NAME,
     create_central_batch, create_shifted_batch, create_antenna_test_data,
     create_duplicate_batch

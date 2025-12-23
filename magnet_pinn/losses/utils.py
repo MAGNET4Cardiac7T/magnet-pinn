@@ -6,11 +6,11 @@ from operator import mul
 from functools import reduce
 
 
-class LossReducer(torch.nn.Module):
+class LossReducer(torch.nn.Module): 
     """
     Loss reducer with optional masking. It reduces the loss tensor using the specified aggregation function (mean, sum, or none).
     Masking can be applied to consider only specific elements of the loss tensor during reduction.
-
+    
     Parameters
     ----------
     agg : str, optional
@@ -18,9 +18,9 @@ class LossReducer(torch.nn.Module):
     masking : bool, optional
         Whether to apply masking during reduction. Default is True.
     """
-
+    
     def __init__(self,
-                 agg: str = 'mean',
+                 agg: str = 'mean', 
                  masking: bool = True):
         super(LossReducer, self).__init__()
         if not agg in ['mean', 'sum', 'min', 'max']:
@@ -33,7 +33,7 @@ class LossReducer(torch.nn.Module):
         if self.masking and mask is not None:
             if mask.shape != loss.shape:
                 raise ValueError(f"Loss shape and mask shape are different: {mask.shape} != {loss.shape}")
-
+            
             return einops.reduce(loss[mask], '... ->', self.agg)   # one scalar
         else:
             return einops.reduce(loss, '... ->', self.agg)
@@ -43,15 +43,15 @@ class ObjectMaskCropping:
     """
         Crop object mask to disregard boundary regions of the object. Useful for excluding areas
         where finite difference calculations may be inaccurate due to discontinuities at object edges.
-
+        
         Works by checking if all neighboring voxels within a specified padding distance are filled (i.e., part of the object).
-
+        
         Parameters
         ----------
         padding : int, optional
             Number of voxels to crop from the object boundaries, by default 1.
     """
-
+    
     def __init__(self, padding: int = 1):
         self.padding = padding
         self.padding_filter = torch.ones(

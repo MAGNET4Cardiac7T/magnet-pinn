@@ -28,7 +28,7 @@
 .. raw:: html
 
     <div style="margin-bottom: 40px;"></div>
-
+    
 -------------------------------------------------------------------------------------------------------------------------
 Patient-specific modeling of electromagnetic fields in ultrahigh-field cardiac MRI using physics-informed neural networks
 -------------------------------------------------------------------------------------------------------------------------
@@ -60,13 +60,13 @@ Patient-specific modeling of electromagnetic fields in ultrahigh-field cardiac M
 **Useful links**:
 :doc:`Install <start>` |
 `Source Repository <https://github.com/MAGNET4Cardiac7T/magnet-pinn>`__ |
-`Dataset <https://github.com/MAGNET4Cardiac7T/magnet-pinn>`__
+`Dataset <https://github.com/MAGNET4Cardiac7T/magnet-pinn>`__ 
 
 
 ----------------------
 Package Overview
 ----------------------
-The **magnet-pinn** package is an open-source package for developing, training and evaluating deep learning models for predicting EM-Fields inside an MRI scanner.
+The **magnet-pinn** package is an open-source package for developing, training and evaluating deep learning models for predicting EM-Fields inside an MRI scanner. 
 It is built on top of PyTorch and provides a simple and flexible API for preprocessing data, generating new 3D geometries, and training and evaluating ML models.
 The dataset includes simulated EM fields for a number of geometries that can be used to train Neural Networks.
 The package contains easy to use functions and scripts to process the data and fit them to your individual needs.
@@ -87,7 +87,7 @@ Project Overview
 ----------------------
 Heart failure is a common disease with high mortality and is one of the most common causes of death.
 Magnetic resonance imaging of the heart is an important diagnostic technique for functional diagnosis of heart failure and many other cardiac diseases.
-Cardiac ultrahigh-field magnetic resonance imaging (UHF MRI) at a field strength of 7 Tesla promises the highest physical sensitivity, the highest spatial resolution and completely new image contrasts.
+Cardiac ultrahigh-field magnetic resonance imaging (UHF MRI) at a field strength of 7 Tesla promises the highest physical sensitivity, the highest spatial resolution and completely new image contrasts. 
 However, a major obstacle to widespread application is the complex distribution of of electromagnetic waves in the patient's thorax, which has a very negative impact on image quality and also poses the risk of unwanted overheating of the tissue.
 
 Within the scope of this project, a method for patient-specific analysis of the three-dimensional distribution of the electromagnetic fields in the body will be developed.
