@@ -18,14 +18,14 @@ def random_fields(batch_size, spatial_size):
         torch.randn(batch_size, 3, spatial_size, spatial_size, spatial_size, dtype=torch.float32)
         for _ in range(4)
     )
-    
+
 @pytest.fixture(scope="function")
 def random_fields_float64(batch_size, spatial_size):
     return tuple(
         torch.randn(batch_size, 3, spatial_size, spatial_size, spatial_size, dtype=torch.float64)
         for _ in range(4)
     )
-    
+
 @pytest.fixture(scope="function")
 def random_fields_with_gradient(batch_size, spatial_size):
     fields = tuple(
@@ -33,14 +33,14 @@ def random_fields_with_gradient(batch_size, spatial_size):
         for _ in range(4)
     )
     return fields
-    
+
 @pytest.fixture(scope="function")
 def zero_fields(batch_size, spatial_size):
     return tuple(
         torch.zeros(batch_size, 3, spatial_size, spatial_size, spatial_size, dtype=torch.float32)
         for _ in range(4)
     )
-    
+
 @pytest.fixture(scope="function")
 def violating_fields(batch_size, spatial_size):
     return (
@@ -49,7 +49,7 @@ def violating_fields(batch_size, spatial_size):
         torch.ones(batch_size, 3, spatial_size, spatial_size, spatial_size) * 0.1,
         torch.ones(batch_size, 3, spatial_size, spatial_size, spatial_size) * 0.05,
     )
-    
+
 @pytest.fixture(scope="function")
 def half_mask(batch_size, spatial_size):
     mask = torch.ones(batch_size, spatial_size, spatial_size, spatial_size, dtype=torch.bool)

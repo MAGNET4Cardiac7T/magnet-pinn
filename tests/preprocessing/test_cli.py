@@ -15,7 +15,7 @@ def test_cli_check_grid_default_command(monkeypatch):
     General check for the grid command
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -30,7 +30,7 @@ def test_cli_check_no_command(monkeypatch):
     Case when no command is given
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py"
         ]
@@ -44,7 +44,7 @@ def test_grid_cli_check_batches_argmunets_for_one_value(monkeypatch, raw_central
     Case when we pass a grid command and one batch directory
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -60,7 +60,7 @@ def test_grid_cli_check_batches_argmunets_for_multiple_values(monkeypatch, raw_c
     Case when we pass a grid command and multiple batch directories
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -76,7 +76,7 @@ def test_grid_cli_check_batches_arguments_default_value(monkeypatch):
     Case when we pass a grid command and no batch directories
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -91,7 +91,7 @@ def test_grid_cli_check_given_antenna_value(monkeypatch, raw_antenna_dir_path):
     Case when we give an antenna argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -107,7 +107,7 @@ def test_grid_cli_check_default_antenna_value(monkeypatch):
     Case when we check a default antenna value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -122,7 +122,7 @@ def test_grid_cli_check_given_output_value(monkeypatch, processed_batch_dir_path
     Case when we give an output argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -138,7 +138,7 @@ def test_grid_cli_check_default_output_value(monkeypatch):
     Case when we check a default output value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -153,7 +153,7 @@ def test_grid_cli_check_given_field_dtype_valid_value(monkeypatch):
     Case when we give a field_dtype argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -169,7 +169,7 @@ def test_grid_cli_check_given_field_dtype_invalid_value(monkeypatch):
     Case when we give an invalid field_dtype argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -185,7 +185,7 @@ def test_grid_cli_check_default_field_dtype_value(monkeypatch):
     Case when we check a default field_dtype value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -200,7 +200,7 @@ def test_grid_cli_check_simulations_one_given_value(monkeypatch):
     Case when we give a simulations argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -216,7 +216,7 @@ def test_grid_cli_check_simulations_multiple_given_values(monkeypatch):
     Case when we give multiple simulations arguments
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -232,7 +232,7 @@ def test_grid_cli_check_simulations_default_value(monkeypatch):
     Case when we check a default simulations value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -247,7 +247,7 @@ def test_grid_cli_check_voxel_size_given_valid_value(monkeypatch):
     Case when we give a voxel_size argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -263,7 +263,7 @@ def test_grid_cli_check_voxel_size_given_invalid_value(monkeypatch):
     Case when we give an invalid voxel_size argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -279,7 +279,7 @@ def test_grid_cli_check_default_voxel_size_value(monkeypatch):
     Case when we check a default voxel_size value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -294,7 +294,7 @@ def test_grid_cli_check_x_min_given_valid_value(monkeypatch):
     Case when we give a x_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -310,7 +310,7 @@ def test_grid_cli_check_x_min_given_invalid_value(monkeypatch):
     Case when we give an invalid x_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -326,7 +326,7 @@ def test_grid_cli_check_default_x_min_value(monkeypatch):
     Case when we check a default x_min value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -341,7 +341,7 @@ def test_grid_cli_check_x_max_given_valid_value(monkeypatch):
     Case when we give a x_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -357,7 +357,7 @@ def test_grid_cli_check_x_max_given_invalid_value(monkeypatch):
     Case when we give an invalid x_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -373,7 +373,7 @@ def test_grid_cli_check_default_x_max_value(monkeypatch):
     Case when we check a default x_max value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -388,7 +388,7 @@ def test_grid_cli_check_y_min_given_valid_value(monkeypatch):
     Case when we give a y_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -404,7 +404,7 @@ def test_grid_cli_check_y_min_given_invalid_value(monkeypatch):
     Case when we give an invalid y_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -420,7 +420,7 @@ def test_grid_cli_check_default_y_min_value(monkeypatch):
     Case when we check a default y_min value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -435,7 +435,7 @@ def test_grid_cli_check_y_max_given_valid_value(monkeypatch):
     Case when we give a y_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -451,7 +451,7 @@ def test_grid_cli_check_y_max_given_invalid_value(monkeypatch):
     Case when we give an invalid y_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -467,7 +467,7 @@ def test_grid_cli_check_default_y_max_value(monkeypatch):
     Case when we check a default y_max value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -482,7 +482,7 @@ def test_grid_cli_check_z_min_given_valid_value(monkeypatch):
     Case when we give a z_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -498,7 +498,7 @@ def test_grid_cli_check_z_min_given_invalid_value(monkeypatch):
     Case when we give an invalid z_min argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -514,7 +514,7 @@ def test_grid_cli_check_default_z_min_value(monkeypatch):
     Case when we check a default z_min value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -529,7 +529,7 @@ def test_grid_cli_check_z_max_given_valid_value(monkeypatch):
     Case when we give a z_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -545,7 +545,7 @@ def test_grid_cli_check_z_max_given_invalid_value(monkeypatch):
     Case when we give an invalid z_max argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid",
@@ -561,7 +561,7 @@ def test_grid_cli_check_default_z_max_value(monkeypatch):
     Case when we check a default z_max value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "grid"
@@ -576,7 +576,7 @@ def test_cli_check_pointcloud_default_command(monkeypatch):
     General check for the pointcloud command
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"
@@ -591,7 +591,7 @@ def test_pointcloud_cli_check_batches_argmunets_for_one_value(monkeypatch, raw_c
     Case when we pass a pointcloud command and one batch directory
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -607,7 +607,7 @@ def test_pointcloud_cli_check_batches_argmunets_for_multiple_values(monkeypatch,
     Case when we pass a pointcloud command and multiple batch directories
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -623,7 +623,7 @@ def test_pointcloud_cli_check_batches_arguments_default_value(monkeypatch):
     Case when we pass a pointcloud command and no batch directories
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"
@@ -638,7 +638,7 @@ def test_pointcloud_cli_check_given_antenna_value(monkeypatch, raw_antenna_dir_p
     Case when we give an antenna argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -654,7 +654,7 @@ def test_pointcloud_cli_check_default_antenna_value(monkeypatch):
     Case when we check a default antenna value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"
@@ -669,7 +669,7 @@ def test_pointcloud_cli_check_given_output_value(monkeypatch, processed_batch_di
     Case when we give an output argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -685,7 +685,7 @@ def test_pointcloud_cli_check_default_output_value(monkeypatch):
     Case when we check a default output value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"
@@ -700,7 +700,7 @@ def test_pointcloud_cli_check_given_field_dtype_valid_value(monkeypatch):
     Case when we give a field_dtype argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -716,7 +716,7 @@ def test_pointcloud_cli_check_given_field_dtype_invalid_value(monkeypatch):
     Case when we give an invalid field_dtype argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -732,7 +732,7 @@ def test_pointcloud_cli_check_default_field_dtype_value(monkeypatch):
     Case when we check a default field_dtype value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"
@@ -747,7 +747,7 @@ def test_pointcloud_cli_check_simulations_one_given_value(monkeypatch):
     Case when we give a simulations argument
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -763,7 +763,7 @@ def test_pointcloud_cli_check_simulations_multiple_given_values(monkeypatch):
     Case when we give multiple simulations arguments
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud",
@@ -779,7 +779,7 @@ def test_pointcloud_cli_check_simulations_default_value(monkeypatch):
     Case when we check a default simulations value
     """
     monkeypatch.setattr(
-        "sys.argv", 
+        "sys.argv",
         [
             "script.py",
             "pointcloud"

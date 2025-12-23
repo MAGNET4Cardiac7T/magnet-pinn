@@ -19,7 +19,7 @@ from .structures import Structure3D, Blob, Tube, CustomMeshStructure
 class Serializer(ABC):
     """
     Abstract base class for structure-to-mesh serialization.
-    
+
     Defines the interface for converting abstract geometric structures
     into concrete mesh representations for computational processing.
     """
@@ -38,12 +38,12 @@ class Serializer(ABC):
             Must be implemented by concrete subclasses.
         """
         raise NotImplementedError("Subclasses must implement `serialize` method")
-    
+
 
 class MeshSerializer(Serializer):
     """
     Serializer for converting 3D structures to triangular mesh representations.
-    
+
     Transforms geometric structures (blobs with Perlin noise deformation, tubes)
     into high-quality triangular meshes with configurable subdivision levels
     for optimal simulation accuracy and performance.
@@ -78,7 +78,7 @@ class MeshSerializer(Serializer):
             return structure.mesh.copy()
         else:
             raise ValueError("Unsupported structure type")
-        
+
 
     def _serialize_blob(self, blob: Blob, subdivisions: int = 5) -> Trimesh:
         """
@@ -103,7 +103,7 @@ class MeshSerializer(Serializer):
         mesh.apply_scale(blob.radius)
         mesh.apply_translation(blob.position)
         return mesh
-    
+
     def _serialize_tube(self, tube: Tube, subdivisions: int = 5) -> Trimesh:
         """
         Convert a tube structure to a triangular mesh.

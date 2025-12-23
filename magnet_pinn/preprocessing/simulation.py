@@ -1,9 +1,9 @@
 """
-NAME 
+NAME
     simulation.py
 
 DESCRIPTION
-    This module contains the Simulation dataclass, 
+    This module contains the Simulation dataclass,
     which is used to store the data of a simulation.
 
 CLASSES
@@ -30,7 +30,7 @@ class Simulation:
     e_field : np.array, optional
         The electric field data.
     h_field : np.array, optional
-        The magnetic field data.    
+        The magnetic field data.
     object_masks : np.array, optional
         The object masks.
     features : np.array, optional

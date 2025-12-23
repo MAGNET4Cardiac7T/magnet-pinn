@@ -52,7 +52,7 @@ for EM_FIELD in em_FIELD:
     for y_val in y_slices:
         # Find the index closest to y_val
         idx = (np.abs(y - y_val)).argmin()
-        
+
         # Extract the slice (X-Z plane at fixed y)
         X_slice = X[:, idx, :]
         Z_slice = Z[:, idx, :]
@@ -65,9 +65,9 @@ for EM_FIELD in em_FIELD:
         v_max = float(np.max(field)+2e-10)
         norm = LogNorm(vmin=v_min+0.05*v_max, vmax=v_max, clip=False)
         cmap = plt.get_cmap('viridis')
-        
+
         # Plot as a surface
-        ax.plot_surface(X_slice, visual_y*np.ones_like(X_slice), Z_slice, 
+        ax.plot_surface(X_slice, visual_y*np.ones_like(X_slice), Z_slice,
                         facecolors=cmap(norm(field_slice)),
                         rstride=1, cstride=1, linewidth=0, antialiased=False, shade=False)
 

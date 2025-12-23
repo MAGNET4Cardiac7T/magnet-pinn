@@ -14,10 +14,10 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
                  reduction: str = "mean"):
         super(BaseRegressionLoss, self).__init__()
         self.feature_dims = feature_dims
-        
+
         if reduction is None or reduction == 'none':
             self.reduction = lambda loss, mask: loss
-        else: 
+        else:
             self.reduction = LossReducer(agg=reduction)
 
     @abstractmethod

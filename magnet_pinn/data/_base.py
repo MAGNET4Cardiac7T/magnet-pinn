@@ -68,7 +68,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
     simulation_list: List[Path]
         List of simulation `.h5` file paths
     """
-    def __init__(self, 
+    def __init__(self,
                  data_dir: Union[str, Path],
                  transforms: Optional[BaseTransform] = None,
                  num_samples: int = 1):
@@ -141,25 +141,25 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         Returns
         -------
         list
-            List of simulation file paths 
+            List of simulation file paths
         """
         simulations_list = natsorted(self.simulation_dir.glob("*.h5"))
 
         if len(simulations_list) == 0:
             raise FileNotFoundError(f"No simulations found in {self.simulation_dir}")
-        
+
         return simulations_list
-    
+
     def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
         """
         Main method to implement for the children of the `MagnetBaseIterator` class.
         It loads the data from the simulation file and return the `DataItem` object.
-        
+
         Parameters
         ----------
         simulation_path : Union[Path, str]
             Path to the simulation file
-        
+
         Returns
         -------
         DataItem
@@ -184,11 +184,11 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             coils=self.coils,
             dtype=self._get_dtype(simulation_path),
             truncation_coefficients=self._get_truncation_coefficients(simulation_path)
-        )    
+        )
 
     def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
         """
-        A method for reading the field from the h5 file. After the extraction 
+        A method for reading the field from the h5 file. After the extraction
         we join e- and h-fields in the first axis, and real and imaginary parts in the second axis.
         As a result we get the axis (e/h, re/im, ...). The next axis are dependent on the grid/pointscloud
         type of the data.
@@ -209,13 +209,13 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             if field_val.dtype.names is None:
                 return field_val.real, field_val.imag
             return field_val["re"], field_val["im"]
-        
+
         with h5py.File(simulation_path) as f:
             re_efield, im_efield = read_field(f, E_FIELD_OUT_KEY)
             re_hfield, im_hfield = read_field(f, H_FIELD_OUT_KEY)
-        
+
         return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
-    
+
     def _read_input(self, simulation_path: Union[Path, str]) -> npt.NDArray[np.float32]:
         """
         Method reads input features from the h5 file.
@@ -233,7 +233,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         with h5py.File(simulation_path) as f:
             features = f[FEATURES_OUT_KEY][:]
         return features
-    
+
     def _read_subject(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.bool_]:
         """
         Method reads the subject mask from the h5 file.
@@ -252,7 +252,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             subject = f[SUBJECT_OUT_KEY][:]
         subject = np.max(subject, axis=0)
         return subject
-    
+
     def _get_dtype(self, simulation_path: Union[Path, str]) -> str:
         """
         Method reads the dtype from the h5 file.
@@ -270,7 +270,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         with h5py.File(simulation_path) as f:
             dtype = f.attrs[DTYPE_OUT_KEY]
         return dtype
-    
+
     def _get_truncation_coefficients(self, simulation_path: Union[Path, str]) -> npt.NDArray:
         """
         Method reads the truncation coefficients from the h5 file.
@@ -291,13 +291,13 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
 
     def _read_positions(self, simulation_path: str) -> np.ndarray:
         """
-        Reads the positions of points from the h5 file. 
+        Reads the positions of points from the h5 file.
         Parameters
         ----------
         simulation_path : str
             Path to the simulation file
 
-        Returns 
+        Returns
         -------
         np.ndarray
             Positions of points
@@ -306,7 +306,7 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         with h5py.File(simulation_path, 'r') as f:
             positions = f[COORDINATES_OUT_KEY][:]
         return positions
-    
+
     def __iter__(self):
         """
         The main method to iterate. It shuffles the simulation list and then for each simulation
@@ -318,6 +318,6 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             for i in range(self.num_samples):
                 augmented_simulation = self.transforms(loaded_simulation)
                 yield augmented_simulation.__dict__
-    
+
     def __len__(self):
         return len(self.simulation_list)*self.num_samples

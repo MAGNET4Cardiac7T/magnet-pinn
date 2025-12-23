@@ -26,16 +26,16 @@ def _validate_mesh(mesh: Trimesh, operation_name: str) -> None:
     """Validate mesh quality after boolean operations."""
     if mesh is None:
         raise ValueError(f"Mesh is None after {operation_name}")
-    
+
     if len(mesh.vertices) == 0:
         raise ValueError(f"Mesh has no vertices after {operation_name}")
-    
+
     if len(mesh.faces) == 0:
         raise ValueError(f"Mesh has no faces after {operation_name}")
-    
+
     if not mesh.is_volume:
         logging.warning(f"Mesh is not a valid volume after {operation_name}")
-    
+
     if mesh.volume <= 0:
         raise ValueError(f"Mesh has invalid volume {mesh.volume} after {operation_name}")
 
@@ -54,7 +54,7 @@ def _validate_input_meshes(meshes: list[Trimesh], operation_name: str) -> None:
 class Transform(ABC):
     """
     Abstract base class for phantom transformation operations.
-    
+
     Provides the interface for composable transformation components that can
     be chained together to build complex phantom processing pipelines.
     """
@@ -63,7 +63,7 @@ class Transform(ABC):
     def __call__(self, *args, **kwds):
         """
         Apply the transformation to input data.
-        
+
         This method defines the core transformation logic that must be implemented
         by all concrete transform subclasses. It should process the input data
         and return the transformed result, maintaining the composable interface
@@ -82,7 +82,7 @@ class Transform(ABC):
             Must be implemented by concrete subclasses.
         """
         raise NotImplementedError("Subclasses must implement `__call__` method")
-    
+
     def __repr__(self):
         """
         Return string representation of the transform.
@@ -98,7 +98,7 @@ class Transform(ABC):
 class Compose(Transform):
     """
     Composite transform for chaining multiple transformation operations.
-    
+
     Applies a sequence of transforms in order, passing the output of each
     transform as input to the next, enabling complex processing pipelines
     to be built from simple components.
@@ -107,7 +107,7 @@ class Compose(Transform):
     def __init__(self, transforms: list[Transform], *args, **kwargs):
         """
         Initialize composite transform with a sequence of transforms.
-        
+
         Creates a pipeline that applies each transform in the specified order,
         passing the output of each transform as input to the next. This enables
         the construction of complex processing workflows from simple, reusable
@@ -127,7 +127,7 @@ class Compose(Transform):
     def __call__(self, original_phantom: PhantomType, *args, **kwargs):
         """
         Apply all transforms in sequence to the input phantom.
-        
+
         Executes each transform in the pipeline order, passing the output of
         each transform as input to the next. This creates a processing chain
         where complex operations can be built from simple components.
@@ -164,7 +164,7 @@ class Compose(Transform):
 class ToMesh:
     """
     Transform for converting structure phantoms to mesh phantoms.
-    
+
     Serializes abstract geometric structures (blobs, tubes) into concrete
     triangular mesh representations using the configured mesh serializer,
     preparing phantoms for geometric processing operations.
@@ -172,7 +172,7 @@ class ToMesh:
     def __init__(self):
         """
         Initialize the structure-to-mesh converter.
-        
+
         Sets up the mesh serializer that will be used to convert abstract
         geometric structures into concrete triangular mesh representations.
         The serializer handles different structure types and applies appropriate
@@ -188,7 +188,7 @@ class ToMesh:
     def __call__(self, tissue: StructurePhantom) -> MeshPhantom:
         """
         Convert a structure phantom to a mesh phantom.
-        
+
         Transforms all geometric structures (parent blob, child blobs, tubes)
         into triangular mesh representations using the configured mesh serializer.
         This conversion prepares the phantom for subsequent geometric processing
@@ -238,7 +238,7 @@ class MeshesTubesClipping(Transform):
                 trimesh.repair.fix_normals(clipped_tube)
                 _validate_mesh(clipped_tube, f"tube {i} clipping")
                 clipped_tubes.append(clipped_tube)
-            
+
             logging.info("Tubes clipping successful")
             return MeshPhantom(
                 parent=target_phantom.parent,
@@ -254,7 +254,7 @@ class MeshesTubesClipping(Transform):
                 f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesChildrenCutout(Transform):
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwds):
@@ -297,7 +297,7 @@ class MeshesChildrenCutout(Transform):
                 f"Parent volume: {original_phantom.parent.volume:.3f}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesParentCutoutWithChildren(Transform):
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
@@ -331,7 +331,7 @@ class MeshesParentCutoutWithChildren(Transform):
                 children=target_phantom.children,
                 tubes=target_phantom.tubes
             )
-        
+
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for parent cutout with children. "
@@ -342,7 +342,7 @@ class MeshesParentCutoutWithChildren(Transform):
                 f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
-        
+
 
 class MeshesParentCutoutWithTubes(Transform):
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
@@ -377,7 +377,7 @@ class MeshesParentCutoutWithTubes(Transform):
                 children=target_phantom.children,
                 tubes=target_phantom.tubes
             )
-        
+
         except RuntimeError as e:
             raise RuntimeError(
                 f"Boolean operation failed for parent cutout with tubes. "
@@ -387,7 +387,7 @@ class MeshesParentCutoutWithTubes(Transform):
                 f"Tubes count: {len(original_phantom.tubes)}, "
                 f"Error: {e}"
             )
-    
+
 
 class MeshesChildrenClipping(Transform):
     def __call__(self, target_phantom: MeshPhantom, original_phantom: MeshPhantom, *args, **kwargs) -> MeshPhantom:
@@ -414,7 +414,7 @@ class MeshesChildrenClipping(Transform):
                 trimesh.repair.fix_normals(clipped_child)
                 _validate_mesh(clipped_child, f"child {i} clipping")
                 clipped_children.append(clipped_child)
-            
+
             logging.info("Children clipping successful")
             return MeshPhantom(
                 parent=target_phantom.parent,
@@ -435,7 +435,7 @@ class MeshesChildrenClipping(Transform):
 class MeshesCleaning(Transform):
     """
     Transform for cleaning and repairing mesh geometry after boolean operations.
-    
+
     Applies various mesh repair operations including degenerate face removal,
     hole filling, vertex merging, normal fixing, and unreferenced vertex removal
     to ensure mesh quality for subsequent processing.
@@ -443,7 +443,7 @@ class MeshesCleaning(Transform):
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
         """
         Clean and repair all mesh components in the phantom.
-        
+
         Applies comprehensive mesh cleaning operations to all phantom components
         to ensure high-quality geometry suitable for downstream processing. The
         cleaning process removes degenerate faces, fills holes, merges duplicate
@@ -467,11 +467,11 @@ class MeshesCleaning(Transform):
             children=[self._clean_mesh(c) for c in tissue.children],
             tubes=[self._clean_mesh(t) for t in tissue.tubes]
         )
-    
+
     def _clean_mesh(self, mesh: Trimesh) -> Trimesh:
         """
         Apply comprehensive cleaning operations to a single mesh.
-        
+
         Performs a sequence of mesh repair operations including degenerate face
         removal, duplicate face elimination, hole filling, vertex merging, normal
         fixing, and unreferenced vertex removal. These operations ensure the mesh
@@ -495,12 +495,12 @@ class MeshesCleaning(Transform):
         mesh.fix_normals()
         mesh.remove_unreferenced_vertices()
         return mesh
-    
+
 
 class MeshesRemesh(Transform):
     """
     Transform for adaptive mesh refinement and subdivision.
-    
+
     Subdivides mesh elements to achieve uniform edge lengths below a specified
     threshold, improving mesh quality for numerical simulations. Note that this
     operation may produce non-watertight meshes due to the underlying subdivision
@@ -510,7 +510,7 @@ class MeshesRemesh(Transform):
     def __init__(self, max_len: float = 8.0, *args, **kwargs):
         """
         Initialize the adaptive mesh refinement transform.
-        
+
         Sets up the remeshing parameters for subdividing mesh elements to achieve
         uniform edge lengths. The maximum edge length threshold controls the level
         of mesh refinement and affects the trade-off between geometric accuracy
@@ -530,7 +530,7 @@ class MeshesRemesh(Transform):
     def __call__(self, tissue: MeshPhantom, *args, **kwds) -> MeshPhantom:
         """
         Apply adaptive mesh refinement to all phantom components.
-        
+
         Subdivides mesh elements in all phantom components to ensure edge lengths
         are below the specified threshold. This creates more uniform mesh quality
         suitable for numerical simulations while maintaining geometric fidelity.
@@ -554,11 +554,11 @@ class MeshesRemesh(Transform):
             children=[self._remesh(c) for c in tissue.children],
             tubes=[self._remesh(t) for t in tissue.tubes]
         )
-    
+
     def _remesh(self, mesh: Trimesh) -> Trimesh:
         """
         Apply subdivision remeshing to achieve uniform edge lengths.
-        
+
         Subdivides mesh elements iteratively until all edges are below the
         maximum length threshold. This creates more uniform element sizes
         for improved numerical accuracy in simulations, though it may increase
@@ -575,8 +575,8 @@ class MeshesRemesh(Transform):
             Remeshed geometry with edges below the maximum length threshold.
         """
         v, f = trimesh.remesh.subdivide_to_size(
-            mesh.vertices, 
-            mesh.faces, 
+            mesh.vertices,
+            mesh.faces,
             max_edge=self.max_len
         )
         mesh = trimesh.Trimesh(vertices=v, faces=f)

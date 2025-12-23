@@ -25,7 +25,7 @@ class ThirdAugmentation(BaseTransform):
         result = copy(simulation)
         result.simulation += "3"
         return result
-    
+
 
 def check_items_datatypes(result, random_item):
     assert type(result.simulation) == type(random_item.simulation)
@@ -71,7 +71,7 @@ def check_elements_not_changed_by_crop(result, input_item):
     assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
 
 
-def check_constant_shapes_not_changed_except_for_field_coils(result, item): 
+def check_constant_shapes_not_changed_except_for_field_coils(result, item):
     assert len(result.simulation) == len(item.simulation)
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape

@@ -20,7 +20,7 @@ class MagnetPointIterator(MagnetBaseIterator):
     Alias for the iterator of the electromagnetic simulation data in the pointscloud format.
     A class is deprecated and will be removed.
     """
-    
+
     def __init__(self, *args, **kwargs):
         warnings.warn(
             "MagnetPointIterator is deprecated and will be removed. "

@@ -51,7 +51,7 @@ class MAGNETPINN(pl.LightningModule):
         y = self.target_normalizer(y)
 
         y_hat = self(x)
-        
+
         # calculate loss
         subject_loss = self.loss_fn(y_hat, y, subject_mask)
         space_loss = self.loss_fn(y_hat, y, ~subject_mask)
@@ -62,7 +62,7 @@ class MAGNETPINN(pl.LightningModule):
         self.log('space_loss', space_loss, prog_bar=True)
 
         return loss
-        
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer

@@ -66,7 +66,7 @@ class AbstractUNet(nn.Module):
             self.final_conv = nn.Conv3d(f_maps[0], out_channels, 1)
         else:
             self.final_conv = nn.Conv2d(f_maps[0], out_channels, 1)
-            
+
 
     def forward(self, x):
         # encoder part
@@ -106,7 +106,7 @@ class UNet3D(AbstractUNet):
             number of output channels
         f_maps (int, tuple):
             number of feature maps
-        layer_order (str): 
+        layer_order (str):
             determines the order of layers in `SingleConv` module.
         num_groups (int):
             number of groups for the GroupNorm
@@ -166,7 +166,7 @@ class ResidualUNet3D(AbstractUNet):
 
 class ResidualUNetSE3D(AbstractUNet):
     """
-    Residual 3DUnet model implementation with squeeze and excitation based on 
+    Residual 3DUnet model implementation with squeeze and excitation based on
     https://arxiv.org/pdf/1706.00120.pdf.
     Uses ResNetBlockSE as a basic building block, summation joining instead
     of concatenation joining and transposed convolutions for upsampling (watch

@@ -28,7 +28,7 @@ Downloading Data
 Download the dataset using the following command:
 
 .. code-block:: shell
-    
+
     python ...
 
 The dataset consists of multiple simulations which are tagged by their construction.

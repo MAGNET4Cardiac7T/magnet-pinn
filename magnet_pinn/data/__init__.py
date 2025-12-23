@@ -7,11 +7,11 @@ from .dataitem import DataItem
 from .grid import MagnetGridIterator
 from .point import MagnetPointIterator
 from .transforms import (
-    Compose, 
-    DefaultTransform, 
-    Crop, PhaseShift, 
+    Compose,
+    DefaultTransform,
+    Crop, PhaseShift,
     CoilEnumeratorPhaseShift,
-    PointSampling, 
+    PointSampling,
     check_transforms
 )
 from .utils import worker_init_fn

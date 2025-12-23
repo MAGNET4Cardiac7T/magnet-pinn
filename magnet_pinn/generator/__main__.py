@@ -85,7 +85,7 @@ def create_tissue_phantom(args):
         [args.y_min, args.y_max],
         [args.z_min, args.z_max],
     ])
-    
+
     return Tissue(
         num_children_blobs=args.num_children_blobs,
         initial_blob_radius=args.initial_blob_radius,
@@ -140,7 +140,7 @@ def create_workflow(args):
 
     if mode == 'none':
         return Compose([])
-    
+
     transforms = [
         MeshesChildrenCutout(),
         MeshesParentCutoutWithChildren(),
@@ -181,7 +181,7 @@ def generate_single_phantom(phantom_generator, property_sampler, workflow, args,
         Path where the phantom was saved.
     """
     logger.info(f"Generating phantom with seed {seed}")
-    
+
     # Step 1: Generate raw structures
     logger.info("Step 1/5: Generating raw 3D structures")
     if args.phantom_type == "custom":
@@ -191,28 +191,28 @@ def generate_single_phantom(phantom_generator, property_sampler, workflow, args,
         )
     else:
         raw_structures = phantom_generator.generate(seed=seed)
-    
+
     logger.info(f"Generated phantom with {len(raw_structures.children)} children and {len(raw_structures.tubes)} tubes")
-    
+
     # Step 2: Convert to meshes
     logger.info("Step 2/5: Converting structures to meshes")
     phantom_meshes = ToMesh()(raw_structures)
-    
+
     # Step 3: Process meshes
     logger.info("Step 3/5: Processing meshes through workflow")
     processed_meshes = workflow(phantom_meshes)
     logger.info(f"Processed phantom: parent has {len(processed_meshes.parent.vertices)} vertices")
-    
+
     # Step 4: Sample properties
     logger.info("Step 4/5: Sampling physical properties")
     rng = default_rng(seed)
     properties = property_sampler.sample_like(processed_meshes, rng=rng)
-    
+
     # Step 5: Write output
     logger.info("Step 5/5: Writing output files")
     writer = MeshWriter(output_dir)
     writer.write(processed_meshes, properties)
-    
+
     logger.info(f"Successfully saved phantom to {output_dir.resolve()}")
     return output_dir
 
@@ -220,19 +220,19 @@ def generate_single_phantom(phantom_generator, property_sampler, workflow, args,
 def main():
     """
     Main entry point for the generator CLI.
-    
+
     Parses arguments, validates configuration, creates phantom generator,
     and orchestrates the generation pipeline.
     """
     # Parse and validate arguments
     args = parse_arguments()
-    
+
     try:
         validate_arguments(args)
     except ValueError as e:
         logger.error(f"Invalid arguments: {e}")
         return 1
-    
+
     # Create phantom generator
     if args.phantom_type == "tissue":
         phantom_generator = create_tissue_phantom(args)
@@ -241,14 +241,14 @@ def main():
     else:
         logger.error(f"Unknown phantom type: {args.phantom_type}")
         return 1
-    
+
     # Create property sampler and workflow
     property_sampler = create_property_sampler(args)
     workflow = create_workflow(args)
-    
+
     # Generate phantom
     logger.info("Starting phantom generation")
-    
+
     try:
         # Generate the phantom
         output_path = generate_single_phantom(
@@ -259,16 +259,16 @@ def main():
             output_dir=args.output,
             seed=args.seed
         )
-        
+
         # Print report
         print_report(args, output_path)
-        
+
         logger.info("Successfully generated phantom")
-        
+
     except Exception as e:
         logger.error(f"Error during phantom generation: {e}", exc_info=True)
         return 1
-    
+
     return 0
 
 

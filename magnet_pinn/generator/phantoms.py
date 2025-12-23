@@ -26,7 +26,7 @@ from .structures import Blob, CustomMeshStructure
 class Phantom(ABC):
     """
     Abstract base class for phantom generators.
-    
+
     Defines the common interface for generating structured phantoms with
     configurable geometric parameters and reproducible random generation
     using seed values. All concrete phantom implementations must inherit
@@ -85,9 +85,9 @@ class Phantom(ABC):
 class Tissue(Phantom):
     """
     Generator for complex tissue phantoms with hierarchical blob structures and vasculature.
-    
+
     Creates realistic tissue phantoms by combining a parent blob with multiple child blobs
-    and a network of tube structures representing blood vessels. The generator uses 
+    and a network of tube structures representing blood vessels. The generator uses
     sphere packing algorithms to ensure non-overlapping placement and provides extensive
     validation to prevent invalid configurations. Child blobs are scaled versions of the
     parent blob, positioned using progressive sampling for efficient collision avoidance.
@@ -110,18 +110,18 @@ class Tissue(Phantom):
     num_tubes: int
     blob_sampler: BlobSampler
     tube_sampler: TubeSampler
-    
-    def __init__(self, 
-                 num_children_blobs: int, 
-                 initial_blob_radius: float, 
+
+    def __init__(self,
+                 num_children_blobs: int,
+                 initial_blob_radius: float,
                  initial_blob_center_extent: np.ndarray,
-                 blob_radius_decrease_per_level: float, 
-                 num_tubes: int, 
+                 blob_radius_decrease_per_level: float,
+                 num_tubes: int,
                  relative_tube_max_radius: float,
                  relative_tube_min_radius: float = 0.01):
         """
         Initialize tissue phantom generator with hierarchical structure parameters.
-        
+
         Validates all input parameters to ensure geometrically feasible phantom
         configurations. Creates configured sampler instances for blob and tube
         generation. Sets up internal parameters for phantom generation.
@@ -133,7 +133,7 @@ class Tissue(Phantom):
         initial_blob_radius : float
             Radius of the parent blob structure. Must be positive.
         initial_blob_center_extent : np.ndarray
-            Array defining spatial bounds for parent blob center placement. 
+            Array defining spatial bounds for parent blob center placement.
             First X, then Y, then Z.
             Should contain coordinate ranges for each spatial dimension.
         blob_radius_decrease_per_level : float
@@ -153,7 +153,7 @@ class Tissue(Phantom):
         ValueError
             If any parameter is outside valid range or violates geometric constraints.
         """
-        
+
         if num_children_blobs < 0:
             raise ValueError("num_children_blobs must be non-negative")
         if initial_blob_radius <= 0:
@@ -166,14 +166,14 @@ class Tissue(Phantom):
             raise ValueError("relative_tube_min_radius must be in (0, relative_tube_max_radius)")
         if initial_blob_center_extent is None or (isinstance(initial_blob_center_extent, list) and all(isinstance(elem, list) for elem in initial_blob_center_extent)):
             raise ValueError("initial_blob_center_extent must be a 2d array-like structure with coordinate ranges, first X, then Y, then Z dimensions")
-        
+
         super().__init__(initial_blob_radius, initial_blob_center_extent)
 
         self.num_children_blobs = num_children_blobs
         self.num_tubes = num_tubes
-        
+
         self.blob_sampler = BlobSampler(blob_radius_decrease_per_level)
-        
+
         tube_max_radius = relative_tube_max_radius * initial_blob_radius
         tube_min_radius = relative_tube_min_radius * initial_blob_radius
         self.tube_sampler = TubeSampler(tube_max_radius, tube_min_radius, initial_blob_radius)
@@ -181,7 +181,7 @@ class Tissue(Phantom):
     def generate(self, seed: int = None) -> StructurePhantom:
         """
         Generate a complete tissue phantom with hierarchical structure and vasculature.
-        
+
         Creates a realistic tissue phantom by generating a parent blob, positioning
         child blobs within it using progressive sampling, and adding tube structures
         for vascular representation. All sampling operations use the provided seed
@@ -227,8 +227,8 @@ class Tissue(Phantom):
         logging.info("Generating tubes.")
         parent_inner_radius = parent_blob.radius*(1+parent_blob.empirical_min_offset)
         tubes = self.tube_sampler.sample_tubes(
-            center=initial_blob_center, 
-            radius=parent_inner_radius, 
+            center=initial_blob_center,
+            radius=parent_inner_radius,
             num_tubes=self.num_tubes,
             rng=gen_object
         )
@@ -245,7 +245,7 @@ class CustomPhantom(Phantom):
     Generator for custom phantoms based on STL mesh structures.
 
     Creates realistic tissue phantoms by combining a parental mesh with multiple child blobs
-    and a network of tube structures representing blood vessels. The generator uses sampling 
+    and a network of tube structures representing blood vessels. The generator uses sampling
     points inside mesh to ensure children blobs are placed correctly inside the parental mesh.
     Tubes are generated with configurable radius ranges.
 
@@ -266,7 +266,7 @@ class CustomPhantom(Phantom):
     sample_children_only_inside : bool
         If True, child blobs are sampled fully inside the parent mesh
     """
-    def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3, 
+    def __init__(self, stl_mesh_path: str, num_children_blobs: int = 3,
                  blob_radius_decrease_per_level: float = 0.3, num_tubes: int = 5,
                  relative_tube_max_radius: float = 0.1, relative_tube_min_radius: float = 0.01,
                  sample_children_only_inside: bool = False):
@@ -278,19 +278,19 @@ class CustomPhantom(Phantom):
 
         self.num_children_blobs = num_children_blobs
         self.num_tubes = num_tubes
-        
+
         self.child_sampler = MeshBlobSampler(
             child_radius,
             sample_children_only_inside=sample_children_only_inside
         )
-        
+
         tube_max_radius = relative_tube_max_radius * self.parent_structure.radius
         tube_min_radius = relative_tube_min_radius * self.parent_structure.radius
         self.tube_sampler = MeshTubeSampler(tube_max_radius, tube_min_radius, self.parent_structure.radius)
 
     def generate(self, seed: int = None, child_blobs_batch_size: int = 1000000) -> StructurePhantom:
         rng = default_rng(seed)
-        
+
         children_blobs = self.child_sampler.sample_children_blobs(
             self.parent_structure,
             num_children=self.num_children_blobs,
@@ -303,7 +303,7 @@ class CustomPhantom(Phantom):
             num_tubes=self.num_tubes,
             rng=rng
         )
-        
+
         return StructurePhantom(
             parent=self.parent_structure,
             children=children_blobs,

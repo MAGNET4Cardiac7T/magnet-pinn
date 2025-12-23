@@ -60,5 +60,5 @@ def property_phantom(property_item):
         PropertyItem(conductivity=0.3, permittivity=30.0, density=300.0)
     ]
     tubes = [PropertyItem(conductivity=0.8, permittivity=80.0, density=800.0)]
-    
+
     return PropertyPhantom(parent=parent, children=children, tubes=tubes)

@@ -37,7 +37,7 @@ def prepare_data():
         batch_size=1,
         num_workers=1,
     )
-    
+
     mask_cropper = ObjectMaskCropping(padding=1)
 
     item = next(iter(dataloader))
@@ -56,7 +56,7 @@ field_dict = {
     'efield_imag': field[:, 0, 1],
     'hfield_real': field[:, 1, 0],
     'hfield_imag': field[:, 1, 1]
-    
+
 }
 efield_abs = torch.linalg.norm(field_dict['efield_real'] + 1j*field_dict['efield_imag'], dim=1)
 hfield_abs = torch.linalg.norm(field_dict['hfield_real'] + 1j*field_dict['hfield_imag'], dim=1)

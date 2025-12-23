@@ -1,4 +1,4 @@
-########################################## 
+##########################################
 # Example Script for Point Preprocessing #
 ##########################################
 from magnet_pinn.preprocessing.preprocessing import PointPreprocessing

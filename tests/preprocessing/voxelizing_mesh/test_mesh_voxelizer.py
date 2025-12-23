@@ -25,7 +25,7 @@ def test_unit_sphere_mesh_fills_grid(sphere_unit_mesh):
     result = voxelizer.process_mesh(sphere_unit_mesh)
     supposed_voxels = np.zeros((steps, steps, steps))
     supposed_voxels[1, 1, 1] = 1
-    
+
     assert 4/3 * pi * np.power((radius + np.sqrt(3) * voxel_size), 3) > np.sum(np.power(result, 3)) > 4/3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
     assert result.shape == (steps, steps, steps)
     assert np.sum(result) == 1
@@ -34,7 +34,7 @@ def test_unit_sphere_mesh_fills_grid(sphere_unit_mesh):
 
 def test_unit_sphere_mesh_fills_center_of_grid(sphere_unit_mesh):
     """
-    We use a sphere mesh with radius equal to the voxel size but 
+    We use a sphere mesh with radius equal to the voxel size but
     this time the grid size is increased by 1 voxel.
     """
     center = sphere_unit_mesh.center
@@ -62,7 +62,7 @@ def test_unit_sphere_mesh_fills_center_of_grid(sphere_unit_mesh):
 
 def test_unit_sphere_mesh_grid_is_smaller(sphere_unit_mesh):
     """
-    We use a sphere primitive mesh. In this test case we would use a 
+    We use a sphere primitive mesh. In this test case we would use a
     voxel size of 0.5 of a raduis and grid size of 3.
     """
     center = sphere_unit_mesh.center
@@ -89,7 +89,7 @@ def test_unit_sphere_mesh_grid_is_smaller(sphere_unit_mesh):
 
 def test_unit_sphere_mesh_grid_includes_object_in_the_center(sphere_unit_mesh):
     """
-    We use a sphere primitive mesh. In this test case the voxel grid is a sprehe diameter. 
+    We use a sphere primitive mesh. In this test case the voxel grid is a sprehe diameter.
     We take grid of size 3 so the only existing voxel is the center one.
     """
     center = sphere_unit_mesh.center
@@ -146,7 +146,7 @@ def test_invalid_grid_with_broken_bounds():
 
 def test_unit_box_mesh_fills_grid(box_unit_mesh):
     """
-    We used a squared box mesh. The voxel size is exactly the 
+    We used a squared box mesh. The voxel size is exactly the
     same as half of the box side. The grid would have 3 voxels in a row.
     So the as a result we will have the whole grid filled.
     """
@@ -169,7 +169,7 @@ def test_unit_box_mesh_fills_grid(box_unit_mesh):
 
 def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
     """
-    We used a squared box mesh. The voxel size is exactly the same as 
+    We used a squared box mesh. The voxel size is exactly the same as
     the half box size. Tre grid would have 5 voxels in a row. So the as a
     result we will have 3 * 3 * 3 = 27 voxels filled in the center.
     """
@@ -196,8 +196,8 @@ def test_unit_box_mesh_fills_center_of_grid(box_unit_mesh):
 
 def test_unit_box_mesh_grid_is_smaller(box_unit_mesh):
     """
-    We used a squared box mesh. The voxel size is 0.75 of the half of the 
-    box side. The grid will be just 3 voxels in a row. So the as a result 
+    We used a squared box mesh. The voxel size is 0.75 of the half of the
+    box side. The grid will be just 3 voxels in a row. So the as a result
     we will have the whole grid filled.
     """
     bounds = np.array(box_unit_mesh.bounds)
@@ -221,7 +221,7 @@ def test_unit_box_mesh_grid_is_smaller(box_unit_mesh):
 def test_unit_box_mesh_grid_is_bigger(box_unit_mesh):
     """
     We used a squared box mesh. The voxel size is exactly the same as the
-    box side. And the grid will have just 3 voxels in a row. So the as a 
+    box side. And the grid will have just 3 voxels in a row. So the as a
     result we will have only one voxel in the center of the grid.
     """
     bounds = np.array(box_unit_mesh.bounds)

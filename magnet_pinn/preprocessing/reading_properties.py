@@ -64,7 +64,7 @@ class PropertyReader:
         materials_file = osp.join(self.properties_dir_path, MATERIALS_FILE_NAME)
         if not osp.exists(materials_file):
             raise FileNotFoundError(f"File {materials_file} not found")
-        
+
         prop = pd.read_csv(materials_file)
         if not set([FILE_COLUMN_NAME] + FEATURE_NAMES).issubset(prop.columns):
             raise ValueError(f"File {materials_file} does not have the required columns")
@@ -74,7 +74,7 @@ class PropertyReader:
         """
         Reads the meshes of the materials
 
-        The `properties` dataframe should have a column named `file` 
+        The `properties` dataframe should have a column named `file`
         which contains file names of the meshes we need. So here we read the meshes
         and return them as a list.
 
@@ -84,7 +84,7 @@ class PropertyReader:
             List of the meshes of the materials
         """
         return self.properties[FILE_COLUMN_NAME].apply(self._load_mesh).tolist()
-    
+
     def _load_mesh(self, file_name) -> Trimesh:
         """
         Loads a mesh from the file
@@ -102,5 +102,5 @@ class PropertyReader:
         file_path = osp.join(self.properties_dir_path, file_name)
         if not osp.exists(osp.join(file_path)):
             raise FileNotFoundError(f"Mesh file {file_path} not found")
-        
+
         return load_mesh(file_path)
