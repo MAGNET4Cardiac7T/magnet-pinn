@@ -1,3 +1,4 @@
+"""UNet architecture implementations for 2D and 3D segmentation tasks."""
 import torch.nn as nn
 
 from .buildingblocks import DoubleConv, ResNetBlock, ResNetBlockSE, \
@@ -41,6 +42,40 @@ class AbstractUNet(nn.Module):
     def __init__(self, in_channels, out_channels, basic_module, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=4, conv_kernel_size=3, pool_kernel_size=2,
                  conv_padding=1, conv_upscale=2, upsample='default', dropout_prob=0.1, is3d=True):
+        """
+        Initialize AbstractUNet.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output segmentation masks
+        basic_module : nn.Module
+            Basic model for the encoder/decoder (DoubleConv, ResNetBlock, etc.)
+        f_maps : int or tuple, optional
+            Number of feature maps at each level (default: 64)
+        layer_order : str, optional
+            Determines the order of layers in SingleConv (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in the encoder/decoder path (default: 4)
+        conv_kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        pool_kernel_size : int or tuple, optional
+            Size of the pooling window (default: 2)
+        conv_padding : int or tuple, optional
+            Zero-padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        is3d : bool, optional
+            If True the model is 3D, otherwise 2D (default: True)
+        """
         super(AbstractUNet, self).__init__()
 
         if isinstance(f_maps, int):
@@ -66,9 +101,22 @@ class AbstractUNet(nn.Module):
             self.final_conv = nn.Conv3d(f_maps[0], out_channels, 1)
         else:
             self.final_conv = nn.Conv2d(f_maps[0], out_channels, 1)
-            
+
 
     def forward(self, x):
+        """
+        Forward pass through the UNet.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor with segmentation predictions
+        """
         # encoder part
         encoders_features = []
         for encoder in self.encoders:
@@ -106,7 +154,7 @@ class UNet3D(AbstractUNet):
             number of output channels
         f_maps (int, tuple):
             number of feature maps
-        layer_order (str): 
+        layer_order (str):
             determines the order of layers in `SingleConv` module.
         num_groups (int):
             number of groups for the GroupNorm
@@ -125,6 +173,34 @@ class UNet3D(AbstractUNet):
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=4, conv_padding=1,
                  conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+        """
+        Initialize UNet3D model.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        f_maps : int or tuple, optional
+            Number of feature maps (default: 64)
+        layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in encoder/decoder (default: 4)
+        conv_padding : int or tuple, optional
+            Padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(UNet3D, self).__init__(in_channels=in_channels,
                                      out_channels=out_channels,
                                      basic_module=DoubleConv,
@@ -150,6 +226,34 @@ class ResidualUNet3D(AbstractUNet):
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=5, conv_padding=1,
                  conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+        """
+        Initialize ResidualUNet3D model.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        f_maps : int or tuple, optional
+            Number of feature maps (default: 64)
+        layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in encoder/decoder (default: 5)
+        conv_padding : int or tuple, optional
+            Padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(ResidualUNet3D, self).__init__(in_channels=in_channels,
                                              out_channels=out_channels,
                                              basic_module=ResNetBlock,
@@ -166,7 +270,7 @@ class ResidualUNet3D(AbstractUNet):
 
 class ResidualUNetSE3D(AbstractUNet):
     """
-    Residual 3DUnet model implementation with squeeze and excitation based on 
+    Residual 3DUnet model implementation with squeeze and excitation based on
     https://arxiv.org/pdf/1706.00120.pdf.
     Uses ResNetBlockSE as a basic building block, summation joining instead
     of concatenation joining and transposed convolutions for upsampling (watch
@@ -177,6 +281,34 @@ class ResidualUNetSE3D(AbstractUNet):
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=5, conv_padding=1,
                  conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+        """
+        Initialize ResidualUNetSE3D model.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        f_maps : int or tuple, optional
+            Number of feature maps (default: 64)
+        layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in encoder/decoder (default: 5)
+        conv_padding : int or tuple, optional
+            Padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(ResidualUNetSE3D, self).__init__(in_channels=in_channels,
                                                out_channels=out_channels,
                                                basic_module=ResNetBlockSE,
@@ -200,6 +332,34 @@ class UNet2D(AbstractUNet):
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=4, conv_padding=1,
                  conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+        """
+        Initialize UNet2D model.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        f_maps : int or tuple, optional
+            Number of feature maps (default: 64)
+        layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in encoder/decoder (default: 4)
+        conv_padding : int or tuple, optional
+            Padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(UNet2D, self).__init__(in_channels=in_channels,
                                      out_channels=out_channels,
                                      basic_module=DoubleConv,
@@ -222,6 +382,34 @@ class ResidualUNet2D(AbstractUNet):
     def __init__(self, in_channels, out_channels, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=5, conv_padding=1,
                  conv_upscale=2, upsample='default', dropout_prob=0.1, **kwargs):
+        """
+        Initialize ResidualUNet2D model.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        f_maps : int or tuple, optional
+            Number of feature maps (default: 64)
+        layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        num_levels : int, optional
+            Number of levels in encoder/decoder (default: 5)
+        conv_padding : int or tuple, optional
+            Padding added to all sides (default: 1)
+        conv_upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        upsample : str, optional
+            Algorithm used for decoder upsampling (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(ResidualUNet2D, self).__init__(in_channels=in_channels,
                                              out_channels=out_channels,
                                              basic_module=ResNetBlock,
@@ -237,6 +425,19 @@ class ResidualUNet2D(AbstractUNet):
 
 
 def get_model(model_config):
+    """
+    Get a model instance from configuration dictionary.
+
+    Parameters
+    ----------
+    model_config : dict
+        Configuration dictionary with 'name' key and model parameters
+
+    Returns
+    -------
+    nn.Module
+        Instantiated model
+    """
     model_class = get_class(model_config['name'], modules=[
         'pytorch3dunet.unet3d.model'
     ])

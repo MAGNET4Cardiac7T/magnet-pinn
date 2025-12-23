@@ -149,10 +149,10 @@ def test_spheres_packable_consistency_five_and_six_spheres():
     critical_ratio = np.sqrt(2) - 1
     outer_radius = 3.0
     inner_radius = critical_ratio * outer_radius * 0.9
-    
+
     result_5 = spheres_packable(radius_outer=outer_radius, radius_inner=inner_radius, num_inner=5, safety_margin=0.0)
     result_6 = spheres_packable(radius_outer=outer_radius, radius_inner=inner_radius, num_inner=6, safety_margin=0.0)
-    
+
     assert result_5 == result_6
 
 
@@ -164,7 +164,7 @@ def test_spheres_packable_safety_margin_effect_on_boundary():
     critical_ratio = np.sqrt(6) - 2
     outer_radius = 1.0
     inner_radius = critical_ratio * outer_radius
-    
+
     assert spheres_packable(radius_outer=outer_radius, radius_inner=inner_radius, num_inner=4, safety_margin=0.0)
     assert not spheres_packable(radius_outer=outer_radius, radius_inner=inner_radius, num_inner=4, safety_margin=0.01)
 
@@ -181,7 +181,7 @@ def test_spheres_packable_multiple_scenarios_consistency():
         (2.0, 0.4, 4, True),
         (1.0, 0.5, 4, False)
     ]
-    
+
     for outer, inner, num, expected in test_cases:
         result = spheres_packable(radius_outer=outer, radius_inner=inner, num_inner=num)
         assert result == expected
@@ -216,7 +216,12 @@ def test_spheres_packable_numerical_precision_boundary():
 
 
 def test_spheres_packable_machine_epsilon_boundary():
-    assert not spheres_packable(radius_outer=1.0, radius_inner=1.0 + np.finfo(float).eps, num_inner=1, safety_margin=0.0)
+    assert not spheres_packable(
+        radius_outer=1.0,
+        radius_inner=1.0 + np.finfo(float).eps,
+        num_inner=1,
+        safety_margin=0.0
+    )
 
 
 def test_spheres_packable_large_negative_safety_margin():
@@ -224,7 +229,10 @@ def test_spheres_packable_large_negative_safety_margin():
 
 
 def test_spheres_packable_float_num_inner_treated_as_integer():
-    assert not spheres_packable(radius_outer=1.0, radius_inner=0.1, num_inner=2.5)
+    # Testing function behavior with float input (runtime coercion)
+    assert not spheres_packable(
+        radius_outer=1.0, radius_inner=0.1, num_inner=2.5  # type: ignore[arg-type]
+    )
 
 
 def test_spheres_packable_exact_zero_safety_margin_edge():
@@ -239,7 +247,7 @@ def test_spheres_packable_tiny_over_boundary_two_spheres():
 
 def test_generate_fibonacci_points_on_sphere_with_default_count():
     points = generate_fibonacci_points_on_sphere(num_points=100)
-    
+
     assert points.shape == (100, 3)
     norms = np.linalg.norm(points, axis=1)
     assert np.allclose(norms, 1.0, rtol=1e-10)
@@ -247,7 +255,7 @@ def test_generate_fibonacci_points_on_sphere_with_default_count():
 
 def test_generate_fibonacci_points_on_sphere_with_custom_count():
     points = generate_fibonacci_points_on_sphere(num_points=50)
-    
+
     assert points.shape == (50, 3)
     norms = np.linalg.norm(points, axis=1)
     assert np.allclose(norms, 1.0, rtol=1e-10)
@@ -260,17 +268,17 @@ def test_generate_fibonacci_points_on_sphere_fails_with_single_point():
 
 def test_generate_fibonacci_points_on_sphere_have_uniform_distribution():
     points = generate_fibonacci_points_on_sphere(num_points=1000)
-    
+
     x_positive = np.sum(points[:, 0] > 0)
     x_negative = np.sum(points[:, 0] < 0)
     y_positive = np.sum(points[:, 1] > 0)
     y_negative = np.sum(points[:, 1] < 0)
     z_positive = np.sum(points[:, 2] > 0)
     z_negative = np.sum(points[:, 2] < 0)
-    
-    assert abs(x_positive - x_negative) < 200
-    assert abs(y_positive - y_negative) < 200
-    assert abs(z_positive - z_negative) < 200
+
+    assert abs(int(x_positive) - int(x_negative)) < 200
+    assert abs(int(y_positive) - int(y_negative)) < 200
+    assert abs(int(z_positive) - int(z_negative)) < 200
 
 
 def test_generate_fibonacci_points_on_sphere_with_zero_points():
@@ -281,7 +289,7 @@ def test_generate_fibonacci_points_on_sphere_with_zero_points():
 def test_generate_fibonacci_points_on_sphere_with_two_points():
     points = generate_fibonacci_points_on_sphere(num_points=2)
     assert points.shape == (2, 3)
-    
+
     # Verify exact coordinates for 2 points case
     expected_points = np.array([[0.0, 1.0, 0.0], [0.0, -1.0, 0.0]])
     assert np.allclose(points, expected_points, atol=1e-10)

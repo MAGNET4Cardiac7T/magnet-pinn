@@ -1,3 +1,4 @@
+"""Command-line entry point for preprocessing electromagnetic simulation data."""
 import numpy as np
 
 from magnet_pinn.preprocessing.preprocessing import (

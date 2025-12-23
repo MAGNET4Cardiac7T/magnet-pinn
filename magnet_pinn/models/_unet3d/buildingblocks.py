@@ -1,5 +1,6 @@
-"""
-    Code adapted from: https://github.com/wolny/pytorch-3dunet/tree/master/pytorch3dunet/unet3d/buildingblocks.py
+"""Code adapted from pytorch-3dunet buildingblocks.
+
+Source: https://github.com/wolny/pytorch-3dunet/tree/master/pytorch3dunet/unet3d/buildingblocks.py
 """
 
 
@@ -113,6 +114,28 @@ class SingleConv(nn.Sequential):
 
     def __init__(self, in_channels, out_channels, kernel_size=3, order='gcr', num_groups=8,
                  padding=1, dropout_prob=0.1, is3d=True):
+        """
+        Initialize SingleConv module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        padding : int or tuple, optional
+            Zero-padding added to all sides (default: 1)
+        dropout_prob : float, optional
+            Dropout probability (default: 0.1)
+        is3d : bool, optional
+            If True use Conv3d, otherwise Conv2d (default: True)
+        """
         super(SingleConv, self).__init__()
 
         for name, module in create_conv(in_channels, out_channels, kernel_size, order,
@@ -148,6 +171,32 @@ class DoubleConv(nn.Sequential):
 
     def __init__(self, in_channels, out_channels, encoder, kernel_size=3, order='gcr',
                  num_groups=8, padding=1, upscale=2, dropout_prob=0.1, is3d=True):
+        """
+        Initialize DoubleConv module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        encoder : bool
+            If True we're in the encoder path, otherwise decoder
+        kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        padding : int or tuple, optional
+            Zero-padding added to all sides (default: 1)
+        upscale : int, optional
+            Number of the convolution to upscale in encoder (default: 2)
+        dropout_prob : float or tuple, optional
+            Dropout probability for each convolution (default: 0.1)
+        is3d : bool, optional
+            If True use Conv3d instead of Conv2d (default: True)
+        """
         super(DoubleConv, self).__init__()
         if encoder:
             # we're in the encoder path
@@ -191,6 +240,26 @@ class ResNetBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, order='cge', num_groups=8, is3d=True, **kwargs):
+        """
+        Initialize ResNetBlock module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        order : str, optional
+            Determines the order of layers (default: 'cge')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        is3d : bool, optional
+            If True use Conv3d, otherwise Conv2d (default: True)
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(ResNetBlock, self).__init__()
 
         if in_channels != out_channels:
@@ -221,6 +290,19 @@ class ResNetBlock(nn.Module):
             self.non_linearity = nn.ReLU(inplace=True)
 
     def forward(self, x):
+        """
+        Forward pass through the ResNetBlock.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after residual connection and non-linearity
+        """
         # apply first convolution to bring the number of channels to out_channels
         residual = self.conv1(x)
 
@@ -235,7 +317,33 @@ class ResNetBlock(nn.Module):
 
 
 class ResNetBlockSE(ResNetBlock):
+    """
+    ResNetBlock with Squeeze and Excitation module.
+
+    Extends ResNetBlock by adding a Squeeze and Excitation layer at the end.
+    """
+
     def __init__(self, in_channels, out_channels, kernel_size=3, order='cge', num_groups=8, se_module='scse', **kwargs):
+        """
+        Initialize ResNetBlockSE module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        order : str, optional
+            Determines the order of layers (default: 'cge')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        se_module : str, optional
+            Type of SE module: 'scse', 'cse', or 'sse' (default: 'scse')
+        **kwargs : dict
+            Additional keyword arguments
+        """
         super(ResNetBlockSE, self).__init__(
             in_channels, out_channels, kernel_size=kernel_size, order=order,
             num_groups=num_groups, **kwargs)
@@ -248,6 +356,19 @@ class ResNetBlockSE(ResNetBlock):
             self.se_module = SpatialSELayer3D(num_channels=out_channels)
 
     def forward(self, x):
+        """
+        Forward pass through the ResNetBlockSE.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after ResNet block and SE module
+        """
         out = super().forward(x)
         out = self.se_module(out)
         return out
@@ -281,6 +402,38 @@ class Encoder(nn.Module):
     def __init__(self, in_channels, out_channels, conv_kernel_size=3, apply_pooling=True,
                  pool_kernel_size=2, pool_type='max', basic_module=DoubleConv, conv_layer_order='gcr',
                  num_groups=8, padding=1, upscale=2, dropout_prob=0.1, is3d=True):
+        """
+        Initialize Encoder module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        conv_kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        apply_pooling : bool, optional
+            If True use MaxPool3d/AvgPool3d before basic module (default: True)
+        pool_kernel_size : int or tuple, optional
+            Size of the pooling window (default: 2)
+        pool_type : str, optional
+            Pooling layer type: 'max' or 'avg' (default: 'max')
+        basic_module : nn.Module, optional
+            Basic module class (default: DoubleConv)
+        conv_layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        padding : int or tuple, optional
+            Zero-padding added to all sides (default: 1)
+        upscale : int, optional
+            Number of the convolution to upscale (default: 2)
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        is3d : bool, optional
+            Use 3d or 2d operations (default: True)
+        """
         super(Encoder, self).__init__()
         assert pool_type in ['max', 'avg']
         if apply_pooling:
@@ -308,6 +461,19 @@ class Encoder(nn.Module):
                                          is3d=is3d)
 
     def forward(self, x):
+        """
+        Forward pass through the Encoder.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after optional pooling and basic module
+        """
         if self.pooling is not None:
             x = self.pooling(x)
         x = self.basic_module(x)
@@ -343,6 +509,34 @@ class Decoder(nn.Module):
     def __init__(self, in_channels, out_channels, conv_kernel_size=3, scale_factor=2, basic_module=DoubleConv,
                  conv_layer_order='gcr', num_groups=8, padding=1, upsample='default',
                  dropout_prob=0.1, is3d=True):
+        """
+        Initialize Decoder module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        conv_kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        scale_factor : int or tuple, optional
+            Multiplier for image dimensions or stride (default: 2)
+        basic_module : nn.Module, optional
+            Basic module class (default: DoubleConv)
+        conv_layer_order : str, optional
+            Determines the order of layers (default: 'gcr')
+        num_groups : int, optional
+            Number of groups for GroupNorm (default: 8)
+        padding : int or tuple, optional
+            Zero-padding added to all sides (default: 1)
+        upsample : str, optional
+            Upsampling algorithm (default: 'default')
+        dropout_prob : float or tuple, optional
+            Dropout probability (default: 0.1)
+        is3d : bool, optional
+            Use 3d operations (default: True)
+        """
         super(Decoder, self).__init__()
 
         # perform concat joining per default
@@ -392,6 +586,21 @@ class Decoder(nn.Module):
                                          is3d=is3d)
 
     def forward(self, encoder_features, x):
+        """
+        Forward pass through the Decoder.
+
+        Parameters
+        ----------
+        encoder_features : torch.Tensor
+            Features from the corresponding encoder
+        x : torch.Tensor
+            Input tensor from previous decoder layer
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after upsampling, joining, and basic module
+        """
         x = self.upsampling(encoder_features=encoder_features, x=x)
         x = self.joining(encoder_features, x)
         x = self.basic_module(x)
@@ -399,6 +608,23 @@ class Decoder(nn.Module):
 
     @staticmethod
     def _joining(encoder_features, x, concat):
+        """
+        Join encoder features with decoder output.
+
+        Parameters
+        ----------
+        encoder_features : torch.Tensor
+            Features from the corresponding encoder
+        x : torch.Tensor
+            Input tensor from previous decoder layer
+        concat : bool
+            If True concatenate, otherwise add
+
+        Returns
+        -------
+        torch.Tensor
+            Joined tensor
+        """
         if concat:
             return torch.cat((encoder_features, x), dim=1)
         else:
@@ -408,6 +634,39 @@ class Decoder(nn.Module):
 def create_encoders(in_channels, f_maps, basic_module, conv_kernel_size, conv_padding,
                     conv_upscale, dropout_prob,
                     layer_order, num_groups, pool_kernel_size, is3d):
+    """
+    Create encoder path consisting of Encoder modules.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of input channels
+    f_maps : list or tuple
+        Number of feature maps at each level
+    basic_module : nn.Module
+        Basic module class for encoder
+    conv_kernel_size : int or tuple
+        Size of the convolving kernel
+    conv_padding : int or tuple
+        Zero-padding added to all sides
+    conv_upscale : int
+        Number of the convolution to upscale
+    dropout_prob : float
+        Dropout probability
+    layer_order : str
+        Determines the order of layers
+    num_groups : int
+        Number of groups for GroupNorm
+    pool_kernel_size : int or tuple
+        Size of the pooling window
+    is3d : bool
+        Use 3d operations
+
+    Returns
+    -------
+    nn.ModuleList
+        List of Encoder modules
+    """
     # create encoder path consisting of Encoder modules. Depth of the encoder is equal to `len(f_maps)`
     encoders = []
     for i, out_feature_num in enumerate(f_maps):
@@ -442,6 +701,35 @@ def create_encoders(in_channels, f_maps, basic_module, conv_kernel_size, conv_pa
 
 def create_decoders(f_maps, basic_module, conv_kernel_size, conv_padding, layer_order,
                     num_groups, upsample, dropout_prob, is3d):
+    """
+    Create decoder path consisting of Decoder modules.
+
+    Parameters
+    ----------
+    f_maps : list or tuple
+        Number of feature maps at each level
+    basic_module : nn.Module
+        Basic module class for decoder
+    conv_kernel_size : int or tuple
+        Size of the convolving kernel
+    conv_padding : int or tuple
+        Zero-padding added to all sides
+    layer_order : str
+        Determines the order of layers
+    num_groups : int
+        Number of groups for GroupNorm
+    upsample : str
+        Upsampling algorithm
+    dropout_prob : float
+        Dropout probability
+    is3d : bool
+        Use 3d operations
+
+    Returns
+    -------
+    nn.ModuleList
+        List of Decoder modules
+    """
     # create decoder path consisting of the Decoder modules. The length of the decoder list is equal to `len(f_maps) - 1`
     decoders = []
     reversed_f_maps = list(reversed(f_maps))
@@ -473,10 +761,33 @@ class AbstractUpsampling(nn.Module):
     """
 
     def __init__(self, upsample):
+        """
+        Initialize AbstractUpsampling.
+
+        Parameters
+        ----------
+        upsample : callable
+            Upsampling function
+        """
         super(AbstractUpsampling, self).__init__()
         self.upsample = upsample
 
     def forward(self, encoder_features, x):
+        """
+        Forward pass through upsampling.
+
+        Parameters
+        ----------
+        encoder_features : torch.Tensor
+            Features from the corresponding encoder
+        x : torch.Tensor
+            Input tensor to upsample
+
+        Returns
+        -------
+        torch.Tensor
+            Upsampled tensor
+        """
         # get the spatial dimensions of the output given the encoder_features
         output_size = encoder_features.size()[2:]
         # upsample the input and return
@@ -492,11 +803,36 @@ class InterpolateUpsampling(AbstractUpsampling):
     """
 
     def __init__(self, mode='nearest'):
+        """
+        Initialize InterpolateUpsampling.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Algorithm used for upsampling (default: 'nearest')
+        """
         upsample = partial(self._interpolate, mode=mode)
         super().__init__(upsample)
 
     @staticmethod
     def _interpolate(x, size, mode):
+        """
+        Interpolate tensor to target size.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+        size : tuple
+            Target spatial dimensions
+        mode : str
+            Interpolation mode
+
+        Returns
+        -------
+        torch.Tensor
+            Interpolated tensor
+        """
         return F.interpolate(x, size=size, mode=mode)
 
 
@@ -521,15 +857,56 @@ class TransposeConvUpsampling(AbstractUpsampling):
         """
 
         def __init__(self, conv_transposed, is3d):
+            """
+            Initialize Upsample.
+
+            Parameters
+            ----------
+            conv_transposed : nn.Module
+                Transposed convolution layer
+            is3d : bool
+                Whether using 3D operations
+            """
             super().__init__()
             self.conv_transposed = conv_transposed
             self.is3d = is3d
 
         def forward(self, x, size):
+            """
+            Forward pass with transposed conv and interpolation.
+
+            Parameters
+            ----------
+            x : torch.Tensor
+                Input tensor
+            size : tuple
+                Target spatial dimensions
+
+            Returns
+            -------
+            torch.Tensor
+                Upsampled tensor
+            """
             x = self.conv_transposed(x)
             return F.interpolate(x, size=size)
 
     def __init__(self, in_channels, out_channels, kernel_size=3, scale_factor=2, is3d=True):
+        """
+        Initialize TransposeConvUpsampling.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels
+        out_channels : int
+            Number of output channels
+        kernel_size : int or tuple, optional
+            Size of the convolving kernel (default: 3)
+        scale_factor : int or tuple, optional
+            Stride of the convolution (default: 2)
+        is3d : bool, optional
+            If True use ConvTranspose3d (default: True)
+        """
         # make sure that the output size reverses the MaxPool3d from the corresponding encoder
         if is3d is True:
             conv_transposed = nn.ConvTranspose3d(in_channels, out_channels, kernel_size=kernel_size,
@@ -542,9 +919,31 @@ class TransposeConvUpsampling(AbstractUpsampling):
 
 
 class NoUpsampling(AbstractUpsampling):
+    """
+    No-operation upsampling that returns input unchanged.
+    """
+
     def __init__(self):
+        """
+        Initialize NoUpsampling.
+        """
         super().__init__(self._no_upsampling)
 
     @staticmethod
     def _no_upsampling(x, size):
+        """
+        Return input tensor unchanged.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor
+        size : tuple
+            Target size (ignored)
+
+        Returns
+        -------
+        torch.Tensor
+            Input tensor unchanged
+        """
         return x

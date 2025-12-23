@@ -3,6 +3,7 @@
 DESCRIPTION
     This module consists of the iterator of the voxelized electromagnetic simulation data, so it is in the 3d grid format.
 """
+
 import warnings
 from typing import Union
 from pathlib import Path
@@ -18,12 +19,25 @@ class MagnetGridIterator(MagnetBaseIterator):
     Alias for the iterator of the voxelized electromagnetic simulation data, so it is in the 3d grid format.
     A class is deprecated and will be removed.
     """
-    
+
     def __init__(self, *args, **kwargs):
+        """Initialize MagnetGridIterator (deprecated).
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to MagnetBaseIterator.
+        **kwargs
+            Keyword arguments passed to MagnetBaseIterator.
+
+        Warnings
+        --------
+        DeprecationWarning
+            This class is deprecated. Use MagnetBaseIterator directly.
+        """
         warnings.warn(
-            "MagnetGridIterator is deprecated and will be removed. "
-            "Use MagnetBaseIterator directly instead.",
+            "MagnetGridIterator is deprecated and will be removed. " "Use MagnetBaseIterator directly instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         super().__init__(*args, **kwargs)

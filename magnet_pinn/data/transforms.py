@@ -4,6 +4,7 @@ NAME
 DESCRIPTION
     This module contains classes for augmenting the simulation data.
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union, Literal
 from collections.abc import Iterable
@@ -18,7 +19,7 @@ from .dataitem import DataItem
 
 def check_transforms(transforms):
     """
-    The method checks if the given transformations are valid. 
+    The method checks if the given transformations are valid.
     The valid transformations should have at least one phase shift transform.
     """
     if not isinstance(transforms, BaseTransform):
@@ -38,17 +39,56 @@ class BaseTransform(ABC):
     """
     The basic abstract transform class for the simulation data.
     """
+
     def __init__(self, **kwargs):
+        """Initialize base transform with arbitrary keyword arguments.
+
+        Parameters
+        ----------
+        **kwargs
+            Arbitrary keyword arguments stored for subclass use.
+        """
         self.kwargs = kwargs
 
     @abstractmethod
     def __call__(self, simulation: DataItem):
+        """Apply transformation to simulation data.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            Input simulation data.
+
+        Returns
+        -------
+        DataItem
+            Transformed simulation data.
+        """
         raise NotImplementedError
 
     def __repr__(self):
+        """Return string representation of transform.
+
+        Returns
+        -------
+        str
+            Class name with keyword arguments.
+        """
         return self.__class__.__name__ + str(self.kwargs)
-    
+
     def _check_data(self, simulation: DataItem):
+        """Validate that input is a DataItem instance.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            Data to validate.
+
+        Raises
+        ------
+        ValueError
+            If simulation is not a DataItem instance.
+        """
         if not isinstance(simulation, DataItem):
             raise ValueError(f"Simulation should be an instance of DataItem, got {type(simulation)}")
 
@@ -62,8 +102,21 @@ class Compose(BaseTransform):
     augmentations : List[BaseTransform]
         List of augmentations to be applied to the simulation data
     """
-    def __init__(self, transforms: List[BaseTransform]):
 
+    def __init__(self, transforms: List[BaseTransform]):
+        """Initialize composition with list of transforms.
+
+        Parameters
+        ----------
+        transforms : List[BaseTransform]
+            List of transforms to apply sequentially.
+
+        Raises
+        ------
+        ValueError
+            If transforms is not iterable, empty, contains None, or
+            contains non-BaseTransform items.
+        """
         if not isinstance(transforms, Iterable):
             raise ValueError("Augmentations should be an iterable")
         elif len(list(transforms)) == 0:
@@ -74,7 +127,7 @@ class Compose(BaseTransform):
                     raise ValueError("Augmentation can not be None")
                 elif not isinstance(i, BaseTransform):
                     raise ValueError(f"Augmentation should be an instance of BaseTransform, got {type(i)}")
-        
+
         self.transforms = transforms
 
     def __call__(self, simulation: DataItem):
@@ -98,6 +151,13 @@ class Compose(BaseTransform):
         return result
 
     def __repr__(self):
+        """Return string representation of composed transforms.
+
+        Returns
+        -------
+        str
+            Class name with list of transforms.
+        """
         return self.__class__.__name__ + str(self.transforms)
 
 
@@ -112,7 +172,9 @@ class DefaultTransform(BaseTransform):
     simulation : DataItem
         simulation data
     """
+
     def __init__(self):
+        """Initialize default transform with no parameters."""
         super().__init__()
 
     def __call__(self, simulation: DataItem):
@@ -133,7 +195,7 @@ class DefaultTransform(BaseTransform):
             - coils: (coils, spatial_axis)
             - phase: (coils,)
             - mask: (coils,)
-            
+
         Returns
         -------
         DataItem
@@ -153,7 +215,7 @@ class DefaultTransform(BaseTransform):
         field = np.sum(simulation.field, axis=2)
 
         phase = np.zeros(num_coils, dtype=simulation.dtype)
-        mask= np.ones(num_coils, dtype=np.bool_)
+        mask = np.ones(num_coils, dtype=np.bool_)
 
         coils_re = np.sum(simulation.coils, axis=0)
         coils_im = np.zeros_like(coils_re)
@@ -169,10 +231,17 @@ class DefaultTransform(BaseTransform):
             coils=coils,
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions
+            positions=simulation.positions,
         )
-    
+
     def check_if_valid(self):
+        """Check if transform is valid.
+
+        Returns
+        -------
+        bool
+            Always returns True for default transform.
+        """
         return True
 
 
@@ -189,26 +258,23 @@ class Crop(BaseTransform):
         Position of the crop
     """
 
-    def __init__(self, 
-                 crop_size: Tuple[int, int, int],
-                 crop_position: Literal['random', 'center'] = 'center'):
+    def __init__(self, crop_size: Tuple[int, int, int], crop_position: Literal["random", "center"] = "center"):
         """
         Basically validates parameters and save them as attributes.
         """
         super().__init__()
 
         self._validate_crop_size(crop_size)
-        
-        if crop_position not in ['random', 'center']:
+
+        if crop_position not in ["random", "center"]:
             raise ValueError("Crop position should be either 'random' or 'center'")
-        
 
         self.crop_size = crop_size
         self.crop_position = crop_position
 
     def _validate_crop_size(self, crop_size: Tuple[int, int, int]) -> None:
         """
-        Method for validating the crop size parameter. 
+        Method for validating the crop size parameter.
         It should be a tuple of ints and all of them should be larger than 0.
         """
         if not isinstance(crop_size, Iterable):
@@ -237,7 +303,7 @@ class Crop(BaseTransform):
             - coils: (coils, spatial_axis)
             - phase: (coils,)
             - mask: (coils,)
-        
+
         Returns
         -------
         DataItem
@@ -269,11 +335,10 @@ class Crop(BaseTransform):
             truncation_coefficients=simulation.truncation_coefficients,
             positions=self._crop_array(simulation.positions, crop_mask, 1),
         )
-    
-    def _crop_array(self, 
-                    array: npt.NDArray[np.float32],
-                    crop_mask: Tuple[slice, slice, slice], 
-                    starting_axis: int) -> npt.NDArray[np.float32]:
+
+    def _crop_array(
+        self, array: npt.NDArray[np.float32], crop_mask: Tuple[slice, slice, slice], starting_axis: int
+    ) -> npt.NDArray[np.float32]:
         """
         Method for cropping the array based on the given mask and starting axis.
 
@@ -293,11 +358,12 @@ class Crop(BaseTransform):
         npt.NDArray[np.float32]
             Cropped array
         """
-        crop_mask = (slice(None), )*starting_axis + crop_mask
+        crop_mask = (slice(None),) * starting_axis + crop_mask
         return array[*crop_mask]
 
-    
-    def _sample_crop_start(self, full_size: Tuple[int, int, int], crop_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
+    def _sample_crop_start(
+        self, full_size: Tuple[int, int, int], crop_size: Tuple[int, int, int]
+    ) -> Tuple[int, int, int]:
         """
         Method for sampling the crop start based on the full size and crop size.
         The crop start is sampled based on the crop position. If the crop size is larger than the full size, it raises an error.
@@ -319,10 +385,10 @@ class Crop(BaseTransform):
             if crop_size[i] > full_size[i]:
                 raise ValueError(f"crop size {crop_size} is larger than full size {full_size}")
         if full_size == crop_size:
-            return (0, 0, 0)    
-        elif self.crop_position == 'center':
+            return (0, 0, 0)
+        elif self.crop_position == "center":
             crop_start = [(full_size[i] - crop_size[i]) // 2 for i in range(3)]
-        elif self.crop_position == 'random':
+        elif self.crop_position == "random":
             crop_start = [np.random.randint(0, full_size[i] - crop_size[i]) for i in range(3)]
         else:
             raise ValueError(f"Unknown crop position {self.crop_position}")
@@ -344,18 +410,32 @@ class Rotate(BaseTransform):
         Default is z-axis rotation, (-3, -2).
     """
 
-    def __init__(self, 
-                 rot_angle: Literal['random', '90'] = 'random',
-                 rot_axis: Literal["x", "y", "z"] = "z"):
+    def __init__(self, rot_angle: Literal["random", "90"] = "random", rot_axis: Literal["x", "y", "z"] = "z"):
+        """Initialize rotation transform.
+
+        Parameters
+        ----------
+        rot_angle : {'random', '90'}, optional
+            Rotation angle. 'random' samples from [0, 90, 180, 270] degrees.
+            Default is 'random'.
+        rot_axis : {'x', 'y', 'z'}, optional
+            Axis around which to rotate. Default is 'z'.
+
+        Raises
+        ------
+        ValueError
+            If rot_angle not in ['random', '90'] or rot_axis not in
+            ['x', 'y', 'z'].
+        """
         super().__init__()
 
-        if rot_angle not in ['random', '90']:
+        if rot_angle not in ["random", "90"]:
             raise ValueError("Rotation angle should be either 'random' or '90'")
 
         self.rot_angle = rot_angle
         self.n_rot = 0
 
-        if rot_axis not in ['x', 'y', 'z']:
+        if rot_axis not in ["x", "y", "z"]:
             raise ValueError("Rotation axis should be either 'x', 'y', or 'z'")
         elif rot_axis == "z":
             self.rot_plane = (-3, -2)
@@ -380,7 +460,7 @@ class Rotate(BaseTransform):
             - coils: (coils, spatial_axis)
             - phase: (coils,)
             - mask: (coils,)
-        
+
         Returns
         -------
         DataItem
@@ -395,8 +475,8 @@ class Rotate(BaseTransform):
             - mask: (coils,)
         """
         self._check_data(simulation)
-        
-        if self.rot_angle == 'random':
+
+        if self.rot_angle == "random":
             self.n_rot = np.random.randint(0, 4)
         else:
             self.n_rot = 1
@@ -413,11 +493,22 @@ class Rotate(BaseTransform):
             truncation_coefficients=simulation.truncation_coefficients,
             positions=self._rot_array(simulation.positions),
         )
-    
-    def _rot_array(self,
-                   array: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+
+    def _rot_array(self, array: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        """Rotate array by n_rot*90 degrees in the rotation plane.
+
+        Parameters
+        ----------
+        array : npt.NDArray[np.float32]
+            Array to rotate.
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Rotated array.
+        """
         return np.rot90(array, k=self.n_rot, axes=self.rot_plane)
-    
+
 
 class Mirror(BaseTransform):
     """
@@ -434,33 +525,46 @@ class Mirror(BaseTransform):
         Default is 1.0 (always flip).
     """
 
-    def __init__(self, 
-                 mirror_axis: Literal['x', 'y', 'z'] = 'z',
-                 mirror_prob: float = 1.0):
+    def __init__(self, mirror_axis: Literal["x", "y", "z"] = "z", mirror_prob: float = 1.0):
+        """Initialize mirror transform.
+
+        Parameters
+        ----------
+        mirror_axis : {'x', 'y', 'z'}, optional
+            Axis along which to flip. Default is 'z'.
+        mirror_prob : float, optional
+            Probability of applying flip (0.0 to 1.0). Default is 1.0.
+
+        Raises
+        ------
+        ValueError
+            If mirror_axis invalid, mirror_prob not float/int, or
+            mirror_prob not in [0.0, 1.0].
+        """
         super().__init__()
 
-        if mirror_axis not in ['x', 'y', 'z']:
+        if mirror_axis not in ["x", "y", "z"]:
             raise ValueError("Mirror axis should be either 'x', 'y', or 'z'")
-        
+
         if not isinstance(mirror_prob, (float, int)):
             raise ValueError("Mirror probability should be a float or int")
-        
+
         if not 0.0 <= mirror_prob <= 1.0:
             raise ValueError("Mirror probability should be between 0.0 and 1.0")
 
         self.mirror_prob = mirror_prob
 
-        if mirror_axis == 'x':
+        if mirror_axis == "x":
             self.mirror_axis = -3
-        elif mirror_axis == 'y':
+        elif mirror_axis == "y":
             self.mirror_axis = -2
-        elif mirror_axis == 'z':
+        elif mirror_axis == "z":
             self.mirror_axis = -1
 
     def __call__(self, simulation: DataItem):
         """
         Mirror data along the specified axis based on the probability.
-        
+
         Parameters
         ----------
         simulation : DataItem
@@ -473,7 +577,7 @@ class Mirror(BaseTransform):
             - coils: (coils, spatial_axis)
             - phase: (coils,)
             - mask: (coils,)
-        
+
         Returns
         -------
         DataItem
@@ -488,9 +592,9 @@ class Mirror(BaseTransform):
             - mask: (coils,)
         """
         self._check_data(simulation)
-        
+
         apply_mirror = np.random.rand() < self.mirror_prob
-        
+
         return DataItem(
             input=self._mirror_array(simulation.input, apply_mirror),
             subject=self._mirror_array(simulation.subject, apply_mirror),
@@ -503,9 +607,8 @@ class Mirror(BaseTransform):
             truncation_coefficients=simulation.truncation_coefficients,
             positions=self._mirror_array(simulation.positions, apply_mirror),
         )
-    
-    def _mirror_array(self,
-                      array: npt.NDArray[np.float32], apply: bool = True) -> npt.NDArray[np.float32]:
+
+    def _mirror_array(self, array: npt.NDArray[np.float32], apply: bool = True) -> npt.NDArray[np.float32]:
         """
         Mirror (flip) the array along the specified axis.
 
@@ -539,12 +642,25 @@ class PhaseShift(BaseTransform):
         Method for sampling the phase and mask. If 'uniform', it samples the number of coils to be on and then randomly selects the coils.
         If 'binomial', it samples the number of coils to be on based on the binomial distribution.
     """
-    def __init__(self, 
-                 num_coils: int,
-                 sampling_method: Literal['uniform', 'binomial'] = 'uniform'):
+
+    def __init__(self, num_coils: int, sampling_method: Literal["uniform", "binomial"] = "uniform"):
+        """Initialize phase shift transform.
+
+        Parameters
+        ----------
+        num_coils : int
+            Number of coils in simulation.
+        sampling_method : {'uniform', 'binomial'}, optional
+            Method for sampling active coils. Default is 'uniform'.
+
+        Raises
+        ------
+        ValueError
+            If sampling_method not in ['uniform', 'binomial'].
+        """
         super().__init__()
 
-        if sampling_method not in ['uniform', 'binomial']:
+        if sampling_method not in ["uniform", "binomial"]:
             raise ValueError(f"Unknown masks sampling method {sampling_method}")
 
         self.num_coils = num_coils
@@ -564,7 +680,7 @@ class PhaseShift(BaseTransform):
             - subject: (spatial_axis)
             - positions: (x/y/z, spatial_axis)
             - coils: (coils, spatial_axis)
-        
+
         Returns
         -------
         DataItem
@@ -584,7 +700,7 @@ class PhaseShift(BaseTransform):
         phase, mask = self._sample_phase_and_mask(dtype=simulation.dtype)
         field_shifted = self._phase_shift_field(simulation.field, phase, mask)
         coils_shifted = self._phase_shift_coils(simulation.coils, phase, mask)
-        
+
         return DataItem(
             input=simulation.input,
             subject=simulation.subject,
@@ -595,21 +711,19 @@ class PhaseShift(BaseTransform):
             coils=coils_shifted,
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions
+            positions=simulation.positions,
         )
-    
-    def _sample_phase_and_mask(self,
-                               dtype: str = None
-                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
+
+    def _sample_phase_and_mask(self, dtype: str = None) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
-        A method for sampling the phase and mask. The phase is sampled from the uniform distribution and the mask is 
+        A method for sampling the phase and mask. The phase is sampled from the uniform distribution and the mask is
         sampled based on the given method.
 
         Parameters
         ----------
         dtype: str
             Data type for the phase coefficients
-        
+
         Returns
         -------
         npt.NDArray[np.float32]:
@@ -618,15 +732,15 @@ class PhaseShift(BaseTransform):
             mask for the phase coefficients
         """
         phase = self._sample_phase(dtype)
-        if self.sampling_method == 'uniform':
+        if self.sampling_method == "uniform":
             mask = self._sample_mask_uniform()
-        elif self.sampling_method == 'binomial':
+        elif self.sampling_method == "binomial":
             mask = self._sample_mask_binomial()
         else:
             raise ValueError(f"Unknown sampling method {self.sampling_method}")
 
-        return phase.astype(dtype), mask.astype(np.bool_)  
-    
+        return phase.astype(dtype), mask.astype(np.bool_)
+
     def _sample_phase(self, dtype: str = None) -> npt.NDArray[np.float32]:
         """
         Method for sampling the phase coefficients. The phase is sampled from the uniform distribution.
@@ -641,8 +755,8 @@ class PhaseShift(BaseTransform):
         npt.NDArray[np.float32]
             phase coefficients
         """
-        return np.random.uniform(0, 2*np.pi, self.num_coils).astype(dtype)
-    
+        return np.random.uniform(0, 2 * np.pi, self.num_coils).astype(dtype)
+
     def _sample_mask_uniform(self) -> npt.NDArray[np.bool_]:
         """
         A method for sampling a uniform mask. It samples the number of coils to be on and then randomly selects the coils.
@@ -657,7 +771,7 @@ class PhaseShift(BaseTransform):
         coils_on_indices = np.random.choice(self.num_coils, num_coils_on, replace=False)
         mask[coils_on_indices] = True
         return mask
-    
+
     def _sample_mask_binomial(self) -> npt.NDArray[np.bool_]:
         """
         A method for sampling a binomial mask. It samples the number of coils to be on and then randomly selects the coils.
@@ -666,16 +780,17 @@ class PhaseShift(BaseTransform):
         while np.sum(mask) == 0:
             mask = np.random.choice([0, 1], self.num_coils, replace=True)
         return mask
-    
-    def _phase_shift_field(self, 
-                           fields: npt.NDArray[np.float32], 
-                           phase: npt.NDArray[np.float32], 
-                           mask: npt.NDArray[np.float32], 
-                           ) -> npt.NDArray[np.float32]:
+
+    def _phase_shift_field(
+        self,
+        fields: npt.NDArray[np.float32],
+        phase: npt.NDArray[np.float32],
+        mask: npt.NDArray[np.float32],
+    ) -> npt.NDArray[np.float32]:
         """
         Method of creating shift of field values. It uses a split formula for complex numbers multiplications.
         The calculations are done under the complex numbers in a split way.
-        The shift formula is considered as 
+        The shift formula is considered as
         ```
         field_complex * (e ^ (phase * 1j)) * mask = field_complex * (cos(phase) + sin(phase) * 1j) * mask = (field_re * cos(phase) - field_im * sin(phase)) * mask + mask * (field_re * sin(phase) + field_im * cos(phase)) * 1j
         ```
@@ -686,16 +801,15 @@ class PhaseShift(BaseTransform):
         coeffs_real = np.stack((re_phase, -im_phase), axis=0)
         coeffs_im = np.stack((im_phase, re_phase), axis=0)
         coeffs = np.stack((coeffs_real, coeffs_im), axis=0)
-        coeffs = einops.repeat(coeffs, 'reimout reim coils -> hf reimout reim coils', hf=2)
-        field_shift = einops.einsum(fields, coeffs, 'hf reim coils fieldxyz ... , hf reimout reim coils -> hf reimout fieldxyz ...')
+        coeffs = einops.repeat(coeffs, "reimout reim coils -> hf reimout reim coils", hf=2)
+        field_shift = einops.einsum(
+            fields, coeffs, "hf reim coils fieldxyz ... , hf reimout reim coils -> hf reimout fieldxyz ..."
+        )
         return field_shift
 
-
-    def _phase_shift_coils(self,
-                           coils: npt.NDArray[np.float32],
-                           phase: npt.NDArray[np.float32],
-                           mask: npt.NDArray[np.bool_]
-                           ) -> npt.NDArray[np.float32]:
+    def _phase_shift_coils(
+        self, coils: npt.NDArray[np.float32], phase: npt.NDArray[np.float32], mask: npt.NDArray[np.bool_]
+    ) -> npt.NDArray[np.float32]:
         """
         Method of creation of shift values for the coils. It uses a split formula for complex numbers multiplications.
         ```
@@ -706,14 +820,15 @@ class PhaseShift(BaseTransform):
         re_phase = np.cos(phase) * mask
         im_phase = np.sin(phase) * mask
         coeffs = np.stack((re_phase, im_phase), axis=0)
-        coils_shift = einops.einsum(coils, coeffs, 'coils ... , reim coils -> reim ...')
+        coils_shift = einops.einsum(coils, coeffs, "coils ... , reim coils -> reim ...")
         return coils_shift
-    
+
 
 class GridPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with grid simulations
     """
+
     pass
 
 
@@ -726,17 +841,21 @@ class CoilEnumeratorPhaseShift(PhaseShift):
     ----------
     num_coils : int
         Number of coils in the simulation data
-    
+
     """
-    def __init__(self, 
-                 num_coils: int):
+
+    def __init__(self, num_coils: int):
+        """Initialize coil enumerator phase shift.
+
+        Parameters
+        ----------
+        num_coils : int
+            Number of coils in simulation.
+        """
         super().__init__(num_coils=num_coils)
         self.coil_on_index = 0
 
-    
-    def _sample_phase_and_mask(self, 
-                               dtype: str = None
-                               ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
+    def _sample_phase_and_mask(self, dtype: str = None) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.bool_]]:
         """
         Augment simulation data by activating only a single coil in clockwise direction and setting phase to zero.
         Requires that num_samples == num_coils.
@@ -746,7 +865,7 @@ class CoilEnumeratorPhaseShift(PhaseShift):
             Number of coils in the simulation data
         dtype : str
             Data type of the phase coefficients
-        
+
         Returns
         -------
         npt.NDArray[np.float32]:
@@ -758,21 +877,42 @@ class CoilEnumeratorPhaseShift(PhaseShift):
         phase = self._sample_phase_zero(dtype=dtype)
         mask = self._sample_mask_single()
 
-        return phase.astype(dtype), mask.astype(np.bool_)  
-    
+        return phase.astype(dtype), mask.astype(np.bool_)
+
     def _sample_phase_zero(self, dtype: str = None) -> npt.NDArray[np.float32]:
+        """Generate zero phase coefficients.
+
+        Parameters
+        ----------
+        dtype : str, optional
+            Data type for phase array.
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Array of zeros with shape (num_coils,).
+        """
         return np.zeros(self.num_coils).astype(dtype)
-    
+
     def _sample_mask_single(self) -> npt.NDArray[np.bool_]:
+        """Generate mask with single active coil, cycling through coils.
+
+        Returns
+        -------
+        npt.NDArray[np.bool_]
+            Boolean mask with one True value at current coil index.
+        """
         mask = np.zeros(self.num_coils, dtype=bool)
         mask[self.coil_on_index] = True
         self.coil_on_index = (self.coil_on_index + 1) % self.num_coils
         return mask
 
+
 class PointPhaseShift(PhaseShift):
     """
     Class is added for the reversed comparability, the PhaseShift itself works fine with pointcloud simulations
     """
+
     pass
 
 
@@ -785,14 +925,28 @@ class PointSampling(BaseTransform):
     points_sampled : Union[float, int]
         Number of points to be sampled. If float, it is considered as a fraction of the total number of points.
     """
+
     def __init__(self, points_sampled: Union[float, int]):
+        """Initialize point sampling transform.
+
+        Parameters
+        ----------
+        points_sampled : float or int
+            Number or fraction of points to sample. If float (< 1.0),
+            treated as fraction. If int, treated as absolute count.
+
+        Raises
+        ------
+        ValueError
+            If points_sampled not float/int or <= 0.
+        """
         super().__init__()
 
         if not isinstance(points_sampled, (float, int)):
             raise ValueError("Points sampled should be either float or int")
         elif points_sampled <= 0:
             raise ValueError("The `points_sampled` parameter should be larger than 0")
-        
+
         self.points_sampled = points_sampled
 
     def __call__(self, simulation: DataItem):
@@ -823,12 +977,12 @@ class PointSampling(BaseTransform):
             coils=simulation.coils[:, point_indices],
             dtype=simulation.dtype,
             truncation_coefficients=simulation.truncation_coefficients,
-            positions=simulation.positions[:, point_indices]
+            positions=simulation.positions[:, point_indices],
         )
 
     def _sample_point_indices(self, total_num_points: int) -> npt.NDArray[np.int64]:
         """
-        Main method for sampling the points from the simulation data. The `total_num_points` can be a percentage from the total number of it 
+        Main method for sampling the points from the simulation data. The `total_num_points` can be a percentage from the total number of it
         and exact number of points to sample.
 
         Parameters
