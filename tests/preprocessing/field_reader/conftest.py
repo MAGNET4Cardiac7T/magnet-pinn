@@ -1,3 +1,5 @@
+"""Fixtures for field reader tests."""
+
 import pytest
 from shutil import rmtree
 
@@ -13,9 +15,9 @@ from tests.preprocessing.helpers import (
 )
 
 
-
 @pytest.fixture(scope='module')
 def e_field_grid_data(grid_simulation_path):
+    """Create E-field grid test data."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -44,6 +46,7 @@ def e_field_grid_data(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def h_field_grid_data(grid_simulation_path):
+    """Create H-field grid test data."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[H_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -72,6 +75,7 @@ def h_field_grid_data(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def e_field_grid_data_with_mixed_axis(grid_simulation_path):
+    """Create E-field grid test data with mixed axis order."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -96,6 +100,7 @@ def e_field_grid_data_with_mixed_axis(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def h_field_grid_data_with_mixed_axis(grid_simulation_path):
+    """Create H-field grid test data with mixed axis order."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[H_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -120,6 +125,7 @@ def h_field_grid_data_with_mixed_axis(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def e_field_grid_data_with_inconsistent_shape(grid_simulation_path):
+    """Create E-field grid test data with inconsistent shape."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -137,6 +143,7 @@ def e_field_grid_data_with_inconsistent_shape(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def h_field_grid_data_with_inconsistent_shape(grid_simulation_path):
+    """Create H-field grid test data with inconsistent shape."""
     field_path = grid_simulation_path / FIELD_DIR_PATH[H_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -154,6 +161,7 @@ def h_field_grid_data_with_inconsistent_shape(grid_simulation_path):
 
 @pytest.fixture(scope='module')
 def e_field_pointslist_data(pointslist_simulation_path):
+    """Create E-field pointslist test data."""
     field_path = pointslist_simulation_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
@@ -173,12 +181,13 @@ def e_field_pointslist_data(pointslist_simulation_path):
 
 @pytest.fixture(scope='module')
 def h_field_pointslist_data(pointslist_simulation_path):
+    """Create H-field pointslist test data."""
     field_path = pointslist_simulation_path / FIELD_DIR_PATH[H_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
 
     create_pointslist_field(
         field_path / "h-field (f=297.2) [AC1].h5",
-        H_FIELD_DATABASE_KEY    
+        H_FIELD_DATABASE_KEY
     )
 
     create_pointslist_field(

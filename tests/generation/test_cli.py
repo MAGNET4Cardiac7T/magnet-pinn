@@ -2,8 +2,8 @@ import pytest
 
 from magnet_pinn.generator.cli.cli import parse_arguments
 from magnet_pinn.generator.cli.cli import (
-    OUTPUT_DIR, SEED, NUM_CHILDREN_BLOBS, NUM_TUBES, INITIAL_BLOB_RADIUS,
-    BLOB_RADIUS_DECREASE, RELATIVE_TUBE_MIN_RADIUS, RELATIVE_TUBE_MAX_RADIUS,
+    OUTPUT_DIR, SEED, NUM_CHILDREN_BLOBS, NUM_TUBES,
+    BLOB_RADIUS_DECREASE,
     X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX,
     DENSITY_MIN, DENSITY_MAX, CONDUCTIVITY_MIN, CONDUCTIVITY_MAX,
     PERMITTIVITY_MIN, PERMITTIVITY_MAX, SAMPLE_CHILDREN_ONLY_INSIDE,
@@ -31,7 +31,7 @@ def test_custom_cli_check_default_output_value(monkeypatch, generation_output_di
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -97,7 +97,7 @@ def test_custom_cli_check_given_seed_value(monkeypatch, generation_output_dir_pa
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -117,7 +117,7 @@ def test_custom_cli_check_default_seed_value(monkeypatch, generation_output_dir_
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -440,6 +440,7 @@ def test_tissue_cli_check_default_num_tubes_value(monkeypatch):
     args = parse_arguments()
     assert args.num_tubes == NUM_TUBES
 
+
 def test_custom_cli_check_transforms_mode_default(monkeypatch, generation_output_dir_path):
     """
     Check default transforms_mode is 'all' for custom command
@@ -452,6 +453,7 @@ def test_custom_cli_check_transforms_mode_default(monkeypatch, generation_output
     )
     args = parse_arguments()
     assert args.transforms_mode == 'all'
+
 
 def test_custom_cli_check_transforms_mode_none(monkeypatch, generation_output_dir_path):
     """
@@ -466,6 +468,7 @@ def test_custom_cli_check_transforms_mode_none(monkeypatch, generation_output_di
     args = parse_arguments()
     assert args.transforms_mode == 'none'
 
+
 def test_custom_cli_check_transforms_mode_all(monkeypatch, generation_output_dir_path):
     """
     Check transforms_mode 'all' for custom command
@@ -478,6 +481,7 @@ def test_custom_cli_check_transforms_mode_all(monkeypatch, generation_output_dir
     )
     args = parse_arguments()
     assert args.transforms_mode == 'all'
+
 
 def test_custom_cli_check_transforms_mode_no_clipping(monkeypatch, generation_output_dir_path):
     """
@@ -492,6 +496,7 @@ def test_custom_cli_check_transforms_mode_no_clipping(monkeypatch, generation_ou
     args = parse_arguments()
     assert args.transforms_mode == 'no-clipping'
 
+
 def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output_dir_path):
     """
     Check invalid transforms_mode errors for custom command
@@ -505,6 +510,7 @@ def test_custom_cli_check_transforms_mode_invalid(monkeypatch, generation_output
     with pytest.raises(SystemExit):
         parse_arguments()
 
+
 def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     """
     Check transforms_mode 'no-clipping' for tissue command
@@ -516,6 +522,7 @@ def test_tissue_cli_check_transforms_mode_no_clipping(monkeypatch):
     args = parse_arguments()
     assert args.transforms_mode == 'no-clipping'
 
+
 def test_tissue_cli_check_transforms_mode_invalid(monkeypatch):
     """
     Check invalid transforms_mode errors for tissue command
@@ -526,6 +533,7 @@ def test_tissue_cli_check_transforms_mode_invalid(monkeypatch):
     )
     with pytest.raises(SystemExit):
         parse_arguments()
+
 
 def test_tissue_cli_check_x_min_invalid_value(monkeypatch):
     """
@@ -719,7 +727,7 @@ def test_custom_cli_check_given_stl_mesh_path_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test_mesh.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -753,7 +761,7 @@ def test_custom_cli_check_sample_children_only_inside_flag(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -773,7 +781,7 @@ def test_custom_cli_check_default_sample_children_only_inside_value(monkeypatch,
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -792,7 +800,7 @@ def test_custom_cli_check_given_child_blobs_batch_size_value(monkeypatch, genera
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -812,7 +820,7 @@ def test_custom_cli_check_child_blobs_batch_size_invalid_value(monkeypatch, gene
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -832,7 +840,7 @@ def test_custom_cli_check_default_child_blobs_batch_size_value(monkeypatch, gene
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -851,7 +859,7 @@ def test_custom_cli_check_given_num_children_blobs_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -871,7 +879,7 @@ def test_custom_cli_check_default_num_children_blobs_value(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -890,7 +898,7 @@ def test_custom_cli_check_given_density_min_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -910,7 +918,7 @@ def test_custom_cli_check_default_density_min_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -929,7 +937,7 @@ def test_custom_cli_check_given_density_max_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -949,7 +957,7 @@ def test_custom_cli_check_default_density_max_value(monkeypatch, generation_outp
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -968,7 +976,7 @@ def test_custom_cli_check_given_conductivity_min_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -988,7 +996,7 @@ def test_custom_cli_check_default_conductivity_min_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1007,7 +1015,7 @@ def test_custom_cli_check_given_conductivity_max_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1027,7 +1035,7 @@ def test_custom_cli_check_default_conductivity_max_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1046,7 +1054,7 @@ def test_custom_cli_check_given_permittivity_min_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1066,7 +1074,7 @@ def test_custom_cli_check_default_permittivity_min_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1085,7 +1093,7 @@ def test_custom_cli_check_given_permittivity_max_value(monkeypatch, generation_o
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1105,7 +1113,7 @@ def test_custom_cli_check_default_permittivity_max_value(monkeypatch, generation
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1124,7 +1132,7 @@ def test_custom_cli_check_given_blob_radius_decrease_value(monkeypatch, generati
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1144,7 +1152,7 @@ def test_custom_cli_check_default_blob_radius_decrease_value(monkeypatch, genera
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1163,7 +1171,7 @@ def test_custom_cli_check_given_num_tubes_value(monkeypatch, generation_output_d
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -1183,7 +1191,7 @@ def test_custom_cli_check_default_num_tubes_value(monkeypatch, generation_output
     """
     stl_file = generation_output_dir_path / "test.stl"
     stl_file.touch()
-    
+
     monkeypatch.setattr(
         "sys.argv",
         [

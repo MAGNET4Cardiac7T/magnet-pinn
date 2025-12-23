@@ -1,34 +1,46 @@
-import numpy as np
+"""Test helpers for transform validation."""
+
 from copy import copy
-from einops import rearrange
+
+import numpy as np
 
 from magnet_pinn.data._base import BaseTransform
 from magnet_pinn.data.dataitem import DataItem
 
 
 class FirstAugmentation(BaseTransform):
+    """Test augmentation that appends '1' to simulation name."""
+
     def __call__(self, simulation: DataItem) -> DataItem:
+        """Apply augmentation by appending '1' to simulation name."""
         result = copy(simulation)
         result.simulation += "1"
         return result
 
 
 class SecondAugmentation(BaseTransform):
+    """Test augmentation that appends '2' to simulation name."""
+
     def __call__(self, simulation: DataItem) -> DataItem:
+        """Apply augmentation by appending '2' to simulation name."""
         result = copy(simulation)
         result.simulation += "2"
         return result
 
 
 class ThirdAugmentation(BaseTransform):
+    """Test augmentation that appends '3' to simulation name."""
+
     def __call__(self, simulation: DataItem) -> DataItem:
+        """Apply augmentation by appending '3' to simulation name."""
         result = copy(simulation)
         result.simulation += "3"
         return result
-    
+
 
 def check_items_datatypes(result, random_item):
-    assert type(result.simulation) == type(random_item.simulation)
+    """Verify all data types match between result and expected item."""
+    assert isinstance(result.simulation, type(random_item.simulation))
     assert result.input.dtype == random_item.input.dtype
     assert result.field.dtype == random_item.field.dtype
     assert result.subject.dtype == random_item.subject.dtype
@@ -37,11 +49,12 @@ def check_items_datatypes(result, random_item):
     assert result.mask.dtype == random_item.mask.dtype
     assert result.coils.dtype == random_item.coils.dtype
     assert result.dtype == random_item.dtype
-    assert type(result.dtype) == type(random_item.dtype)
+    assert isinstance(result.dtype, type(random_item.dtype))
     assert result.truncation_coefficients.dtype == random_item.truncation_coefficients.dtype
 
 
 def check_cropped_shapes(result):
+    """Verify shapes after cropping to (10, 10, 10)."""
     assert result.input.shape == (3, 10, 10, 10)
     assert result.field.shape == (2, 2, 8, 3, 10, 10, 10)
     assert result.subject.shape == (10, 10, 10)
@@ -53,6 +66,7 @@ def check_cropped_shapes(result):
 
 
 def check_items_shapes_supposed_to_be_equal(result, input_item):
+    """Verify all shapes remain unchanged between result and input."""
     assert result.input.shape == input_item.input.shape
     assert result.field.shape == input_item.field.shape
     assert result.subject.shape == input_item.subject.shape
@@ -64,6 +78,7 @@ def check_items_shapes_supposed_to_be_equal(result, input_item):
 
 
 def check_elements_not_changed_by_crop(result, input_item):
+    """Verify crop-invariant elements remain unchanged."""
     assert result.simulation == input_item.simulation
     assert np.equal(result.phase, input_item.phase).all()
     assert np.equal(result.mask, input_item.mask).all()
@@ -71,7 +86,8 @@ def check_elements_not_changed_by_crop(result, input_item):
     assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
 
 
-def check_constant_shapes_not_changed_except_for_field_coils(result, item): 
+def check_constant_shapes_not_changed_except_for_field_coils(result, item):
+    """Verify shapes remain constant except for field and coils dimensions."""
     assert len(result.simulation) == len(item.simulation)
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape
@@ -83,6 +99,7 @@ def check_constant_shapes_not_changed_except_for_field_coils(result, item):
 
 
 def check_constant_values_not_changed_by_phase_shift(result, item):
+    """Verify phase-shift-invariant values remain unchanged."""
     assert result.simulation == item.simulation
     assert np.equal(result.input, item.input).all()
     assert np.equal(result.subject, item.subject).all()
@@ -92,6 +109,7 @@ def check_constant_values_not_changed_by_phase_shift(result, item):
 
 
 def check_default_transform_resulting_shapes(result, item):
+    """Verify shapes after default transform reduces coils dimension."""
     assert result.input.shape == item.input.shape
     assert result.subject.shape == item.subject.shape
     assert result.positions.shape == item.positions.shape
@@ -105,6 +123,7 @@ def check_default_transform_resulting_shapes(result, item):
 
 
 def check_default_transform_resulting_values(result, item):
+    """Verify values after default transform sums coils and resets phase/mask."""
     assert result.simulation == item.simulation
     assert np.equal(result.input, item.input).all()
     assert np.equal(result.subject, item.subject).all()
@@ -118,41 +137,39 @@ def check_default_transform_resulting_values(result, item):
     assert np.equal(result.phase, np.zeros(coils_num, dtype=item.phase.dtype)).all()
     assert np.equal(result.mask, np.ones(coils_num, dtype=item.mask.dtype)).all()
 
-    expected_coils = np.stack([
-        np.sum(item.coils, axis=0),
-        np.zeros(item.coils.shape[1:], dtype=item.coils.dtype)
-    ], axis=0)
+    expected_coils = np.stack(
+        [np.sum(item.coils, axis=0), np.zeros(item.coils.shape[1:], dtype=item.coils.dtype)], axis=0
+    )
     assert np.equal(result.coils, expected_coils).all()
 
 
 def check_complex_number_calculations_in_phase_shift(result, item):
-    """
-    Validates complex number calculations for phase shift transform.
-    """
+    """Validate complex number calculations for phase shift transform."""
     coefs_re = np.cos(result.phase) * result.mask
     coefs_im = np.sin(result.phase) * result.mask
 
     field_re = item.field[:, 0]
     field_im = item.field[:, 1]
 
-
-    field_shifted_re = np.einsum('ech...,c->eh...', field_re, coefs_re) - np.einsum('ech...,c->eh...', field_im, coefs_im)
-    field_shifted_im = np.einsum('ech...,c->eh...', field_re, coefs_im) + np.einsum('ech...,c->eh...', field_im, coefs_re)
+    field_shifted_re = np.einsum("ech...,c->eh...", field_re, coefs_re) - np.einsum(
+        "ech...,c->eh...", field_im, coefs_im
+    )
+    field_shifted_im = np.einsum("ech...,c->eh...", field_re, coefs_im) + np.einsum(
+        "ech...,c->eh...", field_im, coefs_re
+    )
 
     expected_field_result = np.stack([field_shifted_re, field_shifted_im], axis=1)
     assert np.allclose(result.field, expected_field_result, atol=1e-6, rtol=1e-6)
 
-    coils_re = np.einsum('c...,c->...', item.coils, coefs_re)
-    coils_im = np.einsum('c...,c->...', item.coils, coefs_im)
+    coils_re = np.einsum("c...,c->...", item.coils, coefs_re)
+    coils_im = np.einsum("c...,c->...", item.coils, coefs_im)
 
     expected_coils_result = np.stack([coils_re, coils_im], axis=0)
     assert np.allclose(result.coils, expected_coils_result, atol=1e-6, rtol=1e-6)
 
 
 def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
-    """
-    Validates complex number calculations for pointcloud phase shift transform.
-    """
+    """Validate complex number calculations for pointcloud phase shift transform."""
     coefs_re = np.cos(result.phase) * result.mask
     coefs_im = np.sin(result.phase) * result.mask
 
@@ -168,8 +185,8 @@ def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
     expected_field_result = np.stack([field_shifted_re, field_shifted_im], axis=1)
     assert np.allclose(result.field, expected_field_result, atol=1e-6, rtol=1e-6)
 
-    coils_re = np.einsum('c...->...', item.coils * coefs_re[:, None])
-    coils_im = np.einsum('c...->...', item.coils * coefs_im[:, None])
+    coils_re = np.einsum("c...->...", item.coils * coefs_re[:, None])
+    coils_im = np.einsum("c...->...", item.coils * coefs_im[:, None])
 
     expected_coils_result = np.stack([coils_re, coils_im], axis=0)
     assert np.allclose(result.coils, expected_coils_result, atol=1e-6, rtol=1e-6)
