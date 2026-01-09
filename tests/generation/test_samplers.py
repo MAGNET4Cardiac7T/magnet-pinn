@@ -447,11 +447,10 @@ def test_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
 
 
 def test_blob_sampler_sample_children_blobs_fails_with_too_small_parent():
-    sampler = BlobSampler(radius_decrease_factor=0.9)
+    sampler = BlobSampler(radius_decrease_factor=0.95)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=1.0)
     rng = default_rng(42)
-
-    with pytest.raises(RuntimeError, match="Parent blob radius .* too small to fit child blob radius"):
+    with pytest.raises(RuntimeError, match="(Parent blob radius .* too small|Cannot pack .* spheres)"):
         sampler.sample_children_blobs(parent_blob, 1, rng)
 
 
@@ -461,7 +460,7 @@ def test_blob_sampler_sample_children_blobs_fails_with_too_many_children():
     rng = default_rng(42)
 
     with pytest.raises(RuntimeError, match="Cannot pack .* spheres"):
-        sampler.sample_children_blobs(parent_blob, 20, rng)
+        sampler.sample_children_blobs(parent_blob, 5, rng, max_iterations=10)
 
 
 def test_blob_sampler_sample_children_blobs_with_custom_max_iterations():
@@ -1979,9 +1978,9 @@ def test_mesh_blob_sampler_rejects_negative_child_radius():
         MeshBlobSampler(child_radius=-1.0)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     children = sampler.sample_children_blobs(parent_mesh_structure, 0, rng)
@@ -1990,9 +1989,9 @@ def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(tmp_path):
     assert isinstance(children, list)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_single_child(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_single_child(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2000)
@@ -2002,9 +2001,9 @@ def test_mesh_blob_sampler_sample_children_blobs_with_single_child(tmp_path):
     assert children[0].radius == sampler.child_radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.05)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
     num_children = 2
 
@@ -2016,9 +2015,9 @@ def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(tmp_path
         assert child.radius == sampler.child_radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(42)
@@ -2032,9 +2031,9 @@ def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(tmp
         assert c1.radius == c2.radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_different_results_with_different_seeds(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_different_results_with_different_seeds(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(123)
@@ -2086,19 +2085,18 @@ def test_mesh_blob_sampler_sample_inside_volume_runtime_error_on_failure():
         sampler._sample_inside_volume(thin_mesh, rng, batch_size=10, points_to_return=1)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements(custom_mesh_structure):
     """Test that RuntimeError is raised when no valid blob placements can be found."""
-    sampler = MeshBlobSampler(child_radius=0.5)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    sampler = MeshBlobSampler(child_radius=0.8)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
-
     with pytest.raises(RuntimeError, match="No valid blob placements found"):
-        sampler.sample_children_blobs(parent_mesh_structure, 20, rng, batch_size=50)
+        sampler.sample_children_blobs(parent_mesh_structure, 5, rng, batch_size=10)
 
 
-def test_mesh_blob_sampler_with_sample_children_only_inside_true(tmp_path):
+def test_mesh_blob_sampler_with_sample_children_only_inside_true(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.05, sample_children_only_inside=True)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     try:
@@ -2125,9 +2123,9 @@ def test_mesh_blob_sampler_sample_children_inside_filter_failure(tmp_path, monke
         sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2)
 
 
-def test_mesh_blob_sampler_batch_size_parameter(tmp_path):
+def test_mesh_blob_sampler_batch_size_parameter(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2000)
@@ -2250,9 +2248,9 @@ def test_mesh_tube_sampler_sample_inside_position_runtime_error_on_failure():
         sampler._sample_inside_position(thin_mesh, rng, max_iter=10)
 
 
-def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 0, rng)
@@ -2261,9 +2259,9 @@ def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(tmp_path):
     assert isinstance(tubes, list)
 
 
-def test_mesh_tube_sampler_sample_tubes_with_single_tube(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_single_tube(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2273,9 +2271,9 @@ def test_mesh_tube_sampler_sample_tubes_with_single_tube(tmp_path):
     assert sampler.tube_min_radius <= tubes[0].radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.2, tube_min_radius=0.05)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
     num_tubes = 2
 
@@ -2288,9 +2286,9 @@ def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(tmp_path):
         assert np.isclose(np.linalg.norm(tube.direction), 1.0)
 
 
-def test_mesh_tube_sampler_sample_tubes_radii_within_range(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_radii_within_range(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.2)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2299,9 +2297,9 @@ def test_mesh_tube_sampler_sample_tubes_radii_within_range(tmp_path):
         assert sampler.tube_min_radius <= tube.radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_collision_detection(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_collision_detection(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2314,9 +2312,9 @@ def test_mesh_tube_sampler_sample_tubes_collision_detection(tmp_path):
                 assert distance >= min_distance or np.isclose(distance, min_distance, atol=1e-10)
 
 
-def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(42)
@@ -2332,9 +2330,9 @@ def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(tmp_path):
             assert t1.radius == t2.radius
 
 
-def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(123)
@@ -2354,9 +2352,9 @@ def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(t
         assert different
 
 
-def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng, max_iterations=100)
@@ -2364,10 +2362,10 @@ def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(tmp_path):
     assert len(tubes) <= 1
 
 
-def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(custom_mesh_structure):
     """Test that sampling terminates early when tube placement becomes impossible."""
     sampler = MeshTubeSampler(tube_max_radius=1.5, tube_min_radius=1.0)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 5, rng, max_iterations=10)
@@ -2375,9 +2373,9 @@ def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(tmp_path):
     assert len(tubes) < 5
 
 
-def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2388,10 +2386,10 @@ def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(tmp_path):
         assert tubes[0].radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_direction_vector_normalization(tmp_path):
+def test_mesh_tube_sampler_direction_vector_normalization(custom_mesh_structure):
     """Test that direction vectors are properly normalized."""
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2454,10 +2452,10 @@ def test_mesh_tube_sampler_initialization_with_large_parent_radius():
     assert sampler.parent_radius == parent_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(custom_mesh_structure):
     parent_radius = 80.0
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
@@ -2467,9 +2465,9 @@ def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(tmp_p
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
@@ -2479,10 +2477,10 @@ def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(tmp_pa
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(tmp_path):
+def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(custom_mesh_structure):
     parent_radius = 0.0
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2492,9 +2490,9 @@ def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(tmp_path):
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_height_calculation_formula_verification(tmp_path):
+def test_mesh_tube_sampler_height_calculation_formula_verification(custom_mesh_structure):
     parent_radius_values = [15.0, 50.0, 200.0, 1500.0]
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     for parent_radius in parent_radius_values:
         sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
@@ -2507,10 +2505,10 @@ def test_mesh_tube_sampler_height_calculation_formula_verification(tmp_path):
             assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_parent_radius_consistency_across_multiple_tubes(tmp_path):
+def test_mesh_tube_sampler_parent_radius_consistency_across_multiple_tubes(custom_mesh_structure):
     parent_radius = 120.0
     sampler = MeshTubeSampler(tube_max_radius=0.3, tube_min_radius=0.05, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)

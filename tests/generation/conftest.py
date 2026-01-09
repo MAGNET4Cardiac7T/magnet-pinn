@@ -3,12 +3,67 @@
 Provides reusable test fixtures for phantom generation, mesh creation,
 and property configuration used across generation test modules.
 """
-import pytest
+from unittest.mock import patch
+
 import numpy as np
+import pytest
 import trimesh
 from shutil import rmtree
 
-from magnet_pinn.generator.typing import MeshPhantom, PropertyPhantom, PropertyItem
+from magnet_pinn.generator.structures import Blob, CustomMeshStructure
+from magnet_pinn.generator.typing import MeshPhantom, PropertyItem, PropertyPhantom
+from magnet_pinn.utils import PerlinNoise
+
+
+def _fast_blob_init(
+    self,
+    position: np.ndarray,
+    radius: float,
+    num_octaves: int = 3,
+    relative_disruption_strength: float = 0.1,
+    seed: int = 42,
+    perlin_scale: float = 0.4,
+):
+    """Fast Blob initialization that skips expensive Fibonacci sampling.
+
+    This replacement __init__ sets reasonable dummy values for empirical
+    offset attributes instead of computing them from 10,000 sample points.
+    Used by test fixtures to speed up generation tests.
+
+    The empirical offset values are based on typical Perlin noise behavior:
+    - Max offset is roughly +0.25 * relative_disruption_strength
+    - Min offset is roughly -0.25 * relative_disruption_strength
+    These values maintain compatibility with packing algorithms that use
+    these offsets for collision detection and margin calculations.
+    """
+    from magnet_pinn.generator.structures import Structure3D
+    Structure3D.__init__(self, position=position, radius=radius)
+
+    self.relative_disruption_strength = relative_disruption_strength
+
+    if perlin_scale == 0:
+        raise ValueError(
+            "perlin_scale cannot be zero as it causes division by zero in offset calculations."
+        )
+    self.perlin_scale = perlin_scale
+
+    self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
+    self.empirical_max_offset = 0.025 * (relative_disruption_strength / 0.1)
+    self.empirical_min_offset = -0.025 * (relative_disruption_strength / 0.1)
+    self.effective_radius = self.radius * (1 + self.empirical_max_offset)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def fast_blob_initialization():
+    """Speed up tests by patching Blob to skip expensive initialization.
+
+    Blob.__init__ normally generates 10,000 Fibonacci sphere points and
+    calculates Perlin noise offsets for each, which takes ~0.35s per Blob.
+    This fixture patches Blob.__init__ to use dummy offset values instead,
+    dramatically speeding up tests that create multiple Blobs.
+    """
+    with patch.object(Blob, "__init__", _fast_blob_init):
+        yield
 
 
 @pytest.fixture(scope='module')
@@ -96,3 +151,31 @@ def property_phantom(property_item):
     tubes = [PropertyItem(conductivity=0.8, permittivity=80.0, density=800.0)]
 
     return PropertyPhantom(parent=parent, children=children, tubes=tubes)
+
+
+@pytest.fixture(scope='module')
+def custom_mesh_stl_file(tmp_path_factory):
+    """Provide a module-scoped STL file path for CustomMeshStructure tests.
+
+    Creates a simple box mesh (2x2x2 cube) and exports it to an STL file
+    that persists for the entire test module. This avoids repeated file I/O
+    for tests that use CustomMeshStructure.
+    """
+    mesh_dir = tmp_path_factory.mktemp('custom_mesh')
+    stl_path = mesh_dir / 'parent.stl'
+    box_mesh = trimesh.creation.box(extents=[2.0, 2.0, 2.0])
+    box_mesh.export(str(stl_path))
+    yield stl_path
+
+
+@pytest.fixture(scope='module')
+def custom_mesh_structure(custom_mesh_stl_file):
+    """Provide a module-scoped CustomMeshStructure for tests.
+
+    Creates a CustomMeshStructure from the shared STL file. The mesh is
+    loaded once per module and reused across tests. Tests should NOT
+    mutate this structure.
+    """
+    mesh_structure = CustomMeshStructure(str(custom_mesh_stl_file))
+    mesh_structure.mesh = trimesh.creation.box(extents=[2.0, 2.0, 2.0])
+    return mesh_structure

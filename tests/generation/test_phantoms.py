@@ -733,20 +733,21 @@ def test_tissue_rejects_blob_radius_decrease_per_level_greater_than_one():
         )
 
 
-@pytest.fixture
-def simple_stl_file():
-    """Create a simple STL file for testing purposes."""
+@pytest.fixture(scope='module')
+def simple_stl_file(tmp_path_factory):
+    """Create a module-scoped STL file for testing purposes.
+
+    Creates an icosphere mesh and exports it to a temporary STL file that
+    persists for the entire test module. This avoids repeated file I/O
+    for tests that require an STL file.
+    """
     mesh = trimesh.creation.icosphere(subdivisions=2, radius=2.0)
 
-    temp_file = tempfile.NamedTemporaryFile(suffix='.stl', delete=False)
-    temp_file.close()
+    stl_dir = tmp_path_factory.mktemp('stl_files')
+    stl_path = stl_dir / 'simple.stl'
+    mesh.export(str(stl_path))
 
-    mesh.export(temp_file.name)
-
-    yield temp_file.name
-
-    if os.path.exists(temp_file.name):
-        os.unlink(temp_file.name)
+    yield str(stl_path)
 
 
 def test_custom_phantom_initialization_with_valid_stl_file(simple_stl_file):
