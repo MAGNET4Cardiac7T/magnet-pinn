@@ -190,7 +190,9 @@ def test_grid_coordinates_dtype(e_field_grid_data):
     assert coordinates[2].dtype == np.float64
 
 
-def test_pointslist_coordinates_consistency(e_field_pointslist_data):
+def test_pointslist_coordinates_consistency(e_field_pointslist_data, h_field_pointslist_data):
+    # Both fixtures must be requested to ensure both E-field and H-field data exist
+    # The fixtures share the same underlying path (pointslist_simulation_path)
     e_reader = FieldReaderFactory(
         e_field_pointslist_data, E_FIELD_DATABASE_KEY
     ).create_reader()
