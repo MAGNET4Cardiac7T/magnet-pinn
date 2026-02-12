@@ -19,6 +19,9 @@ from magnet_pinn.models import UNet3D
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
 
+# Set device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Set the base directory where the preprocessed data is stored
 BASE_DIR = "data/processed/train/grid_voxel_size_4_data_type_float32"
 target_normalizer = StandardNormalizer.load_from_json(f"{BASE_DIR}/normalization/target_normalization.json")
@@ -40,7 +43,7 @@ iterator = MagnetGridIterator(
 train_loader = DataLoader(iterator, batch_size=4, num_workers=16, worker_init_fn=worker_init_fn)
 
 # Create the model
-model = UNet3D(5, 12, f_maps=32)
+model = UNet3D(5, 12, f_maps=32).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 criterion = MSELoss()
 subject_lambda = 10.0
@@ -50,6 +53,7 @@ for epoch in range(10):
     model.train()
     for i, batch in enumerate(train_loader):
         properties, phase, field, subject_mask = batch['input'], batch['coils'], batch['field'], batch['subject']
+        properties, phase, field, subject_mask = properties.to(device), phase.to(device), field.to(device), subject_mask.to(device)
         x = torch.cat([properties, phase], dim=1)
         y = einops.rearrange(field, 'b he reim xyz ... -> b (he reim xyz) ...')
         x = input_normalizer(x)

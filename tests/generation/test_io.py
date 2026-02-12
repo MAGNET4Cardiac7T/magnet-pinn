@@ -386,7 +386,7 @@ def test_mesh_writer_write_materials_csv_is_properly_formatted(generation_output
     assert pd.api.types.is_numeric_dtype(df['permittivity'])
     assert pd.api.types.is_numeric_dtype(df['density'])
 
-    assert pd.api.types.is_object_dtype(df['file'])
+    assert pd.api.types.is_string_dtype(df['file'])
 
     assert not df.isnull().any().any()
 
