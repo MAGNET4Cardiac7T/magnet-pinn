@@ -161,3 +161,6 @@ local/
 .copilotignore
 deployment
 test_files
+
+# Coding agents
+CLAUDE.md
