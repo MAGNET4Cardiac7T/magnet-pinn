@@ -14,7 +14,7 @@ import numpy.typing as npt
 import numpy as np
 import einops
 
-from .dataitem import DataItem
+from .dataitem import AugmentedDataItem, DataItem
 
 
 def check_transforms(transforms):
@@ -1004,3 +1004,179 @@ class PointSampling(BaseTransform):
                 raise ValueError("The number of points to sample should be less than the total number of points")
             num_points_sampled = self.points_sampled
         return np.random.choice(total_num_points, num_points_sampled, replace=False)
+
+
+class B1PlusTransform(BaseTransform):
+    """
+    Transform that calculates the B1+ field from the simulation field data.
+
+    B1+ is computed as 0.5 * (Bx + j*By) from the magnetic field components,
+    returned as a 2-channel (real, imaginary) array.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def _calculate_b1_plus(self, simulation: DataItem) -> npt.NDArray:
+        """
+        Calculate the B1+ field from the magnetic field.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            DataItem with field of shape (h/e, re/im, x/y/z, spatial_axis)
+
+        Returns
+        -------
+        npt.NDArray
+            B1+ data with shape (2, spatial_axis) where axis 0 is [real, imag]
+        """
+        b_field = simulation.field[1]
+
+        # b1_plus = b_x + i*b_y
+        b_field_complex = b_field[0] + 1j * b_field[1]
+        b1_plus = 0.5 * (b_field_complex[0] + 1j * b_field_complex[1])
+        return np.stack([b1_plus.real, b1_plus.imag], axis=0)
+
+    def __call__(self, simulation: DataItem):
+        """
+        Compute B1+ and return an AugmentedDataItem.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            Input simulation data.
+
+        Returns
+        -------
+        AugmentedDataItem
+            Data item with b1plus field populated.
+        """
+        self._check_data(simulation)
+        b1plus = self._calculate_b1_plus(simulation)
+
+        extra = {}
+        if isinstance(simulation, AugmentedDataItem):
+            extra["sar"] = simulation.sar
+
+        return AugmentedDataItem(
+            input=simulation.input,
+            subject=simulation.subject,
+            simulation=simulation.simulation,
+            field=simulation.field,
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=simulation.coils,
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions,
+            b1plus=b1plus,
+            **extra,
+        )
+
+
+class PointwiseSARTransform(BaseTransform):
+    """
+    Transform that computes pointwise SAR from the E field.
+
+    SAR = sigma * |E|^2 / rho
+
+    where sigma is conductivity, rho is density, and |E|^2 is the squared
+    magnitude of the electric field.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def _calculate_pointwise_sar(self, simulation: DataItem) -> npt.NDArray:
+        """
+        Compute pointwise SAR values from the E field.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            DataItem with:
+            - field of shape (h/e, re/im, x/y/z, spatial_axis)
+            - input of shape (cond/perm/dens, spatial_axis)
+            - subject of shape (spatial_axis)
+
+        Returns
+        -------
+        npt.NDArray
+            Pointwise SAR with shape (1, spatial_axis)
+        """
+        e_field = simulation.field[0]
+        abs_efield_sq = np.sum(e_field**2, axis=(0, 1))
+
+        conductivity = simulation.input[0]
+        density = simulation.input[2]
+
+        subject = simulation.subject
+
+        pointwise_sar = subject * conductivity * abs_efield_sq / density
+        return np.expand_dims(pointwise_sar, axis=0)
+
+    def __call__(self, simulation: DataItem):
+        """
+        Compute pointwise SAR and return an AugmentedDataItem.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            Input simulation data.
+
+        Returns
+        -------
+        AugmentedDataItem
+            Data item with sar field populated.
+        """
+        self._check_data(simulation)
+        pointwise_sar = self._calculate_pointwise_sar(simulation)
+
+        extra = {}
+        if isinstance(simulation, AugmentedDataItem):
+            extra["b1plus"] = simulation.b1plus
+
+        return AugmentedDataItem(
+            input=simulation.input,
+            subject=simulation.subject,
+            simulation=simulation.simulation,
+            field=simulation.field,
+            phase=simulation.phase,
+            mask=simulation.mask,
+            coils=simulation.coils,
+            dtype=simulation.dtype,
+            truncation_coefficients=simulation.truncation_coefficients,
+            positions=simulation.positions,
+            sar=pointwise_sar,
+            **extra,
+        )
+
+
+class AsDict(BaseTransform):
+    """
+    Transform that converts a DataItem (or AugmentedDataItem) to a dictionary.
+
+    This is intended to be used as the final transform in a Compose pipeline,
+    converting the dataclass into a plain dict for downstream consumers.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, simulation: DataItem):
+        """
+        Convert the DataItem to a dictionary.
+
+        Parameters
+        ----------
+        simulation : DataItem
+            Input simulation data.
+
+        Returns
+        -------
+        dict
+            Dictionary representation of the data item.
+        """
+        self._check_data(simulation)
+        return simulation.__dict__
