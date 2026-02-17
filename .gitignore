@@ -95,12 +95,10 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
+# uv
+#   For libraries it is generally fine to not commit the lockfile.
+#   https://docs.astral.sh/uv/concepts/projects/layout/#the-lockfile
+#uv.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
@@ -156,7 +154,7 @@ cython_debug/
 # Custom directories
 .idea
 .vscode
-poetry.lock
+uv.lock
 /data
 notebooks
 local/

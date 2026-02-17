@@ -1,56 +1,58 @@
-[tool.poetry]
+[project]
 name = "magnet-pinn"
 version = "0.0.13alpha1"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
-    "Andrzej Dulny <andzej.dulny@gmail.com>",
-    "Anna Krause <krause@informatik.uni-wuerzburg.de>",
-    "Farzad Jabbarigargari <Jabbarigar_F@ukw.de>",
-    "Alex Tarasov <tarasov.oleksander@gmail.com>"
+    { name = "Andrzej Dulny", email = "andzej.dulny@gmail.com" },
+    { name = "Anna Krause", email = "krause@informatik.uni-wuerzburg.de" },
+    { name = "Farzad Jabbarigargari", email = "Jabbarigar_F@ukw.de" },
+    { name = "Alex Tarasov", email = "tarasov.oleksander@gmail.com" },
 ]
 license = "MIT"
 readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "numpy>=1.26.4",
+    "trimesh>=4.2.4",
+    "h5py>=3.10.0",
+    "mypy>=1.9.0",
+    "torch>=2.3.1",
+    "rtree>=1.2.0",
+    "scipy>=1.13.0",
+    "pandas>=2.2.2",
+    "tqdm>=4.66.4",
+    "einops>=0.8.0",
+    "libigl>=2.6.1",
+    "findiff>=0.10.2",
+    "natsort>=8.4.0",
+    "ordered-set>=4.1.0",
+    "manifold3d>=3.1.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.14"
-numpy = ">=1.26.4"
-trimesh = ">=4.2.4"
-h5py = "^3.10.0"
-mypy = "^1.9.0"
-torch = "^2.3.1"
-rtree = "^1.2.0"
-scipy = "^1.13.0"
-pandas = "^2.2.2"
-tqdm = "^4.66.4"
-einops = "^0.8.0"
-libigl = "^2.6.1"
-findiff = "^0.10.2"
-natsort = "^8.4.0"
-ordered-set = "^4.1.0"
-manifold3d = "^3.1.0"
-
-[tool.poetry.group.dev.dependencies]
-matplotlib = "^3.8.4"
-jupyterlab = "^4.1.5"
-ipywidgets = "^8.1.2"
-sphinx = "^7.2.6"
-jupyterlab-widgets = "^3.0.10"
-black = "^24.4.0"
-isort = "^5.13.2"
-flake8 = "^7.0.0"
-pre-commit-hooks = "^4.6.0"
-pre-commit = "^3.7.0"
-pip-tools = "^7.4.1"
-numpydoc = "^1.7.0"
-sphinx-conestack-theme = "^1.0b3"
-sphinx-rtd-theme = "^2.0.0"
-sphinx-design = "^0.5.0"
-pandas = "^2.2.2"
-pytest = "^8.3.2"
-coverage = "^7.6.3"
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.8.4",
+    "jupyterlab>=4.1.5",
+    "ipywidgets>=8.1.2",
+    "sphinx>=7.2.6",
+    "jupyterlab-widgets>=3.0.10",
+    "black>=24.4.0",
+    "isort>=5.13.2",
+    "flake8>=7.0.0",
+    "pre-commit-hooks>=4.6.0",
+    "pre-commit>=3.7.0",
+    "pip-tools>=7.4.1",
+    "numpydoc>=1.7.0",
+    "sphinx-conestack-theme>=1.0b3",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-design>=0.5.0",
+    "pandas>=2.2.2",
+    "pytest>=8.3.2",
+    "coverage>=7.6.3",
+]
 
 [tool.isort]
 multi_line_output = 3
@@ -67,5 +69,5 @@ addopts = [
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
