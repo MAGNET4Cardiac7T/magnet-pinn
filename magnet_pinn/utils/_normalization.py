@@ -164,6 +164,20 @@ class Power(Nonlinearity):
         return torch.sign(x) * torch.abs(x) ** (1 / self.power)
 
 
+class Sqrt(Power):
+    """Square root nonlinearity transformation.
+
+    Applies a square root transformation while preserving the sign:
+    f(x) = sign(x) * sqrt(|x|)
+
+    This is a special case of the Power nonlinearity with power=0.5.
+    """
+
+    def __init__(self):
+        """Initialize Sqrt nonlinearity."""
+        super().__init__(power=0.5)
+
+
 class Log(Nonlinearity):
     """Logarithmic nonlinearity transformation.
 
@@ -301,8 +315,8 @@ class Normalizer(torch.nn.Module):
 
     def __init__(
         self,
-        params: dict = None,
-        nonlinearity: Union[str,] = Identity(),
+        params: Optional[dict] = None,
+        nonlinearity: Union[str, Nonlinearity] = Identity(),
         nonlinearity_before: bool = False,
     ):
         """Initialize Normalizer.
@@ -324,9 +338,15 @@ class Normalizer(torch.nn.Module):
 
         self._params = params.copy() if params else {}
         self.nonlinearity = (
-            nonlinearity if isinstance(nonlinearity, Nonlinearity) else self._get_nonlineartiy_function(nonlinearity)
+            nonlinearity
+            if isinstance(nonlinearity, Nonlinearity)
+            else Normalizer._get_nonlineartiy_function(nonlinearity)
         )
-        self.nonlinearity_name = nonlinearity if isinstance(nonlinearity, str) else nonlinearity.__class__.__name__
+        self.nonlinearity_name = (
+            nonlinearity
+            if isinstance(nonlinearity, str)
+            else nonlinearity.__class__.__name__
+        )
         self.nonlinearity_before = nonlinearity_before
         self.counter = 0
 
@@ -365,13 +385,15 @@ class Normalizer(torch.nn.Module):
         return self._denormalize(x, axis=axis)
 
     @abstractmethod
-    def _normalize(self, x):
+    def _normalize(self, x, axis: int = 0):
         """Internal method to perform normalization.
 
         Parameters
         ----------
         x : torch.Tensor
             Input tensor.
+        axis : int, optional
+            Axis along which normalization is performed. Default is 0.
 
         Returns
         -------
@@ -381,7 +403,7 @@ class Normalizer(torch.nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def _denormalize(self, x):
+    def _denormalize(self, x, axis: int = 0):
         """Internal method to perform denormalization.
 
         Parameters
@@ -406,7 +428,7 @@ class Normalizer(torch.nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def _update_params(self, x):
+    def _update_params(self, x, axis: int = 0):
         """Update normalization parameters with a new batch of data.
 
         Parameters
@@ -481,7 +503,7 @@ class Normalizer(torch.nn.Module):
         """
         return self._params
 
-    def _expand_params(self, params_dict: dict = None, axis: int = 0, ndims: int = 5):
+    def _expand_params(self, params_dict: Optional[dict] = None, axis: int = 0, ndims: int = 5):
         """Expand parameter tensors to match input dimensionality.
 
         Adds singleton dimensions to parameter tensors so they can be
@@ -512,7 +534,7 @@ class Normalizer(torch.nn.Module):
         return expanded_params
 
     def _cast_params(
-        self, params_dict: dict = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device("cpu")
+        self, params_dict: Optional[dict] = None, dtype: torch.dtype = torch.float32, device: torch.device = torch.device("cpu")
     ):
         """Cast parameter values to specified dtype and device.
 
@@ -566,6 +588,7 @@ class Normalizer(torch.nn.Module):
             params["nonlinearity_before"] = self.nonlinearity_before
             json.dump(params, f)
 
+    @staticmethod
     def _get_nonlineartiy_function(name: str = "Identity"):
         """Get nonlinearity instance from string name.
 
@@ -585,10 +608,13 @@ class Normalizer(torch.nn.Module):
         ValueError
             If the nonlinearity name is unknown.
         """
+        
         if name == "Identity":
             return Identity()
-        elif name == "Power":
+        elif "Power" in name:
             return Power()
+        elif name == "Sqrt":
+            return Sqrt()
         elif name == "Log":
             return Log()
         elif name == "Tanh":

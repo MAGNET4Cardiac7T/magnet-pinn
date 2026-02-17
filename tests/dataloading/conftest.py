@@ -8,7 +8,7 @@ and dataloading test scenarios.
 import pytest
 import numpy as np
 
-from magnet_pinn.data.dataitem import DataItem
+from magnet_pinn.data.dataitem import AugmentedDataItem, DataItem
 
 
 @pytest.fixture(scope="module")
@@ -112,4 +112,59 @@ def zero_pointcloud_item():
         coils=np.zeros((8, 8000), dtype=np.float32),
         dtype="float32",
         truncation_coefficients=np.zeros(3, dtype=np.float32)
+    )
+
+
+@pytest.fixture(scope="module")
+def phase_shifted_grid_item():
+    """Create a DataItem fixture representing post-PhaseShift grid data.
+
+    The field has shape (h/e, re/im, x/y/z, spatial_axis) — no coils dimension.
+    Input has (cond/perm/dens, spatial_axis) with non-zero density to avoid division by zero.
+    Subject is a boolean mask (spatial_axis).
+    """
+    np.random.seed(42)
+    density = np.random.rand(20, 20, 20).astype(np.float32) + 0.1  # avoid div by zero
+    input_data = np.stack([
+        np.random.rand(20, 20, 20).astype(np.float32),  # conductivity
+        np.random.rand(20, 20, 20).astype(np.float32),  # permittivity
+        density,
+    ], axis=0)
+    return DataItem(
+        simulation="children_0_tubes_0_id_0",
+        input=input_data,
+        field=np.random.rand(2, 2, 3, 20, 20, 20).astype(np.float32),
+        subject=np.random.choice([0, 1], size=(20, 20, 20)).astype(np.bool_),
+        positions=np.random.rand(3, 20, 20, 20).astype(np.float32),
+        phase=np.random.rand(8).astype(np.float32),
+        mask=np.random.choice([0, 1], size=8).astype(np.bool_),
+        coils=np.random.rand(2, 20, 20, 20).astype(np.float32),
+        dtype="float32",
+        truncation_coefficients=np.ones(3, dtype=np.float32),
+    )
+
+
+@pytest.fixture(scope="module")
+def augmented_grid_item():
+    """Create an AugmentedDataItem fixture with b1plus and sar already set."""
+    np.random.seed(42)
+    density = np.random.rand(20, 20, 20).astype(np.float32) + 0.1
+    input_data = np.stack([
+        np.random.rand(20, 20, 20).astype(np.float32),
+        np.random.rand(20, 20, 20).astype(np.float32),
+        density,
+    ], axis=0)
+    return AugmentedDataItem(
+        simulation="children_0_tubes_0_id_0",
+        input=input_data,
+        field=np.random.rand(2, 2, 3, 20, 20, 20).astype(np.float32),
+        subject=np.random.choice([0, 1], size=(20, 20, 20)).astype(np.bool_),
+        positions=np.random.rand(3, 20, 20, 20).astype(np.float32),
+        phase=np.random.rand(8).astype(np.float32),
+        mask=np.random.choice([0, 1], size=8).astype(np.bool_),
+        coils=np.random.rand(2, 20, 20, 20).astype(np.float32),
+        dtype="float32",
+        truncation_coefficients=np.ones(3, dtype=np.float32),
+        b1plus=np.random.rand(2, 20, 20, 20).astype(np.float32),
+        sar=np.random.rand(1, 20, 20, 20).astype(np.float32),
     )
