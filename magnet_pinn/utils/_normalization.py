@@ -164,6 +164,20 @@ class Power(Nonlinearity):
         return torch.sign(x) * torch.abs(x) ** (1 / self.power)
 
 
+class Sqrt(Power):
+    """Square root nonlinearity transformation.
+
+    Applies a square root transformation while preserving the sign:
+    f(x) = sign(x) * sqrt(|x|)
+
+    This is a special case of the Power nonlinearity with power=0.5.
+    """
+
+    def __init__(self):
+        """Initialize Sqrt nonlinearity."""
+        super().__init__(power=0.5)
+
+
 class Log(Nonlinearity):
     """Logarithmic nonlinearity transformation.
 
@@ -301,8 +315,8 @@ class Normalizer(torch.nn.Module):
 
     def __init__(
         self,
-        params: dict = None,
-        nonlinearity: Union[str,] = Identity(),
+        params: Optional[dict] = None,
+        nonlinearity: Union[str, Nonlinearity] = Identity(),
         nonlinearity_before: bool = False,
     ):
         """Initialize Normalizer.
@@ -598,14 +612,9 @@ class Normalizer(torch.nn.Module):
         if name == "Identity":
             return Identity()
         elif "Power" in name:
-            parts = name.split("_")
-            if len(parts) == 2:
-                try:
-                    exponent = float(parts[1])
-                    return Power(power=exponent)
-                except ValueError:
-                    pass
             return Power()
+        elif name == "Sqrt":
+            return Sqrt()
         elif name == "Log":
             return Log()
         elif name == "Tanh":
