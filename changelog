@@ -92,3 +92,4 @@
 - Fix: standard normalizer not applying nonlinearity
 - Prediction writer
 - Add B1Plus and PointwiseSAR Transforms
+- Add Sqrt Nonlinearity to normalization

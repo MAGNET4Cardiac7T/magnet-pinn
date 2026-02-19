@@ -1,6 +1,6 @@
 [project]
 name = "magnet-pinn"
-version = "0.0.13alpha2"
+version = "0.0.13alpha3"
 description = "This is the software package for simulating EM Fields using NNs"
 authors = [
     { name = "Andrzej Dulny", email = "andzej.dulny@gmail.com" },
