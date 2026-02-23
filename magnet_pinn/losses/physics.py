@@ -6,12 +6,14 @@ import math
 from einops import pack, unpack
 from typing import Optional, Union, Tuple
 
-from .utils import LossReducer, DiffFilterFactory, ObjectMaskCropping
+from .utils import LossReducer, DiffFilterFactory, ObjectMaskCropping, ResidualNorm
 from .base import BaseRegressionLoss
 
 
 MRI_FREQUENCY_HZ = 297.2e6
 VACUUM_PERMEABILITY = 1.256637061e-6
+
+COORDINATE_UNIT_SCALES = {"m": 1.0, "cm": 1e-2, "mm": 1e-3}
 
 
 # TODO Add support for non-uniform grids (i.e., varying voxel sizes in different dimensions)
@@ -22,7 +24,11 @@ class BasePhysicsLoss(BaseRegressionLoss):
     def __init__(self,
                  feature_dims: Union[int, Tuple[int, ...]] = 1,
                  reduction: str = "mean",
-                 dx: float = 1.0
+                 dx: float = 1.0,
+                 dx_unit: str = "m",
+                 accuracy: int = 2,
+                 residual_norm: str = "l2",
+                 p: float = 2.0,
                  ):
         """
         Initialize BasePhysicsLoss.
@@ -35,12 +41,39 @@ class BasePhysicsLoss(BaseRegressionLoss):
             Reduction method: 'mean', 'sum', or 'none' (default: 'mean')
         dx : float, optional
             Grid spacing for finite difference calculations (default: 1.0)
+        dx_unit : str, optional
+            Unit of the grid spacing. One of 'm', 'cm', 'mm' (default: 'm').
+            Subclasses that contain physical constants with SI units use this
+            to keep those constants dimensionally consistent with the chosen
+            coordinate unit.
+        accuracy : int, optional
+            Order of accuracy for the finite difference approximation (default: 2)
+        residual_norm : str, optional
+            Norm applied to the physics residual magnitude ``|r|`` before
+            reduction. One of:
+
+            * ``"l2"``   – squared magnitude ``|r|²`` (default, original behaviour)
+            * ``"l1"``   – absolute magnitude ``|r|``
+            * ``"lp"``   – ``|r|^p``  (use ``p`` to set the exponent)
+            * ``"rmse"`` – element-wise ``|r|²``, with ``sqrt`` applied to the
+              final scalar after reduction
+
+        p : float, optional
+            Exponent for ``residual_norm="lp"``. Must be positive (default: 2.0)
         """
+        if dx_unit not in COORDINATE_UNIT_SCALES:
+            raise ValueError(
+                f"dx_unit must be one of {list(COORDINATE_UNIT_SCALES)}, got '{dx_unit}'"
+            )
         super(BasePhysicsLoss, self).__init__(feature_dims=feature_dims, reduction=reduction)
 
         self.dx = dx
-        self.diff_filter_factory = DiffFilterFactory(dx = self.dx)
+        self.dx_unit = dx_unit
+        self.coordinate_scale = COORDINATE_UNIT_SCALES[dx_unit]
+        self.diff_filter_factory = DiffFilterFactory(dx=self.dx, accuracy=accuracy)
         self.physics_filters = self._build_physics_filters()
+        self._residual_norm = ResidualNorm(norm=residual_norm, p=p)
+        self._apply_sqrt_after_reduce = (residual_norm == "rmse")
 
     @abstractmethod
     def _base_physics_fn(self,
@@ -72,7 +105,6 @@ class BasePhysicsLoss(BaseRegressionLoss):
         """
         raise NotImplementedError
 
-    # TODO Add different Lp norms for the divergence residual
     def _base_loss_fn(self, pred, target):
         """
         Compute the base physics loss.
@@ -87,7 +119,7 @@ class BasePhysicsLoss(BaseRegressionLoss):
         Returns
         -------
         torch.Tensor
-            Squared residual loss
+            Element-wise residual loss according to ``residual_norm``
         """
         dtype, device = self._check_dtype_device(pred)
         self._cast_physics_filter(dtype, device)
@@ -98,7 +130,8 @@ class BasePhysicsLoss(BaseRegressionLoss):
         else:
             residual_target = torch.zeros_like(residual_pred)
 
-        loss = (residual_pred - residual_target).abs() ** 2
+        residual_magnitude = (residual_pred - residual_target).abs()
+        loss = self._residual_norm(residual_magnitude)
         return loss
 
     def _cast_physics_filter(
@@ -165,9 +198,13 @@ class BasePhysicsLoss(BaseRegressionLoss):
         Returns
         -------
         torch.Tensor
-            Reduced physics loss
+            Reduced physics loss. When ``residual_norm="rmse"``, the square
+            root is applied to the scalar after reduction.
         """
-        return super().forward(pred, target, mask)
+        loss = super().forward(pred, target, mask)
+        if self._apply_sqrt_after_reduce:
+            loss = torch.sqrt(loss)
+        return loss
 
 
 class DivergenceLoss(BasePhysicsLoss):
@@ -256,9 +293,20 @@ class FaradaysLawLoss(BasePhysicsLoss):
     feature_dims : Union[int, Tuple[int, ...]], optional
         Dimensions over which to average the loss before reduction,
         by default 1.
+    dx_unit : str, optional
+        Unit of the grid spacing. One of 'm', 'cm', 'mm' (default: 'm').
+        Scales the ωμ₀ constant so that the Faraday residual remains
+        dimensionally consistent when coordinates are not in SI metres.
     """
     vacuum_permeability: float = VACUUM_PERMEABILITY
     mri_frequency_hz: float = MRI_FREQUENCY_HZ
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._omega_mu = (
+            2 * math.pi * self.mri_frequency_hz * self.vacuum_permeability
+            * self.coordinate_scale
+        )
 
     def _base_physics_fn(self, field):
         """
@@ -295,7 +343,7 @@ class FaradaysLawLoss(BasePhysicsLoss):
 
         faradays_pred = (
             curl_pred_e
-            + 1j * 2 * math.pi * self.mri_frequency_hz * self.vacuum_permeability * pred_h
+            + 1j * self._omega_mu * pred_h
         )
 
         return faradays_pred

@@ -7,6 +7,69 @@ from operator import mul
 from functools import reduce
 
 
+VALID_RESIDUAL_NORMS = ("l1", "l2", "lp", "rmse")
+
+
+class ResidualNorm:
+    """
+    Applies a pointwise norm to a real-valued residual magnitude tensor.
+
+    The input is expected to be the element-wise absolute value (magnitude) of
+    the physics residual ``r = residual_pred - residual_target``, i.e. ``|r|``.
+
+    Parameters
+    ----------
+    norm : str
+        Which norm to apply. One of:
+
+        * ``"l2"``   – squared magnitude: ``|r|²``  (default, original behaviour)
+        * ``"l1"``   – absolute magnitude: ``|r|``
+        * ``"lp"``   – p-th power: ``|r|^p`` (requires ``p`` parameter)
+        * ``"rmse"`` – same element-wise as ``"l2"``; the caller is responsible
+          for applying ``sqrt`` after reduction to obtain RMSE.
+
+    p : float, optional
+        Exponent used when ``norm="lp"``. Must be positive. Default is 2.0.
+
+    Raises
+    ------
+    ValueError
+        If ``norm`` is not one of the supported values, or if ``p <= 0`` when
+        ``norm="lp"``.
+    """
+
+    def __init__(self, norm: str = "l2", p: float = 2.0):
+        if norm not in VALID_RESIDUAL_NORMS:
+            raise ValueError(
+                f"residual_norm must be one of {list(VALID_RESIDUAL_NORMS)}, got '{norm}'"
+            )
+        if norm == "lp" and p <= 0:
+            raise ValueError(f"p must be positive for 'lp' norm, got {p}")
+        self.norm = norm
+        self.p = p
+
+    def __call__(self, residual_magnitude: torch.Tensor) -> torch.Tensor:
+        """
+        Apply the norm to a real-valued residual magnitude tensor.
+
+        Parameters
+        ----------
+        residual_magnitude : torch.Tensor
+            Element-wise absolute value of the residual, ``|r|``. Must be real.
+
+        Returns
+        -------
+        torch.Tensor
+            Element-wise norm values with the same shape as the input.
+        """
+        if self.norm == "l1":
+            return residual_magnitude
+        if self.norm in ("l2", "rmse"):
+            return residual_magnitude ** 2
+        # lp
+        return residual_magnitude ** self.p
+
+
 class LossReducer(torch.nn.Module):
     """
     Loss reducer with optional masking. It reduces the loss tensor using the specified aggregation function (mean, sum, or none).
