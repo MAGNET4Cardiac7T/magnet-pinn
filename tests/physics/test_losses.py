@@ -271,3 +271,71 @@ def test_physics_constants_are_exported():
     """
     assert MRI_FREQ_EXPORTED == 297.2e6
     assert abs(VACUUM_PERM_EXPORTED - 1.256637061e-6) < 1e-15
+
+
+def test_base_physics_loss_accuracy_passed_to_filter():
+    """
+    Test that the accuracy parameter is forwarded to DiffFilterFactory.
+    """
+    loss_fn_acc2 = DivergenceLoss(accuracy=2)
+    loss_fn_acc4 = DivergenceLoss(accuracy=4)
+
+    assert loss_fn_acc2.diff_filter_factory.accuracy == 2
+    assert loss_fn_acc4.diff_filter_factory.accuracy == 4
+    # Higher accuracy means larger filter kernel
+    assert loss_fn_acc4.physics_filters.shape[-1] > loss_fn_acc2.physics_filters.shape[-1]
+
+
+def test_base_physics_loss_invalid_dx_unit():
+    """
+    Test that an unrecognised dx_unit raises ValueError.
+    """
+    with pytest.raises(ValueError, match="dx_unit"):
+        DivergenceLoss(dx_unit="km")
+
+
+def test_base_physics_loss_dx_unit_stored():
+    """
+    Test that dx_unit and coordinate_scale are stored on the base class.
+    """
+    loss_m  = DivergenceLoss(dx=0.004, dx_unit="m")
+    loss_mm = DivergenceLoss(dx=4.0,   dx_unit="mm")
+
+    assert loss_m.dx_unit == "m"
+    assert loss_m.coordinate_scale == 1.0
+    assert loss_mm.dx_unit == "mm"
+    assert abs(loss_mm.coordinate_scale - 1e-3) < 1e-15
+
+
+def test_faradays_loss_omega_mu_scaling():
+    """
+    Test that _omega_mu is scaled correctly for different dx_unit values.
+    ωμ₀ in mm coords should equal ωμ₀ in m coords multiplied by 1e-3 (mm/m).
+    """
+    loss_m  = FaradaysLawLoss(dx_unit="m")
+    loss_mm = FaradaysLawLoss(dx_unit="mm")
+
+    assert abs(loss_mm._omega_mu - loss_m._omega_mu * 1e-3) < 1e-20
+
+
+def test_faradays_loss_dx_unit_mm_equivalent_to_si(random_fields):
+    """
+    Test that FaradaysLawLoss(dx=4.0, dx_unit='mm') and FaradaysLawLoss(dx=0.004,
+    dx_unit='m') represent the same physics on a 4 mm grid.
+
+    Both configurations scale all terms in the Faraday residual by the same factor
+    (1e-3 for mm vs m), so the squared loss differs by scale**2 = 1e-6.
+    The ratio loss_m / loss_mm should equal (1e3)**2 = 1e6.
+    """
+    loss_fn_m  = FaradaysLawLoss(dx=0.004, dx_unit="m")
+    loss_fn_mm = FaradaysLawLoss(dx=4.0,   dx_unit="mm")
+
+    loss_m  = loss_fn_m(random_fields)
+    loss_mm = loss_fn_mm(random_fields)
+
+    expected_ratio = (1e3) ** 2  # (m_per_mm)^2 because loss is squared residual
+    actual_ratio = loss_m.item() / loss_mm.item()
+    assert abs(actual_ratio - expected_ratio) / expected_ratio < 1e-4, (
+        f"Loss ratio should be {expected_ratio:.2e}, got {actual_ratio:.6e} "
+        f"(m={loss_m.item():.6e}, mm={loss_mm.item():.6e})"
+    )
