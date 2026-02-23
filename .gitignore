@@ -164,3 +164,6 @@ test_files
 
 # Coding agents
 CLAUDE.md
+
+# Other files
+*.nix
