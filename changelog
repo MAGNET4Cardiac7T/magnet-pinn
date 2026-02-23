@@ -93,3 +93,6 @@
 - Prediction writer
 - Add B1Plus and PointwiseSAR Transforms
 - Add Sqrt Nonlinearity to normalization
+- physics losses now accept accuracy
+- physics losses now can use different units (m, cm, mm)
+- add choice for residuals when calculating physics losses
