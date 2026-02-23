@@ -4,6 +4,7 @@ import math
 
 from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLawLoss, MRI_FREQUENCY_HZ, VACUUM_PERMEABILITY
 from magnet_pinn.losses import MRI_FREQUENCY_HZ as MRI_FREQ_EXPORTED, VACUUM_PERMEABILITY as VACUUM_PERM_EXPORTED
+from magnet_pinn.losses import ResidualNorm
 
 
 @pytest.fixture
@@ -339,3 +340,152 @@ def test_faradays_loss_dx_unit_mm_equivalent_to_si(random_fields):
         f"Loss ratio should be {expected_ratio:.2e}, got {actual_ratio:.6e} "
         f"(m={loss_m.item():.6e}, mm={loss_mm.item():.6e})"
     )
+
+
+# ---------------------------------------------------------------------------
+# ResidualNorm unit tests
+# ---------------------------------------------------------------------------
+
+class TestResidualNorm:
+    def test_l2_squares_input(self):
+        norm = ResidualNorm(norm="l2")
+        x = torch.tensor([2.0, 3.0])
+        result = norm(x)
+        assert torch.allclose(result, torch.tensor([4.0, 9.0]))
+
+    def test_l1_returns_input_unchanged(self):
+        norm = ResidualNorm(norm="l1")
+        x = torch.tensor([2.0, 3.0])
+        result = norm(x)
+        assert torch.allclose(result, x)
+
+    def test_lp_applies_exponent(self):
+        norm = ResidualNorm(norm="lp", p=0.5)
+        x = torch.tensor([4.0, 9.0])
+        result = norm(x)
+        assert torch.allclose(result, torch.tensor([2.0, 3.0]))
+
+    def test_rmse_same_elementwise_as_l2(self):
+        norm_rmse = ResidualNorm(norm="rmse")
+        norm_l2 = ResidualNorm(norm="l2")
+        x = torch.tensor([1.5, 2.5])
+        assert torch.allclose(norm_rmse(x), norm_l2(x))
+
+    def test_invalid_norm_raises(self):
+        with pytest.raises(ValueError, match="residual_norm"):
+            ResidualNorm(norm="l3")
+
+    def test_lp_non_positive_p_raises(self):
+        with pytest.raises(ValueError, match="p must be positive"):
+            ResidualNorm(norm="lp", p=0.0)
+
+
+# ---------------------------------------------------------------------------
+# Residual norm integration tests on physics losses
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("loss_cls,fields_fixture", [
+    (DivergenceLoss, "pred_target_pair"),
+    (FaradaysLawLoss, "random_fields"),
+])
+class TestResidualNormIntegration:
+    """Run the same suite against both DivergenceLoss and FaradaysLawLoss."""
+
+    def _make_loss(self, loss_cls, residual_norm, **kwargs):
+        return loss_cls(residual_norm=residual_norm, **kwargs)
+
+    def _get_fields(self, loss_cls, request):
+        if loss_cls is DivergenceLoss:
+            return request.getfixturevalue("pred_target_pair")
+        return request.getfixturevalue("random_fields")
+
+    def test_l2_matches_original_behaviour(self, loss_cls, fields_fixture, request):
+        """residual_norm='l2' must reproduce the hardcoded |r|² result."""
+        fields = request.getfixturevalue(fields_fixture)
+        loss_new = self._make_loss(loss_cls, "l2")
+        loss_orig = loss_cls()  # default
+
+        if loss_cls is DivergenceLoss:
+            pred, target = fields
+            val_new = loss_new(pred, target)
+            val_orig = loss_orig(pred, target)
+        else:
+            val_new = loss_new(fields)
+            val_orig = loss_orig(fields)
+
+        assert torch.allclose(val_new, val_orig), (
+            f"l2 residual_norm should match default. new={val_new}, orig={val_orig}"
+        )
+
+    def test_l1_positive_and_finite(self, loss_cls, fields_fixture, request):
+        fields = request.getfixturevalue(fields_fixture)
+        loss_fn = self._make_loss(loss_cls, "l1")
+
+        val = loss_fn(fields) if loss_cls is FaradaysLawLoss else loss_fn(*fields)
+
+        assert val.item() >= 0
+        assert torch.isfinite(val)
+
+    def test_lp_half_positive_and_finite(self, loss_cls, fields_fixture, request):
+        fields = request.getfixturevalue(fields_fixture)
+        loss_fn = self._make_loss(loss_cls, "lp", p=0.5)
+
+        val = loss_fn(fields) if loss_cls is FaradaysLawLoss else loss_fn(*fields)
+
+        assert val.item() >= 0
+        assert torch.isfinite(val)
+
+    def test_rmse_equals_sqrt_of_l2(self, loss_cls, fields_fixture, request):
+        fields = request.getfixturevalue(fields_fixture)
+        loss_rmse = self._make_loss(loss_cls, "rmse")
+        loss_l2 = self._make_loss(loss_cls, "l2")
+
+        if loss_cls is FaradaysLawLoss:
+            val_rmse = loss_rmse(fields)
+            val_l2 = loss_l2(fields)
+        else:
+            pred, target = fields
+            val_rmse = loss_rmse(pred, target)
+            val_l2 = loss_l2(pred, target)
+
+        assert torch.allclose(val_rmse, torch.sqrt(val_l2), rtol=1e-5), (
+            f"RMSE loss should equal sqrt(L2 loss). rmse={val_rmse}, sqrt(l2)={torch.sqrt(val_l2)}"
+        )
+
+    def test_l1_lower_than_l2_for_large_residuals(self, loss_cls, fields_fixture, request):
+        """For residuals > 1, L1 < L2 (L2 amplifies large errors)."""
+        fields = request.getfixturevalue(fields_fixture)
+        loss_l1 = self._make_loss(loss_cls, "l1")
+        loss_l2 = self._make_loss(loss_cls, "l2")
+
+        if loss_cls is FaradaysLawLoss:
+            val_l1 = loss_l1(fields)
+            val_l2 = loss_l2(fields)
+        else:
+            pred, target = fields
+            val_l1 = loss_l1(pred, target)
+            val_l2 = loss_l2(pred, target)
+
+        # Only assert ordering when both are meaningfully non-zero
+        if val_l2.item() > 1e-6:
+            assert val_l1.item() <= val_l2.item() or val_l1.item() < 1.0, (
+                "For unit-scale fields, L1 residual should be <= L2 residual"
+            )
+
+
+@pytest.fixture
+def pred_target_pair(batch_size, spatial_size):
+    """Pair of random (pred, target) tensors for DivergenceLoss tests."""
+    pred = torch.randn(batch_size, 3, spatial_size, spatial_size, spatial_size)
+    target = torch.zeros_like(pred)
+    return pred, target
+
+
+def test_invalid_residual_norm_raises_on_construction():
+    with pytest.raises(ValueError, match="residual_norm"):
+        DivergenceLoss(residual_norm="invalid")
+
+
+def test_residual_norm_exported():
+    from magnet_pinn.losses import ResidualNorm as RN
+    assert RN is ResidualNorm

@@ -6,7 +6,7 @@ import math
 from einops import pack, unpack
 from typing import Optional, Union, Tuple
 
-from .utils import LossReducer, DiffFilterFactory, ObjectMaskCropping
+from .utils import LossReducer, DiffFilterFactory, ObjectMaskCropping, ResidualNorm
 from .base import BaseRegressionLoss
 
 
@@ -27,6 +27,8 @@ class BasePhysicsLoss(BaseRegressionLoss):
                  dx: float = 1.0,
                  dx_unit: str = "m",
                  accuracy: int = 2,
+                 residual_norm: str = "l2",
+                 p: float = 2.0,
                  ):
         """
         Initialize BasePhysicsLoss.
@@ -46,6 +48,18 @@ class BasePhysicsLoss(BaseRegressionLoss):
             coordinate unit.
         accuracy : int, optional
             Order of accuracy for the finite difference approximation (default: 2)
+        residual_norm : str, optional
+            Norm applied to the physics residual magnitude ``|r|`` before
+            reduction. One of:
+
+            * ``"l2"``   – squared magnitude ``|r|²`` (default, original behaviour)
+            * ``"l1"``   – absolute magnitude ``|r|``
+            * ``"lp"``   – ``|r|^p``  (use ``p`` to set the exponent)
+            * ``"rmse"`` – element-wise ``|r|²``, with ``sqrt`` applied to the
+              final scalar after reduction
+
+        p : float, optional
+            Exponent for ``residual_norm="lp"``. Must be positive (default: 2.0)
         """
         if dx_unit not in COORDINATE_UNIT_SCALES:
             raise ValueError(
@@ -58,6 +72,8 @@ class BasePhysicsLoss(BaseRegressionLoss):
         self.coordinate_scale = COORDINATE_UNIT_SCALES[dx_unit]
         self.diff_filter_factory = DiffFilterFactory(dx=self.dx, accuracy=accuracy)
         self.physics_filters = self._build_physics_filters()
+        self._residual_norm = ResidualNorm(norm=residual_norm, p=p)
+        self._apply_sqrt_after_reduce = (residual_norm == "rmse")
 
     @abstractmethod
     def _base_physics_fn(self,
@@ -89,7 +105,6 @@ class BasePhysicsLoss(BaseRegressionLoss):
         """
         raise NotImplementedError
 
-    # TODO Add different Lp norms for the divergence residual
     def _base_loss_fn(self, pred, target):
         """
         Compute the base physics loss.
@@ -104,7 +119,7 @@ class BasePhysicsLoss(BaseRegressionLoss):
         Returns
         -------
         torch.Tensor
-            Squared residual loss
+            Element-wise residual loss according to ``residual_norm``
         """
         dtype, device = self._check_dtype_device(pred)
         self._cast_physics_filter(dtype, device)
@@ -115,7 +130,8 @@ class BasePhysicsLoss(BaseRegressionLoss):
         else:
             residual_target = torch.zeros_like(residual_pred)
 
-        loss = (residual_pred - residual_target).abs() ** 2
+        residual_magnitude = (residual_pred - residual_target).abs()
+        loss = self._residual_norm(residual_magnitude)
         return loss
 
     def _cast_physics_filter(
@@ -182,9 +198,13 @@ class BasePhysicsLoss(BaseRegressionLoss):
         Returns
         -------
         torch.Tensor
-            Reduced physics loss
+            Reduced physics loss. When ``residual_norm="rmse"``, the square
+            root is applied to the scalar after reduction.
         """
-        return super().forward(pred, target, mask)
+        loss = super().forward(pred, target, mask)
+        if self._apply_sqrt_after_reduce:
+            loss = torch.sqrt(loss)
+        return loss
 
 
 class DivergenceLoss(BasePhysicsLoss):
