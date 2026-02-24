@@ -9,7 +9,7 @@
 project = 'magnet-pinn'
 copyright = '2024, Andrzej Dulny'
 author = 'Andrzej Dulny'
-release = '0.0.13alpha3'
+release = '0.0.13alpha4'
 
 # from importlib.metadata import version, PackageNotFoundError
 
