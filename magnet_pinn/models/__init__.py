@@ -3,6 +3,7 @@
 """
 
 from ._unet3d.models import UNet3D, ResidualUNet3D, ResidualUNetSE3D, UNet2D, ResidualUNet2D, AbstractUNet
+from ._swin_transformer.models import SwinTransformerUNet, SwinTransformerUNet3D, SwinTransformerUNet2D
 
 __all__ = [
     "AbstractUNet",
@@ -10,5 +11,8 @@ __all__ = [
     "ResidualUNet3D",
     "ResidualUNetSE3D",
     "UNet2D",
-    "ResidualUNet2D"
+    "ResidualUNet2D",
+    "SwinTransformerUNet",
+    "SwinTransformerUNet3D",
+    "SwinTransformerUNet2D",
 ]
