@@ -96,3 +96,5 @@
 - physics losses now accept accuracy
 - physics losses now can use different units (m, cm, mm)
 - add choice for residuals when calculating physics losses
+- map style dataset (slower, but true random shuffle)
+- add vision transformer model
