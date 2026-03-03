@@ -98,3 +98,4 @@
 - add choice for residuals when calculating physics losses
 - map style dataset (slower, but true random shuffle)
 - add vision transformer model
+- add Transolver model (Physics-Attention Transformer for PDEs on general geometries)

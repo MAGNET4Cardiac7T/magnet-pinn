@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from magnet_pinn.models import SwinTransformerUNet3D, SwinTransformerUNet2D
+from magnet_pinn.models import Transolver3D, Transolver2D
 
 
 @pytest.fixture(scope="module")
@@ -80,6 +81,48 @@ def swin2d_model(in_channels, out_channels):
         depths=[1, 1],
         num_heads=[2, 4],
         window_size=2,
+        dropout_prob=0.0,
+        attn_dropout=0.0,
+    )
+
+
+@pytest.fixture(scope="module")
+def transolver3d_model(in_channels, out_channels):
+    """
+    Minimal Transolver3D for shape and gradient tests.
+
+    Uses embed_dim=8, depth=1, n_slices=4, num_heads=2 to keep the model
+    small and fast. No padding requirement, so any spatial size works.
+    """
+    return Transolver3D(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        embed_dim=8,
+        depth=1,
+        n_slices=4,
+        num_heads=2,
+        mlp_ratio=2.0,
+        dropout_prob=0.0,
+        attn_dropout=0.0,
+    )
+
+
+@pytest.fixture(scope="module")
+def transolver2d_model(in_channels, out_channels):
+    """
+    Minimal Transolver2D for shape and gradient tests.
+
+    Uses embed_dim=8, depth=1, n_slices=4, num_heads=2 to keep the model
+    small and fast. No padding requirement, so any spatial size works.
+    """
+    return Transolver2D(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        embed_dim=8,
+        depth=1,
+        n_slices=4,
+        num_heads=2,
+        mlp_ratio=2.0,
         dropout_prob=0.0,
         attn_dropout=0.0,
     )
