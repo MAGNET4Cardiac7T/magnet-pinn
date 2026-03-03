@@ -37,54 +37,28 @@ from magnet_pinn.preprocessing.preprocessing import (
 )
 
 
-class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
+class _MagnetDataMixin:
     """
-    Abstract base Iterator class for loading the electromagnetic simulation data.
+    Mixin class that provides common data loading logic for electromagnetic simulation datasets.
+
+    This mixin contains all I/O and data loading methods shared between the iterable-style
+    (MagnetBaseIterator) and map-style (MagnetDataset) dataset classes. It is not intended
+    to be instantiated directly.
 
     Parameters
     ----------
     data_dir : Union[str, Path]
         A data directory, which was created after the preprocessing step
     transforms : Optional[BaseTransform]
-        Transformations to apply to the data during the data loading, can have a sequence of transformations,
-        at least one of them should make a phase shift of the field
+        Transformations to apply to the data during the data loading
     num_samples : int
         Number of samples to generate from each simulation
-
-    Attributes
-    ----------
-    coils_path : Union[str, Path]
-        Path to the file with the coils masks
-    simulation_dir : Union[str, Path]
-        Path to the directory with the simulations
-    transforms : Optional[BaseTransform]
-        Transformations to apply to the data during the data loading, can have a sequence of transformations,
-        at least one of them should make a phase shift of the field
-    num_samples : int
-        Number of samples to generate from each simulation
-    coils: npt.NDArray[np.bool_]
-        Coils masks array
-    num_coils: int
-        Number of coils
-    simulation_list: List[Path]
-        List of simulation `.h5` file paths
     """
+
     def __init__(self,
                  data_dir: Union[str, Path],
                  transforms: Optional[BaseTransform] = None,
                  num_samples: int = 1):
-        """
-        Parameters
-        ----------
-        data_dir : Union[str, Path]
-            A data directory, which was created after the preprocessing step
-        transforms : Optional[BaseTransform]
-            Transformations to apply to the data during the data loading, can have a sequence of transformations,
-            at least one of them should make a phase shift of the field
-        num_samples : int
-            Number of samples to generate from each simulation
-        """
-        super().__init__()
         data_dir = Path(data_dir)
 
         self.coils_path = data_dir / PROCESSED_ANTENNA_DIR_PATH / "antenna.h5"
@@ -94,7 +68,6 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
         self.simulation_dir = data_dir / PROCESSED_SIMULATIONS_DIR_PATH
         self.simulation_list = self._get_simulations_list()
 
-        ## TODO: check if transform valid:
         check_transforms(transforms)
 
         self.transforms = transforms
@@ -320,6 +293,58 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             positions = f[COORDINATES_OUT_KEY][:]
         return positions
 
+
+class MagnetBaseIterator(_MagnetDataMixin, torch.utils.data.IterableDataset, ABC):
+    """
+    Abstract base Iterator class for loading the electromagnetic simulation data.
+
+    Parameters
+    ----------
+    data_dir : Union[str, Path]
+        A data directory, which was created after the preprocessing step
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
+
+    Attributes
+    ----------
+    coils_path : Union[str, Path]
+        Path to the file with the coils masks
+    simulation_dir : Union[str, Path]
+        Path to the directory with the simulations
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
+    coils: npt.NDArray[np.bool_]
+        Coils masks array
+    num_coils: int
+        Number of coils
+    simulation_list: List[Path]
+        List of simulation `.h5` file paths
+    """
+    def __init__(self,
+                 data_dir: Union[str, Path],
+                 transforms: Optional[BaseTransform] = None,
+                 num_samples: int = 1):
+        """
+        Parameters
+        ----------
+        data_dir : Union[str, Path]
+            A data directory, which was created after the preprocessing step
+        transforms : Optional[BaseTransform]
+            Transformations to apply to the data during the data loading, can have a sequence of transformations,
+            at least one of them should make a phase shift of the field
+        num_samples : int
+            Number of samples to generate from each simulation
+        """
+        # Initialise IterableDataset (no-op) then run our shared mixin init
+        torch.utils.data.IterableDataset.__init__(self)
+        _MagnetDataMixin.__init__(self, data_dir=data_dir, transforms=transforms, num_samples=num_samples)
+
     def __iter__(self):
         """
         The main method to iterate. It shuffles the simulation list and then for each simulation
@@ -341,3 +366,123 @@ class MagnetBaseIterator(torch.utils.data.IterableDataset, ABC):
             Total samples (number of simulations × samples per simulation).
         """
         return len(self.simulation_list) * self.num_samples
+
+
+class MagnetDataset(_MagnetDataMixin, torch.utils.data.Dataset):
+    """
+    Map-style dataset for loading the electromagnetic simulation data.
+
+    Provides random access to samples via integer indices, making it compatible
+    with PyTorch's standard DataLoader without a custom ``worker_init_fn``.
+
+    The index space is laid out as follows::
+
+        index = simulation_index * num_samples + sample_index
+
+    For example, with ``num_samples=100``:
+
+    * index 0   → first sample of simulation 0
+    * index 99  → hundredth (last) sample of simulation 0
+    * index 100 → first sample of simulation 1
+
+    The simulation order is deterministic (natural-sorted filenames). Each call
+    to ``__getitem__`` loads the simulation from disk and applies the configured
+    transforms, so different calls with the same index may return different
+    augmented outputs when stochastic transforms are used.
+
+    Parameters
+    ----------
+    data_dir : Union[str, Path]
+        A data directory, which was created after the preprocessing step
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading, can have a sequence of transformations,
+        at least one of them should make a phase shift of the field
+    num_samples : int
+        Number of samples to generate from each simulation
+
+    Attributes
+    ----------
+    coils_path : Union[str, Path]
+        Path to the file with the coils masks
+    simulation_dir : Union[str, Path]
+        Path to the directory with the simulations
+    transforms : Optional[BaseTransform]
+        Transformations to apply to the data during the data loading
+    num_samples : int
+        Number of samples to generate from each simulation
+    coils: npt.NDArray[np.bool_]
+        Coils masks array
+    num_coils: int
+        Number of coils
+    simulation_list: List[Path]
+        List of simulation `.h5` file paths
+    """
+
+    def __init__(self,
+                 data_dir: Union[str, Path],
+                 transforms: Optional[BaseTransform] = None,
+                 num_samples: int = 1):
+        """
+        Parameters
+        ----------
+        data_dir : Union[str, Path]
+            A data directory, which was created after the preprocessing step
+        transforms : Optional[BaseTransform]
+            Transformations to apply to the data during the data loading, can have a sequence of transformations,
+            at least one of them should make a phase shift of the field
+        num_samples : int
+            Number of samples to generate from each simulation
+        """
+        torch.utils.data.Dataset.__init__(self)
+        _MagnetDataMixin.__init__(self, data_dir=data_dir, transforms=transforms, num_samples=num_samples)
+
+    def __len__(self) -> int:
+        """Return total number of samples.
+
+        Returns
+        -------
+        int
+            Total samples (number of simulations × samples per simulation).
+        """
+        return len(self.simulation_list) * self.num_samples
+
+    def __getitem__(self, index: int) -> dict:
+        """Return the sample at the given index.
+
+        The index is mapped to a simulation and an intra-simulation sample
+        position using::
+
+            simulation_index = index // num_samples
+            sample_index     = index %  num_samples  (unused beyond bounds check)
+
+        Each call loads the simulation from disk and applies the transforms
+        independently, so stochastic augmentations produce different results
+        on repeated access with the same index.
+
+        Parameters
+        ----------
+        index : int
+            Global sample index in ``[0, len(self))``.
+
+        Returns
+        -------
+        dict
+            Dictionary of augmented data arrays (same schema as
+            ``MagnetBaseIterator.__iter__``).
+
+        Raises
+        ------
+        IndexError
+            If ``index`` is out of the valid range ``[0, len(self))``.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(
+                f"Index {index} is out of bounds for dataset of length {len(self)}"
+            )
+
+        simulation_index = index // self.num_samples
+        simulation_path = self.simulation_list[simulation_index]
+
+        loaded_simulation = self._load_simulation(simulation_path)
+        augmented_simulation = self.transforms(loaded_simulation)
+        return augmented_simulation.__dict__

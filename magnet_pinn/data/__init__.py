@@ -2,7 +2,7 @@
     A module containing the data handling.
 """
 
-from ._base import MagnetBaseIterator
+from ._base import MagnetBaseIterator, MagnetDataset
 from .dataitem import AugmentedDataItem, DataItem
 from .grid import MagnetGridIterator
 from .point import MagnetPointIterator
@@ -26,6 +26,7 @@ __all__ = [
     "B1PlusTransform",
     "DataItem",
     "MagnetBaseIterator",
+    "MagnetDataset",
     "MagnetGridIterator",
     "MagnetPointIterator",
     "Compose",
