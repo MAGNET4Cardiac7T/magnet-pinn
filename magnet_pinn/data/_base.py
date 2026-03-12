@@ -124,10 +124,53 @@ class _MagnetDataMixin:
 
         return simulations_list
 
-    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
+    @staticmethod
+    def _get_leading_crop(transforms: Optional[BaseTransform]):
+        """Return the leading Crop instance from a Compose pipeline, or None.
+
+        Parameters
+        ----------
+        transforms : Optional[BaseTransform]
+            The configured transform pipeline.
+
+        Returns
+        -------
+        Crop or None
+            The leading Crop transform if the pipeline is a Compose whose
+            first element is a Crop, otherwise None.
         """
-        Main method to implement for the children of the `MagnetBaseIterator` class.
-        It loads the data from the simulation file and return the `DataItem` object.
+        from .transforms import Compose, Crop
+        if isinstance(transforms, Compose) and isinstance(transforms.transforms[0], Crop):
+            return transforms.transforms[0]
+        return None
+
+    @staticmethod
+    def _read_spatial_shape(simulation_path: Union[str, Path]) -> tuple:
+        """Read spatial dimensions from HDF5 dataset metadata only (no data read).
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation HDF5 file.
+
+        Returns
+        -------
+        tuple
+            The (x, y, z) spatial dimensions of the volume.
+        """
+        with h5py.File(simulation_path, "r") as f:
+            return f[FEATURES_OUT_KEY].shape[1:]
+
+    def _load_simulation(self, simulation_path: Union[Path, str]) -> DataItem:
+        """Load simulation data with optional Crop-aware HDF5 partial reads.
+
+        If the transform pipeline begins with a Crop and the fast path is
+        eligible (center crop, or num_samples==1), crop slices are computed
+        up-front and only the required spatial region is read from disk.
+        Otherwise the full arrays are loaded as before.
+
+        The fast path is disabled for random-position crops with num_samples>1
+        (used by MagnetBaseIterator) to preserve per-sample crop diversity.
 
         Parameters
         ----------
@@ -147,18 +190,142 @@ class _MagnetDataMixin:
             - phase: (coils,)
             - mask: (coils,)
         """
+        leading_crop = self._get_leading_crop(self.transforms)
+        use_fast_path = (
+            leading_crop is not None
+            and (leading_crop.crop_position == "center" or self.num_samples == 1)
+        )
+
+        if use_fast_path:
+            full_size = self._read_spatial_shape(simulation_path)
+            crop_slices = leading_crop.pre_load_slices(full_size)
+            coils = self.coils[:, crop_slices[0], crop_slices[1], crop_slices[2]]
+        else:
+            crop_slices = None
+            coils = self.coils
+
         return DataItem(
-            input=self._read_input(simulation_path),
-            subject=self._read_subject(simulation_path),
+            input=self._read_input_sliced(simulation_path, crop_slices),
+            subject=self._read_subject_sliced(simulation_path, crop_slices),
             simulation=self._get_simulation_name(simulation_path),
-            field=self._read_fields(simulation_path),
-            positions=self._read_positions(simulation_path),
+            field=self._read_fields_sliced(simulation_path, crop_slices),
+            positions=self._read_positions_sliced(simulation_path, crop_slices),
             phase=np.zeros(self.num_coils),
             mask=np.ones(self.num_coils),
-            coils=self.coils,
+            coils=coils,
             dtype=self._get_dtype(simulation_path),
             truncation_coefficients=self._get_truncation_coefficients(simulation_path),
         )
+
+    def _read_fields_sliced(
+        self,
+        simulation_path: Union[str, Path],
+        crop_slices: Optional[Tuple[slice, slice, slice]] = None,
+    ) -> npt.NDArray[np.float32]:
+        """Read electromagnetic fields with optional spatial partial read.
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation file.
+        crop_slices : Tuple[slice, slice, slice] or None
+            If provided, only the specified spatial region is read from HDF5.
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Field array of shape (h/e=2, re/im=2, coils, x/y/z, *spatial).
+        """
+        def read_field(f: h5py.File, field_key: str) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+            if crop_slices is None:
+                field_val = f[field_key][:]
+            else:
+                field_val = f[field_key][..., crop_slices[0], crop_slices[1], crop_slices[2]]
+            return field_val["re"], field_val["im"]
+
+        with h5py.File(simulation_path) as f:
+            re_efield, im_efield = read_field(f, E_FIELD_OUT_KEY)
+            re_hfield, im_hfield = read_field(f, H_FIELD_OUT_KEY)
+
+        return np.stack([np.stack([re_efield, im_efield], axis=0), np.stack([re_hfield, im_hfield], axis=0)], axis=0)
+
+    def _read_input_sliced(
+        self,
+        simulation_path: Union[Path, str],
+        crop_slices: Optional[Tuple[slice, slice, slice]] = None,
+    ) -> npt.NDArray[np.float32]:
+        """Read input features with optional spatial partial read.
+
+        Parameters
+        ----------
+        simulation_path : Union[Path, str]
+            Path to the simulation file.
+        crop_slices : Tuple[slice, slice, slice] or None
+            If provided, only the specified spatial region is read from HDF5.
+
+        Returns
+        -------
+        npt.NDArray[np.float32]
+            Input features array of shape (features, *spatial).
+        """
+        with h5py.File(simulation_path) as f:
+            if crop_slices is None:
+                features = f[FEATURES_OUT_KEY][:]
+            else:
+                features = f[FEATURES_OUT_KEY][:, crop_slices[0], crop_slices[1], crop_slices[2]]
+        return features
+
+    def _read_subject_sliced(
+        self,
+        simulation_path: Union[str, Path],
+        crop_slices: Optional[Tuple[slice, slice, slice]] = None,
+    ) -> npt.NDArray[np.bool_]:
+        """Read subject mask with optional spatial partial read.
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation file.
+        crop_slices : Tuple[slice, slice, slice] or None
+            If provided, only the specified spatial region is read from HDF5.
+
+        Returns
+        -------
+        npt.NDArray[np.bool_]
+            Subject mask array of shape (*spatial,).
+        """
+        with h5py.File(simulation_path) as f:
+            if crop_slices is None:
+                subject = f[SUBJECT_OUT_KEY][:]
+            else:
+                subject = f[SUBJECT_OUT_KEY][:, crop_slices[0], crop_slices[1], crop_slices[2]]
+        return np.max(subject, axis=0)
+
+    def _read_positions_sliced(
+        self,
+        simulation_path: Union[str, Path],
+        crop_slices: Optional[Tuple[slice, slice, slice]] = None,
+    ) -> np.ndarray:
+        """Read spatial positions with optional spatial partial read.
+
+        Parameters
+        ----------
+        simulation_path : Union[str, Path]
+            Path to the simulation file.
+        crop_slices : Tuple[slice, slice, slice] or None
+            If provided, only the specified spatial region is read from HDF5.
+
+        Returns
+        -------
+        np.ndarray
+            Positions array of shape (3, *spatial).
+        """
+        with h5py.File(simulation_path, "r") as f:
+            if crop_slices is None:
+                positions = f[COORDINATES_OUT_KEY][:]
+            else:
+                positions = f[COORDINATES_OUT_KEY][:, crop_slices[0], crop_slices[1], crop_slices[2]]
+        return positions
 
     def _read_fields(self, simulation_path: Union[str, Path]) -> npt.NDArray[np.float32]:
         """

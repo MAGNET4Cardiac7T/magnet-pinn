@@ -289,3 +289,68 @@ def test_map_dataset_works_with_dataloader(map_dataset_dir, map_aug):
     assert len(batches) == 2
     for batch in batches:
         assert isinstance(batch, dict)
+
+
+# ---------------------------------------------------------------------------
+# Fast-path (crop-aware HDF5 partial read) tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def crop_fast_path_dir(processed_dir_path, random_grid_item, zero_grid_item):
+    """Processed directory for fast-path crop tests."""
+    from shutil import rmtree
+    path = processed_dir_path / "test_map_dataset_crop_fast_path"
+    create_processed_dir(path, random_grid_item, zero_grid_item, is_grid=True)
+    yield path
+    if path.exists():
+        rmtree(path)
+
+
+def test_map_dataset_center_crop_fast_path_correct_shapes(crop_fast_path_dir):
+    """Center crop via fast path must produce the expected output shape."""
+    from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
+    crop_size = (10, 10, 10)
+    transforms = Compose([Crop(crop_size=crop_size, crop_position="center"), GridPhaseShift(num_coils=8)])
+    ds = MagnetDataset(crop_fast_path_dir, transforms=transforms, num_samples=1)
+    for i in range(len(ds)):
+        item = ds[i]
+        assert item["input"].shape[1:] == crop_size
+        assert item["subject"].shape == crop_size
+        assert item["positions"].shape[1:] == crop_size
+        assert item["coils"].shape[1:] == crop_size
+
+
+def test_map_dataset_center_crop_fast_path_matches_slow_path(crop_fast_path_dir, random_grid_item):
+    """Center crop fast path must return the same spatial data as the slow path (full load + crop).
+
+    PhaseShift randomises the field and coils, so we compare only input, subject, and positions
+    (which are not touched by PhaseShift). These must be identical between paths because
+    center crop is deterministic.
+    """
+    from magnet_pinn.data.transforms import Compose, Crop, GridPhaseShift
+    from unittest.mock import patch
+
+    crop_size = (10, 10, 10)
+
+    # Fast path: Crop is the leading transform → triggers partial HDF5 reads
+    transforms_fast = Compose([Crop(crop_size=crop_size, crop_position="center"), GridPhaseShift(num_coils=8)])
+    ds_fast = MagnetDataset(crop_fast_path_dir, transforms=transforms_fast, num_samples=1)
+
+    # Slow path: patch _get_leading_crop to return None so full arrays are loaded,
+    # then the in-memory Crop is applied as usual.
+    transforms_slow = Compose([Crop(crop_size=crop_size, crop_position="center"), GridPhaseShift(num_coils=8)])
+    ds_slow = MagnetDataset(crop_fast_path_dir, transforms=transforms_slow, num_samples=1)
+
+    with patch.object(ds_slow.__class__, "_get_leading_crop", staticmethod(lambda t: None)):
+        for i in range(len(ds_fast)):
+            fast_item = ds_fast[i]
+            slow_item = ds_slow[i]
+            # input, subject, and positions are not modified by PhaseShift,
+            # so they must be bit-for-bit equal between the two paths.
+            assert np.array_equal(fast_item["input"], slow_item["input"]), \
+                "input mismatch between fast and slow crop path"
+            assert np.array_equal(fast_item["subject"], slow_item["subject"]), \
+                "subject mismatch between fast and slow crop path"
+            assert np.array_equal(fast_item["positions"], slow_item["positions"]), \
+                "positions mismatch between fast and slow crop path"

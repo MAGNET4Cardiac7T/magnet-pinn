@@ -394,6 +394,26 @@ class Crop(BaseTransform):
             raise ValueError(f"Unknown crop position {self.crop_position}")
         return crop_start
 
+    def pre_load_slices(self, full_size: Tuple[int, int, int]) -> Tuple[slice, slice, slice]:
+        """Compute the 3D spatial crop slices without applying them.
+
+        Used by the data loader to enable HDF5 partial reads: only the
+        cropped voxels are loaded from disk. The slices returned here are
+        identical to those that would be applied by ``__call__``.
+
+        Parameters
+        ----------
+        full_size : Tuple[int, int, int]
+            The (x, y, z) spatial shape of the full volume.
+
+        Returns
+        -------
+        Tuple[slice, slice, slice]
+            Three slice objects covering the crop region.
+        """
+        crop_start = self._sample_crop_start(full_size, self.crop_size)
+        return tuple(slice(crop_start[i], crop_start[i] + self.crop_size[i]) for i in range(3))
+
 
 class Rotate(BaseTransform):
     """

@@ -238,6 +238,70 @@ def test_crop_transform_check_invalid_simulation():
         _ = Crop(crop_size=(10, 10, 10))(None)  # type: ignore[arg-type]  # Intentionally testing invalid input
 
 
+# ---------------------------------------------------------------------------
+# pre_load_slices tests
+# ---------------------------------------------------------------------------
+
+
+def test_pre_load_slices_center_returns_correct_slices():
+    """Center crop of (10,10,10) from (20,20,20) should give [5:15, 5:15, 5:15]."""
+    crop = Crop(crop_size=(10, 10, 10), crop_position="center")
+    slices = crop.pre_load_slices((20, 20, 20))
+    assert slices == (slice(5, 15), slice(5, 15), slice(5, 15))
+
+
+def test_pre_load_slices_center_asymmetric_volume():
+    """Center crop from a non-cubic volume."""
+    crop = Crop(crop_size=(4, 6, 8), crop_position="center")
+    slices = crop.pre_load_slices((10, 20, 30))
+    assert slices == (slice(3, 7), slice(7, 13), slice(11, 19))
+
+
+def test_pre_load_slices_center_full_size_is_noop():
+    """When crop_size == full_size the slices should cover the full volume."""
+    crop = Crop(crop_size=(20, 20, 20), crop_position="center")
+    slices = crop.pre_load_slices((20, 20, 20))
+    assert slices == (slice(0, 20), slice(0, 20), slice(0, 20))
+
+
+def test_pre_load_slices_random_within_bounds():
+    """Random crop slices must lie within [0, full_size] for each dimension."""
+    full_size = (20, 20, 20)
+    crop_size = (10, 10, 10)
+    crop = Crop(crop_size=crop_size, crop_position="random")
+    for _ in range(20):
+        slices = crop.pre_load_slices(full_size)
+        assert len(slices) == 3
+        for i, s in enumerate(slices):
+            assert s.start >= 0
+            assert s.stop <= full_size[i]
+            assert s.stop - s.start == crop_size[i]
+
+
+def test_pre_load_slices_matches_call_for_center(random_grid_item):
+    """Values selected by pre_load_slices must match those from __call__ for center crop."""
+    from copy import deepcopy
+    item = deepcopy(random_grid_item)
+    item.subject = np.max(item.subject, axis=0)
+
+    crop = Crop(crop_size=(10, 10, 10), crop_position="center")
+    slices = crop.pre_load_slices(item.input.shape[1:])
+    cropped = crop(item)
+
+    assert np.array_equal(
+        item.input[:, slices[0], slices[1], slices[2]],
+        cropped.input,
+    )
+    assert np.array_equal(
+        item.field[:, :, :, :, slices[0], slices[1], slices[2]],
+        cropped.field,
+    )
+    assert np.array_equal(
+        item.subject[slices[0], slices[1], slices[2]],
+        cropped.subject,
+    )
+
+
 def test_default_transform_invalid_dataitem():
     with pytest.raises(ValueError):
         _ = DefaultTransform()(None)  # type: ignore[arg-type]  # Intentionally testing invalid input
