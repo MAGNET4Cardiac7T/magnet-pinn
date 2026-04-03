@@ -460,7 +460,10 @@ def test_main_module_direct_execution():
     result = subprocess.run(
         [sys.executable, '-m', 'magnet_pinn.generator'],
         capture_output=True,
-        timeout=5
+        text=True,
+        timeout=30
     )
 
     assert result.returncode == 2
+    assert "usage: magnet_pinn.generator" in result.stderr
+    assert "the following arguments are required: phantom_type" in result.stderr
