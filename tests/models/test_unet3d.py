@@ -1,5 +1,7 @@
 """Tests for foundational 3D U-Net utilities, building blocks, and squeeze-excitation blocks."""
 
+import importlib.util
+
 import pytest
 import torch
 from torch import nn
@@ -655,6 +657,10 @@ class TestAbstractUNetAssertions:
 
 
 class TestGetModel:
+    @pytest.mark.skipif(
+        importlib.util.find_spec("pytorch3dunet") is not None,
+        reason="pytorch3dunet is installed; install-guard test not applicable",
+    )
     def test_get_model_raises_when_pytorch3dunet_is_not_installed(self) -> None:
-        with pytest.raises((ModuleNotFoundError, RuntimeError)):
+        with pytest.raises(ModuleNotFoundError, match="pytorch3dunet"):
             get_model({"name": "UNet3D"})
