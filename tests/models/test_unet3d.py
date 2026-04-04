@@ -59,11 +59,12 @@ def _assert_nonzero_gradients(
     assert torch.count_nonzero(input_tensor.grad).item() > 0
 
     if module is not None:
-        assert any(
-            parameter.grad is not None and torch.count_nonzero(parameter.grad).item() > 0
-            for parameter in module.parameters()
-            if parameter.requires_grad
-        )
+        grads = [parameter.grad for parameter in module.parameters() if parameter.requires_grad]
+        if grads:
+            assert any(gradient is not None for gradient in grads), "No parameter received a gradient"
+            assert any(
+                torch.count_nonzero(gradient).item() > 0 for gradient in grads if gradient is not None
+            ), "All parameter gradients are zero"
 
 
 class TestUtils:
