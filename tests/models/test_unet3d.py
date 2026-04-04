@@ -52,19 +52,19 @@ def _assert_nonzero_gradients(
     input_tensor: torch.Tensor,
     module: nn.Module | None = None,
 ) -> None:
-    """Backpropagate and assert non-zero input and parameter gradients."""
+    """Backpropagate and assert all parameters and the input received nonzero gradients."""
     output_tensor.sum().backward()
 
     assert input_tensor.grad is not None
     assert torch.count_nonzero(input_tensor.grad).item() > 0
 
     if module is not None:
-        grads = [parameter.grad for parameter in module.parameters() if parameter.requires_grad]
+        grads = [p.grad for p in module.parameters() if p.requires_grad]
         if grads:
-            assert any(gradient is not None for gradient in grads), "No parameter received a gradient"
-            assert any(
-                torch.count_nonzero(gradient).item() > 0 for gradient in grads if gradient is not None
-            ), "All parameter gradients are zero"
+            assert all(g is not None for g in grads), "Some parameters received no gradient"
+            assert all(
+                torch.count_nonzero(g).item() > 0 for g in grads
+            ), "Some parameter gradients are zero"
 
 
 class TestUtils:
