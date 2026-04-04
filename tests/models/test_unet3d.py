@@ -690,3 +690,28 @@ class TestGetModel:
     def test_get_model_raises_when_pytorch3dunet_is_not_installed(self) -> None:
         with pytest.raises(ModuleNotFoundError, match="pytorch3dunet"):
             get_model({"name": "UNet3D"})
+
+    @pytest.mark.skipif(
+        importlib.util.find_spec("pytorch3dunet") is None,
+        reason="pytorch3dunet is not installed; success-path test requires it",
+    )
+    def test_get_model_returns_nn_module_when_pytorch3dunet_is_installed(self) -> None:
+        """get_model resolves UNet3D from pytorch3dunet and returns an nn.Module."""
+        import torch.nn as nn
+
+        cfg = {
+            "name": "UNet3D",
+            "in_channels": 1,
+            "out_channels": 1,
+            "f_maps": [8, 16],
+            "num_levels": 2,
+            "num_groups": 8,
+        }
+        model = get_model(cfg)
+        assert isinstance(model, nn.Module), (
+            f"get_model should return an nn.Module, got {type(model)}"
+        )
+        # Confirm the class was resolved from the external package, not our local models.py
+        assert type(model).__module__.startswith("pytorch3dunet"), (
+            f"Expected model from pytorch3dunet, got {type(model).__module__}"
+        )
