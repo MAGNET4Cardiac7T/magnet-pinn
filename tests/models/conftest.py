@@ -1,13 +1,16 @@
 """Pytest fixtures scoped to model architecture tests."""
 
+from collections.abc import Generator
+
 import pytest
 import torch
 
 
 @pytest.fixture(autouse=True)
-def torch_deterministic() -> None:
+def torch_deterministic() -> Generator[None, None, None]:
     """Set a deterministic Torch seed for every model test."""
     torch.manual_seed(42)
+    yield
 
 
 @pytest.fixture
