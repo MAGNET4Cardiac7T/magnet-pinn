@@ -334,15 +334,23 @@ class TestResNetBlockSE:
 
 class TestEncoder:
     @pytest.mark.parametrize(
-        ("pool_type", "expected_pool_type"),
-        [("max", nn.MaxPool3d), ("avg", nn.AvgPool3d)],
+        ("pool_type", "is3d", "expected_pool_type"),
+        [
+            ("max", True, nn.MaxPool3d),
+            ("avg", True, nn.AvgPool3d),
+            ("max", False, nn.MaxPool2d),
+            ("avg", False, nn.AvgPool2d),
+        ],
     )
     def test_pooling_halves_spatial_dimensions(
         self,
-        small_3d_input: torch.Tensor,
         pool_type: str,
+        is3d: bool,
         expected_pool_type: type[nn.Module],
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
     ) -> None:
+        input_tensor = small_3d_input if is3d else small_2d_input
         encoder = Encoder(
             1,
             8,
@@ -350,13 +358,14 @@ class TestEncoder:
             pool_type=pool_type,
             basic_module=DoubleConv,
             num_groups=8,
-            is3d=True,
+            is3d=is3d,
         )
 
-        output_tensor = encoder(small_3d_input)
+        output_tensor = encoder(input_tensor)
 
+        expected_shape = (1, 8, 4, 4, 4) if is3d else (1, 8, 8, 8)
         assert isinstance(encoder.pooling, expected_pool_type)
-        assert output_tensor.shape == (1, 8, 4, 4, 4)
+        assert output_tensor.shape == expected_shape
 
     def test_without_pooling_preserves_spatial_dimensions(self, small_3d_input: torch.Tensor) -> None:
         encoder = Encoder(
