@@ -64,7 +64,7 @@ class BaseTransform(ABC):
         DataItem
             Transformed simulation data.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __repr__(self):
         """Return string representation of transform.
