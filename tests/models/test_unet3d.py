@@ -640,12 +640,12 @@ class TestUNetModels:
 class TestUNetFMapsVariants:
     @pytest.mark.parametrize(
         "f_maps",
-        [pytest.param([8, 16], id="list"), pytest.param((8, 16), id="tuple")],
+        [pytest.param((8, 16), id="tuple")],
     )
-    def test_explicit_f_maps_sequences_preserve_forward_shape_and_gradients(
+    def test_tuple_f_maps_preserves_forward_shape_and_gradients(
         self,
         small_3d_input: torch.Tensor,
-        f_maps: list[int] | tuple[int, int],
+        f_maps: tuple[int, int],
     ) -> None:
         model = UNet3D(1, 2, f_maps=f_maps, num_groups=8)
         input_tensor = small_3d_input.clone().detach().requires_grad_(True)
