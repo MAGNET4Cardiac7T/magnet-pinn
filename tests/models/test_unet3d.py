@@ -110,13 +110,7 @@ class TestChannelSELayer3D:
 
 
 class TestSpatialSELayer3D:
-    """Only test the default weights=None path.
-
-    The weights branch is NOT dead code — it is reachable when a caller passes weights. However,
-    it contains a runtime bug: it calls F.conv2d on a 5D tensor (B, C, D, H, W), which will raise
-    at runtime if weights is truthy. The test intentionally does not exercise that branch to avoid
-    masking the bug.
-    """
+    """Tests for SpatialSELayer3D covering the default path and the known-broken weights branch."""
 
     def test_forward_preserves_shape(self, small_3d_input: torch.Tensor) -> None:
         layer = SpatialSELayer3D(num_channels=8)
@@ -133,6 +127,28 @@ class TestSpatialSELayer3D:
         output_tensor = layer(input_tensor)
 
         _assert_nonzero_gradients(output_tensor, input_tensor, layer)
+
+    def test_weights_branch_raises_boolean_ambiguity_on_multi_element_tensor(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        """Regression: ``SpatialSELayer3D.forward`` guards the few-shot path with ``if weights:``.
+
+        When ``weights`` is a multi-element tensor, PyTorch cannot reduce it to a single
+        boolean, so a ``RuntimeError`` ("Boolean value of Tensor with more than one element
+        is ambiguous") is raised at that guard — before the internal ``F.conv2d`` call is
+        even reached.  This test pins that specific failure so any change to the guard
+        condition is caught immediately.
+
+        Note: the deeper bug (``F.conv2d`` being called on a 5-D tensor) is a separate
+        issue that is not exercised here.
+        """
+        layer = SpatialSELayer3D(num_channels=8)
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+        # Provide a non-None, multi-element weights tensor to trigger the boolean guard.
+        weights = torch.ones(1, 8, 1, 1)
+
+        with pytest.raises(RuntimeError, match="Boolean value of Tensor with more than one"):
+            layer(input_tensor, weights=weights)
 
 
 class TestChannelSpatialSELayer3D:
