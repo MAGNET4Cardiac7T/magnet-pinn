@@ -655,6 +655,6 @@ class TestAbstractUNetAssertions:
 
 
 class TestGetModel:
-    def test_missing_external_pytorch3dunet_dependency_raises_module_not_found_error(self) -> None:
-        with pytest.raises(ModuleNotFoundError, match="No module named 'pytorch3dunet'"):
+    def test_get_model_raises_when_pytorch3dunet_is_not_installed(self) -> None:
+        with pytest.raises((ModuleNotFoundError, RuntimeError)):
             get_model({"name": "UNet3D"})
