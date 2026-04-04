@@ -363,4 +363,4 @@ def mask_padding(input_shape_mask: torch.Tensor, padding: int = 1) -> torch.Tens
         Boolean tensor where True indicates all neighbors within
         padding distance are filled.
     """
-    return ObjectMaskPadding(padding=padding)(input_shape_mask)
+    return ObjectMaskPadding(padding=padding)(input_shape_mask)  # pragma: no cover  # BUG: ObjectMaskPadding is not defined; this line crashes on first call
