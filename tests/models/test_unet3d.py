@@ -652,6 +652,29 @@ class TestUNetModels:
         assert output_tensor.shape == (1, 2, *input_tensor.shape[2:])
         _assert_nonzero_gradients(output_tensor, input_tensor, model)
 
+    def test_residual_unet3d_preserves_odd_spatial_shape_and_gradients(self) -> None:
+        model = ResidualUNet3D(1, 2, f_maps=8, num_levels=2, num_groups=8)
+        input_tensor = torch.randn(1, 1, 9, 11, 13).requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, 9, 11, 13)
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+    def test_unet3d_num_levels_three_preserves_shape_and_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        model = UNet3D(1, 2, f_maps=8, num_levels=3, num_groups=8)
+        input_tensor = small_3d_input.clone().detach().requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert len(model.encoders) == 3
+        assert len(model.decoders) == 2
+        assert output_tensor.shape == (1, 2, *small_3d_input.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
 
 class TestUNetFMapsVariants:
     @pytest.mark.parametrize(
