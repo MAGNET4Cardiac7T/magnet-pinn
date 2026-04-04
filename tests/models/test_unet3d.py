@@ -107,7 +107,13 @@ class TestChannelSELayer3D:
 
 
 class TestSpatialSELayer3D:
-    """Only test the default weights=None path because the weights branch is dead code for 5D inputs."""
+    """Only test the default weights=None path.
+
+    The weights branch is NOT dead code — it is reachable when a caller passes weights. However,
+    it contains a runtime bug: it calls F.conv2d on a 5D tensor (B, C, D, H, W), which will raise
+    at runtime if weights is truthy. The test intentionally does not exercise that branch to avoid
+    masking the bug.
+    """
 
     def test_forward_preserves_shape(self, small_3d_input: torch.Tensor) -> None:
         layer = SpatialSELayer3D(num_channels=8)
