@@ -602,12 +602,12 @@ class TestCreateConvErrors:
 
     def test_groupnorm_clamps_num_groups_to_one_when_channels_are_smaller(self) -> None:
         modules = create_conv(4, 8, 3, "gcr", 8, 1, 0.1, True)
-        module_name, groupnorm = modules[0]
+        module_name, first_module = modules[0]
 
+        assert isinstance(first_module, nn.GroupNorm)
         assert module_name == "groupnorm"
-        assert isinstance(groupnorm, nn.GroupNorm)
-        assert groupnorm.num_groups == 1
-        assert groupnorm.num_channels == 4
+        assert first_module.num_groups == 1
+        assert first_module.num_channels == 4
 
 
 class TestUNetModels:
