@@ -4,6 +4,13 @@ import pytest
 import torch
 from torch import nn
 
+from magnet_pinn.models import (
+    ResidualUNet2D,
+    ResidualUNet3D,
+    ResidualUNetSE3D,
+    UNet2D,
+    UNet3D,
+)
 from magnet_pinn.models._unet3d.buildingblocks import (
     Decoder,
     DoubleConv,
@@ -18,6 +25,7 @@ from magnet_pinn.models._unet3d.buildingblocks import (
     create_decoders,
     create_encoders,
 )
+from magnet_pinn.models._unet3d.models import get_model
 from magnet_pinn.models._unet3d.se import (
     ChannelSELayer3D,
     ChannelSpatialSELayer3D,
@@ -582,3 +590,65 @@ class TestCreateConvErrors:
         assert isinstance(groupnorm, nn.GroupNorm)
         assert groupnorm.num_groups == 1
         assert groupnorm.num_channels == 4
+
+
+class TestUNetModels:
+    @pytest.mark.parametrize(
+        ("model_class", "is3d"),
+        [
+            pytest.param(UNet3D, True, id="unet3d"),
+            pytest.param(ResidualUNet3D, True, id="residual-unet3d"),
+            pytest.param(ResidualUNetSE3D, True, id="residual-unetse3d"),
+            pytest.param(UNet2D, False, id="unet2d"),
+            pytest.param(ResidualUNet2D, False, id="residual-unet2d"),
+        ],
+    )
+    def test_forward_preserves_shape_and_gradients(
+        self,
+        model_class: type[nn.Module],
+        is3d: bool,
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
+    ) -> None:
+        model = model_class(1, 2, f_maps=8, num_levels=2, num_groups=8)
+        input_tensor = (small_3d_input if is3d else small_2d_input).clone().detach().requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, *input_tensor.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+
+class TestUNetFMapsVariants:
+    @pytest.mark.parametrize(
+        "f_maps",
+        [pytest.param([8, 16], id="list"), pytest.param((8, 16), id="tuple")],
+    )
+    def test_explicit_f_maps_sequences_preserve_forward_shape_and_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+        f_maps: list[int] | tuple[int, int],
+    ) -> None:
+        model = UNet3D(1, 2, f_maps=f_maps, num_groups=8)
+        input_tensor = small_3d_input.clone().detach().requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, *small_3d_input.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+
+class TestAbstractUNetAssertions:
+    def test_single_level_f_maps_raises_assertion(self) -> None:
+        with pytest.raises(AssertionError, match="Required at least 2 levels in the U-Net"):
+            UNet3D(1, 2, f_maps=[8])
+
+    def test_groupnorm_layer_order_requires_num_groups(self) -> None:
+        with pytest.raises(AssertionError, match="num_groups must be specified if GroupNorm is used"):
+            UNet3D(1, 2, layer_order="gcr", num_groups=None, f_maps=[8, 16])
+
+
+class TestGetModel:
+    def test_missing_external_pytorch3dunet_dependency_raises_module_not_found_error(self) -> None:
+        with pytest.raises(ModuleNotFoundError, match="No module named 'pytorch3dunet'"):
+            get_model({"name": "UNet3D"})
