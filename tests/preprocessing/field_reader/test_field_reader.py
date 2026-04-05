@@ -7,10 +7,10 @@ import pytest
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,
     FIELD_DIR_PATH,
+    H_FIELD_DATABASE_KEY,
     FieldReader,
     FieldReaderFactory,
     GridReader,
-    H_FIELD_DATABASE_KEY,
     PointReader,
 )
 
@@ -246,8 +246,8 @@ def test_grid_to_pointslist_coordinates_shape(e_field_grid_data):
 
 
 def test_grid_mismatched_coordinates_raises_exception(tmp_path):
-    from tests.preprocessing.helpers import create_grid_field
     from magnet_pinn.preprocessing.reading_field import FIELD_DIR_PATH
+    from tests.preprocessing.helpers import create_grid_field
 
     field_path = tmp_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
@@ -276,12 +276,13 @@ def test_grid_mismatched_coordinates_raises_exception(tmp_path):
 
 
 def test_pointslist_mismatched_coordinates_raises_exception(tmp_path):
-    from tests.preprocessing.helpers import create_pointslist_field
+    from h5py import File
+
     from magnet_pinn.preprocessing.reading_field import (
         FIELD_DIR_PATH,
         POSITIONS_DATABASE_KEY,
     )
-    from h5py import File
+    from tests.preprocessing.helpers import create_pointslist_field
 
     field_path = tmp_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
@@ -306,8 +307,8 @@ def test_pointslist_mismatched_coordinates_raises_exception(tmp_path):
 
 
 def test_grid_single_ac_file(tmp_path):
-    from tests.preprocessing.helpers import create_grid_field
     from magnet_pinn.preprocessing.reading_field import FIELD_DIR_PATH
+    from tests.preprocessing.helpers import create_grid_field
 
     field_path = tmp_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)
@@ -332,8 +333,8 @@ def test_grid_single_ac_file(tmp_path):
 
 
 def test_pointslist_single_ac_file(tmp_path):
-    from tests.preprocessing.helpers import create_pointslist_field
     from magnet_pinn.preprocessing.reading_field import FIELD_DIR_PATH
+    from tests.preprocessing.helpers import create_pointslist_field
 
     field_path = tmp_path / FIELD_DIR_PATH[E_FIELD_DATABASE_KEY]
     field_path.mkdir(parents=True, exist_ok=True)

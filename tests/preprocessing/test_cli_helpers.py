@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import cast
 
 from magnet_pinn.preprocessing.cli.helpers import print_report
-from magnet_pinn.preprocessing.preprocessing import Preprocessing, GridPreprocessing
+from magnet_pinn.preprocessing.preprocessing import GridPreprocessing, Preprocessing
 
 
 def test_print_report_without_grid_preprocessing(capsys):

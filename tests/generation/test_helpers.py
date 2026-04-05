@@ -1,15 +1,15 @@
-from pathlib import Path
 from argparse import Namespace
+from pathlib import Path
 
 import pytest
 
 from magnet_pinn.generator.cli.helpers import (
-    print_report,
-    validate_arguments,
-    _print_tissue_report,
     _print_custom_report,
     _print_properties_report,
+    _print_tissue_report,
     _print_workflow_report,
+    print_report,
+    validate_arguments,
 )
 
 

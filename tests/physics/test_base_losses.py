@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from magnet_pinn.losses.base import MSELoss, MAELoss, HuberLoss, LogCoshLoss
+from magnet_pinn.losses.base import HuberLoss, LogCoshLoss, MAELoss, MSELoss
 
 
 @pytest.fixture

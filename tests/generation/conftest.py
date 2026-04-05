@@ -4,12 +4,12 @@ Provides reusable test fixtures for phantom generation, mesh creation,
 and property configuration used across generation test modules.
 """
 
+from shutil import rmtree
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 import trimesh
-from shutil import rmtree
 
 from magnet_pinn.generator.structures import Blob, CustomMeshStructure
 from magnet_pinn.generator.typing import MeshPhantom, PropertyItem, PropertyPhantom

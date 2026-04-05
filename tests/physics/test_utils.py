@@ -1,9 +1,9 @@
+import einops
 import pytest
 import torch
-import einops
 
-from magnet_pinn.losses.utils import DiffFilterFactory, LossReducer, ObjectMaskCropping
 from magnet_pinn.losses.physics import DivergenceLoss, FaradaysLawLoss
+from magnet_pinn.losses.utils import DiffFilterFactory, LossReducer, ObjectMaskCropping
 
 
 def test_single_derivatives(

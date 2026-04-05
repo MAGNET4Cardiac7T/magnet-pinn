@@ -1,17 +1,19 @@
+from typing import Any, cast
+
 import pytest
 import torch
-from typing import Any, cast
+
 from magnet_pinn.utils._normalization import (
-    Identity,
-    Power,
-    Log,
-    Tanh,
     Arcsinh,
+    Identity,
+    Log,
+    MetaNormalizer,
+    MinMaxNormalizer,
     Nonlinearity,
     Normalizer,
-    MinMaxNormalizer,
+    Power,
     StandardNormalizer,
-    MetaNormalizer,
+    Tanh,
 )
 
 

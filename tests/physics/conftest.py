@@ -1,6 +1,6 @@
+import einops
 import pytest
 import torch
-import einops
 
 from magnet_pinn.losses.utils import DiffFilterFactory
 

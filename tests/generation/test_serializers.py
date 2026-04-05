@@ -1,15 +1,16 @@
-import pytest
-import numpy as np
 from unittest.mock import Mock, patch
-from trimesh import Trimesh
-import trimesh
 
-from magnet_pinn.generator.serializers import Serializer, MeshSerializer
+import numpy as np
+import pytest
+import trimesh
+from trimesh import Trimesh
+
+from magnet_pinn.generator.serializers import MeshSerializer, Serializer
 from magnet_pinn.generator.structures import (
-    Structure3D,
     Blob,
-    Tube,
     CustomMeshStructure,
+    Structure3D,
+    Tube,
 )
 
 
@@ -404,8 +405,9 @@ def test_integration_tube_sampler_to_serializer_height_workflow():
     Integration test verifying that TubeSampler creates tubes with
     correct height and MeshSerializer uses it directly.
     """
-    from magnet_pinn.generator.samplers import TubeSampler
     from numpy.random import default_rng
+
+    from magnet_pinn.generator.samplers import TubeSampler
 
     parent_radius = 200.0
     sampler = TubeSampler(
@@ -435,10 +437,11 @@ def test_integration_mesh_tube_sampler_to_serializer_height_workflow(tmp_path):
     Integration test verifying that MeshTubeSampler creates tubes with
     correct height and MeshSerializer uses it directly.
     """
+    import trimesh
+    from numpy.random import default_rng
+
     from magnet_pinn.generator.samplers import MeshTubeSampler
     from magnet_pinn.generator.structures import CustomMeshStructure
-    from numpy.random import default_rng
-    import trimesh
 
     parent_radius = 150.0
     sampler = MeshTubeSampler(
@@ -468,8 +471,9 @@ def test_integration_mesh_tube_sampler_to_serializer_height_workflow(tmp_path):
 
 def test_integration_tube_height_consistency_across_samplers():
     """Test that both TubeSampler and MeshTubeSampler produce tubes with identical height calculation."""
-    from magnet_pinn.generator.samplers import TubeSampler, MeshTubeSampler
     from numpy.random import default_rng
+
+    from magnet_pinn.generator.samplers import MeshTubeSampler, TubeSampler
 
     parent_radius_values = [50.0, 100.0, 500.0]
 
@@ -519,8 +523,9 @@ def test_integration_serializer_handles_various_tube_heights():
 
 def test_integration_default_parent_radius_behavior():
     """Test that default parent_radius behavior is consistent across all components."""
-    from magnet_pinn.generator.samplers import TubeSampler, MeshTubeSampler
     from numpy.random import default_rng
+
+    from magnet_pinn.generator.samplers import MeshTubeSampler, TubeSampler
 
     default_parent_radius = 250.0
 

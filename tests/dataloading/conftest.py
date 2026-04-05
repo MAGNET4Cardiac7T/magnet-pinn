@@ -5,8 +5,8 @@ initialization patterns (zero-filled and random data) to support transformation
 and dataloading test scenarios.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from magnet_pinn.data.dataitem import DataItem
 

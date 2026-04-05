@@ -5,12 +5,11 @@ temporary directory management, and cleanup utilities for the entire test suite.
 """
 
 import random
-from shutil import rmtree
 from pathlib import Path
+from shutil import rmtree
 
-import pytest
 import numpy as np
-
+import pytest
 
 PROCESSED_DIR_PATH = "processed"
 

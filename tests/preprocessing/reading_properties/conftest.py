@@ -1,17 +1,18 @@
 """Fixtures for property reader tests."""
 
-import pytest
+from shutil import rmtree
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from shutil import rmtree
+import pytest
 from trimesh import Trimesh
 
-from magnet_pinn.preprocessing.reading_properties import (
-    MATERIALS_FILE_NAME,
-    FILE_COLUMN_NAME,
-)
 from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
+from magnet_pinn.preprocessing.reading_properties import (
+    FILE_COLUMN_NAME,
+    MATERIALS_FILE_NAME,
+)
 
 
 @pytest.fixture(scope="module")

@@ -1,9 +1,9 @@
 """Fixtures for field reader tests."""
 
-import pytest
 from shutil import rmtree
 
 import numpy as np
+import pytest
 
 from magnet_pinn.preprocessing.reading_field import (
     E_FIELD_DATABASE_KEY,

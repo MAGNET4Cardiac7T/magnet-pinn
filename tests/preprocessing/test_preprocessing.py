@@ -1,42 +1,42 @@
+import importlib.util
 from os import listdir
 from pathlib import Path
 from shutil import rmtree
 from typing import Any, cast
 from unittest.mock import Mock, patch
-import importlib.util
 
-import pytest
 import numpy as np
-from numpy.typing import NDArray
-from h5py import File, Dataset
+import pytest
+from h5py import Dataset, File
 from natsort import natsorted
+from numpy.typing import NDArray
 
-from tests.preprocessing.helpers import (
-    CENTRAL_SPHERE_SIM_NAME,
-    CENTRAL_BOX_SIM_NAME,
-    SHIFTED_BOX_SIM_NAME,
-    SHIFTED_SPHERE_SIM_NAME,
-)
 from magnet_pinn.preprocessing.preprocessing import (
+    ANTENNA_MASKS_OUT_KEY,
+    COORDINATES_OUT_KEY,
+    DTYPE_OUT_KEY,
+    E_FIELD_OUT_KEY,
+    FEATURES_OUT_KEY,
+    H_FIELD_OUT_KEY,
+    MAX_EXTENT_OUT_KEY,
+    MIN_EXTENT_OUT_KEY,
+    PROCESSED_ANTENNA_DIR_PATH,
+    PROCESSED_SIMULATIONS_DIR_PATH,
+    SUBJECT_OUT_KEY,
+    TARGET_FILE_NAME,
+    TRUNCATION_COEFFICIENTS_OUT_KEY,
+    VOXEL_SIZE_OUT_KEY,
     GridPreprocessing,
     PointPreprocessing,
     Preprocessing,
-    PROCESSED_ANTENNA_DIR_PATH,
-    PROCESSED_SIMULATIONS_DIR_PATH,
-    TARGET_FILE_NAME,
-    ANTENNA_MASKS_OUT_KEY,
-    E_FIELD_OUT_KEY,
-    H_FIELD_OUT_KEY,
-    FEATURES_OUT_KEY,
-    SUBJECT_OUT_KEY,
-    COORDINATES_OUT_KEY,
-    DTYPE_OUT_KEY,
-    TRUNCATION_COEFFICIENTS_OUT_KEY,
-    MIN_EXTENT_OUT_KEY,
-    MAX_EXTENT_OUT_KEY,
-    VOXEL_SIZE_OUT_KEY,
 )
 from magnet_pinn.preprocessing.simulation import Simulation
+from tests.preprocessing.helpers import (
+    CENTRAL_BOX_SIM_NAME,
+    CENTRAL_SPHERE_SIM_NAME,
+    SHIFTED_BOX_SIM_NAME,
+    SHIFTED_SPHERE_SIM_NAME,
+)
 
 
 def get_dataset(f: File, key: str) -> NDArray[Any]:
@@ -2457,6 +2457,7 @@ def test_preprocessing_import_fallback(monkeypatch):
     import sys
     import types
     from types import ModuleType
+
     import magnet_pinn.preprocessing.preprocessing as preprocessing_module
 
     preprocessing_path = Path(preprocessing_module.__file__)

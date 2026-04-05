@@ -1,6 +1,6 @@
+import runpy
 from argparse import Namespace
 from pathlib import Path
-import runpy
 from typing import Any
 from unittest.mock import Mock
 

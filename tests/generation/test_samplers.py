@@ -10,19 +10,19 @@ from numpy.random import default_rng
 
 from magnet_pinn.generator import samplers as samplers_module
 from magnet_pinn.generator.samplers import (
-    PointSampler,
     BlobSampler,
-    TubeSampler,
-    PropertySampler,
     MeshBlobSampler,
     MeshTubeSampler,
+    PointSampler,
+    PropertySampler,
+    TubeSampler,
 )
-from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
+from magnet_pinn.generator.structures import Blob, CustomMeshStructure, Tube
 from magnet_pinn.generator.typing import (
+    MeshPhantom,
     PropertyItem,
     PropertyPhantom,
     StructurePhantom,
-    MeshPhantom,
 )
 
 

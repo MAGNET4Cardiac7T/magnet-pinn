@@ -1,24 +1,25 @@
-import pytest
-import numpy as np
-import trimesh
 from unittest.mock import Mock, patch
 
+import numpy as np
+import pytest
+import trimesh
+
+from magnet_pinn.generator.structures import Blob, Tube
 from magnet_pinn.generator.transforms import (
-    Transform,
     Compose,
-    ToMesh,
-    MeshesCleaning,
-    MeshesRemesh,
-    MeshesTubesClipping,
+    MeshesChildrenClipping,
     MeshesChildrenCutout,
+    MeshesCleaning,
     MeshesParentCutoutWithChildren,
     MeshesParentCutoutWithTubes,
-    MeshesChildrenClipping,
-    _validate_mesh,
+    MeshesRemesh,
+    MeshesTubesClipping,
+    ToMesh,
+    Transform,
     _validate_input_meshes,
+    _validate_mesh,
 )
-from magnet_pinn.generator.typing import StructurePhantom, MeshPhantom
-from magnet_pinn.generator.structures import Blob, Tube
+from magnet_pinn.generator.typing import MeshPhantom, StructurePhantom
 
 
 class MockTransform(Transform):

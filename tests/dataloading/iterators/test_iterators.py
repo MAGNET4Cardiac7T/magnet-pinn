@@ -1,23 +1,24 @@
-from shutil import rmtree
 from collections.abc import Iterable
+from shutil import rmtree
 
-import pytest
 import numpy as np
+import pytest
 
 from magnet_pinn.data._base import MagnetBaseIterator
 from magnet_pinn.data.grid import MagnetGridIterator
 from magnet_pinn.data.point import MagnetPointIterator
 from magnet_pinn.preprocessing.preprocessing import (
     PROCESSED_ANTENNA_DIR_PATH,
-    TARGET_FILE_NAME,
     PROCESSED_SIMULATIONS_DIR_PATH,
+    TARGET_FILE_NAME,
 )
-from tests.dataloading.iterators.helpers import RANDOM_SIM_FILE_NAME, ZERO_SIM_FILE_NAME
 from tests.dataloading.iterators.helpers import (
+    RANDOM_SIM_FILE_NAME,
+    ZERO_SIM_FILE_NAME,
     check_dtypes_between_iter_result_and_supposed_simulation,
     check_shapes_between_item_result_and_supposed_simulation,
-    check_values_between_item_result_and_supposed_simulation,
     check_shapes_between_item_result_and_supposed_simulation_for_pointclous,
+    check_values_between_item_result_and_supposed_simulation,
 )
 
 

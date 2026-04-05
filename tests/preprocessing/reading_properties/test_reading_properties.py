@@ -2,9 +2,9 @@ import pytest
 from trimesh import Trimesh
 
 from magnet_pinn.preprocessing.reading_properties import (
-    PropertyReader,
     FEATURE_NAMES,
     FILE_COLUMN_NAME,
+    PropertyReader,
 )
 
 

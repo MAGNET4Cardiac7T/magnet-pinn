@@ -7,7 +7,7 @@ with proper directory structures, antenna coils, and simulation files.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Callable
+from typing import Any, Callable, Dict
 
 import numpy as np
 from h5py import File
@@ -15,23 +15,22 @@ from h5py import File
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.preprocessing.preprocessing import (
     ANTENNA_MASKS_OUT_KEY,
-    E_FIELD_OUT_KEY,
-    H_FIELD_OUT_KEY,
-    FEATURES_OUT_KEY,
-    SUBJECT_OUT_KEY,
-    FLOAT_DTYPE_KIND,
     COMPLEX_DTYPE_KIND,
+    COORDINATES_OUT_KEY,
     DTYPE_OUT_KEY,
+    E_FIELD_OUT_KEY,
+    FEATURES_OUT_KEY,
+    FLOAT_DTYPE_KIND,
+    H_FIELD_OUT_KEY,
+    MAX_EXTENT_OUT_KEY,
+    MIN_EXTENT_OUT_KEY,
+    PROCESSED_ANTENNA_DIR_PATH,
+    PROCESSED_SIMULATIONS_DIR_PATH,
+    SUBJECT_OUT_KEY,
+    TARGET_FILE_NAME,
     TRUNCATION_COEFFICIENTS_OUT_KEY,
     VOXEL_SIZE_OUT_KEY,
-    MIN_EXTENT_OUT_KEY,
-    MAX_EXTENT_OUT_KEY,
-    PROCESSED_SIMULATIONS_DIR_PATH,
-    TARGET_FILE_NAME,
-    PROCESSED_ANTENNA_DIR_PATH,
-    COORDINATES_OUT_KEY,
 )
-
 
 RANDOM_SIM_FILE_NAME = "children_0_tubes_0_id_0"
 ZERO_SIM_FILE_NAME = "children_0_tubes_0_id_1"

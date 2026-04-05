@@ -1,26 +1,26 @@
 import pytest
 
-from magnet_pinn.generator.cli.cli import parse_arguments
 from magnet_pinn.generator.cli.cli import (
-    OUTPUT_DIR,
-    SEED,
+    BLOB_RADIUS_DECREASE,
+    CHILD_BLOBS_BATCH_SIZE,
+    CONDUCTIVITY_MAX,
+    CONDUCTIVITY_MIN,
+    DENSITY_MAX,
+    DENSITY_MIN,
     NUM_CHILDREN_BLOBS,
     NUM_TUBES,
-    BLOB_RADIUS_DECREASE,
-    X_MIN,
-    X_MAX,
-    Y_MIN,
-    Y_MAX,
-    Z_MIN,
-    Z_MAX,
-    DENSITY_MIN,
-    DENSITY_MAX,
-    CONDUCTIVITY_MIN,
-    CONDUCTIVITY_MAX,
-    PERMITTIVITY_MIN,
+    OUTPUT_DIR,
     PERMITTIVITY_MAX,
+    PERMITTIVITY_MIN,
     SAMPLE_CHILDREN_ONLY_INSIDE,
-    CHILD_BLOBS_BATCH_SIZE,
+    SEED,
+    X_MAX,
+    X_MIN,
+    Y_MAX,
+    Y_MIN,
+    Z_MAX,
+    Z_MIN,
+    parse_arguments,
 )
 
 

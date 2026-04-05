@@ -7,7 +7,6 @@ import pytest
 from magnet_pinn.data.transforms import PhaseShift, PointPhaseShift
 from tests.dataloading.iterators.helpers import create_processed_dir
 
-
 GRID_RPOCESSED_DIR_NAME = "test_grid_voxel_size_4_data_type_float32"
 GRID_PROCESSED_DIR_NAME_SHORT_TERM = (
     "test_grid_voxel_size_4_data_type_float32_short_term"

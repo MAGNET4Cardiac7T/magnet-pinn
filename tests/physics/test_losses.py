@@ -1,16 +1,15 @@
-import pytest
-import torch
 import math
 
+import pytest
+import torch
+
+from magnet_pinn.losses import MRI_FREQUENCY_HZ as MRI_FREQ_EXPORTED
+from magnet_pinn.losses import VACUUM_PERMEABILITY as VACUUM_PERM_EXPORTED
 from magnet_pinn.losses.physics import (
-    DivergenceLoss,
-    FaradaysLawLoss,
     MRI_FREQUENCY_HZ,
     VACUUM_PERMEABILITY,
-)
-from magnet_pinn.losses import (
-    MRI_FREQUENCY_HZ as MRI_FREQ_EXPORTED,
-    VACUUM_PERMEABILITY as VACUUM_PERM_EXPORTED,
+    DivergenceLoss,
+    FaradaysLawLoss,
 )
 
 

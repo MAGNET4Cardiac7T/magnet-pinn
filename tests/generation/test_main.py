@@ -1,20 +1,20 @@
-from unittest.mock import Mock, patch
-from argparse import Namespace
 import subprocess
 import sys
+from argparse import Namespace
+from unittest.mock import Mock, patch
 
 import numpy as np
 
 from magnet_pinn.generator.__main__ import (
+    create_custom_phantom,
     create_property_sampler,
     create_tissue_phantom,
-    create_custom_phantom,
     create_workflow,
     generate_single_phantom,
     main,
 )
+from magnet_pinn.generator.phantoms import CustomPhantom, Tissue
 from magnet_pinn.generator.samplers import PropertySampler
-from magnet_pinn.generator.phantoms import Tissue, CustomPhantom
 from magnet_pinn.generator.transforms import Compose
 
 

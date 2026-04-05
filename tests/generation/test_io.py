@@ -1,20 +1,20 @@
-import pytest
-import pandas as pd
-import numpy as np
 from pathlib import Path
 from unittest.mock import Mock
 
+import numpy as np
+import pandas as pd
+import pytest
 import trimesh
 
 from magnet_pinn.generator.io import (
-    Writer,
-    MeshWriter,
-    PARENT_BLOB_FILE_NAME,
     CHILD_BLOB_FILE_NAME,
-    TUBE_FILE_NAME,
     MATERIALS_FILE_NAME,
+    PARENT_BLOB_FILE_NAME,
+    TUBE_FILE_NAME,
+    MeshWriter,
+    Writer,
 )
-from magnet_pinn.generator.typing import MeshPhantom, PropertyPhantom, PropertyItem
+from magnet_pinn.generator.typing import MeshPhantom, PropertyItem, PropertyPhantom
 
 
 class ConcreteWriter(Writer):

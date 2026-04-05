@@ -1,21 +1,21 @@
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 
 from magnet_pinn.preprocessing.cli import parse_arguments
 from magnet_pinn.preprocessing.cli.cli import (
-    BATCHES,
     ANTENNA_DIR,
+    BATCHES,
     OUTPUT_DIR,
-    FIEld_DTYPE,
     VOXEL_SIZE,
-    X_MIN,
     X_MAX,
-    Y_MIN,
+    X_MIN,
     Y_MAX,
-    Z_MIN,
+    Y_MIN,
     Z_MAX,
+    Z_MIN,
+    FIEld_DTYPE,
 )
 
 

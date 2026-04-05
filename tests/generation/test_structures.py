@@ -1,7 +1,7 @@
-import pytest
 import numpy as np
+import pytest
 
-from magnet_pinn.generator.structures import Structure3D, Blob, Tube
+from magnet_pinn.generator.structures import Blob, Structure3D, Tube
 
 
 class ConcreteStructure(Structure3D):

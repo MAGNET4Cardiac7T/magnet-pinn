@@ -1,18 +1,19 @@
-import pytest
-import numpy as np
 import os
 import tempfile
+
+import numpy as np
+import pytest
 import trimesh
 
-from magnet_pinn.generator.phantoms import Phantom, Tissue, CustomPhantom
-from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
-from magnet_pinn.generator.typing import StructurePhantom
+from magnet_pinn.generator.phantoms import CustomPhantom, Phantom, Tissue
 from magnet_pinn.generator.samplers import (
     BlobSampler,
-    TubeSampler,
     MeshBlobSampler,
     MeshTubeSampler,
+    TubeSampler,
 )
+from magnet_pinn.generator.structures import Blob, CustomMeshStructure, Tube
+from magnet_pinn.generator.typing import StructurePhantom
 
 
 class ConcretePhantom(Phantom):

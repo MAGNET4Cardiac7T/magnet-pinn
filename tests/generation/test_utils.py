@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from magnet_pinn.generator.utils import (
-    spheres_packable,
     generate_fibonacci_points_on_sphere,
+    spheres_packable,
 )
 
 

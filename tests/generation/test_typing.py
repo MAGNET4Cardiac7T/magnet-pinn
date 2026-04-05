@@ -1,20 +1,21 @@
-import numpy as np
-import pickle
 import json
+import pickle
 from typing import List
+
+import numpy as np
 from trimesh import Trimesh
 
+from magnet_pinn.generator.structures import Blob, Tube
 from magnet_pinn.generator.typing import (
-    PropertyItem,
-    StructurePhantom,
-    MeshPhantom,
-    PropertyPhantom,
-    Point3D,
     FaceIndices,
     MeshGrid,
+    MeshPhantom,
     PhantomItem,
+    Point3D,
+    PropertyItem,
+    PropertyPhantom,
+    StructurePhantom,
 )
-from magnet_pinn.generator.structures import Blob, Tube
 
 
 def test_property_item_mutation_bug_protection():
