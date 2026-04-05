@@ -28,6 +28,7 @@ findiff = "^0.10.2"
 natsort = "^8.4.0"
 ordered-set = "^4.1.0"
 manifold3d = "^3.1.0"
+pytorch3dunet = ">=1.9.6"
 
 [tool.poetry.group.dev.dependencies]
 matplotlib = "^3.8.4"
