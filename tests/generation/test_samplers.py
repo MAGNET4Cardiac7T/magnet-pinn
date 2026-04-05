@@ -454,6 +454,24 @@ def test_blob_sampler_sample_children_blobs_fails_with_too_small_parent():
         sampler.sample_children_blobs(parent_blob, 1, rng)
 
 
+def test_blob_sampler_calculate_parent_radius_raises_when_parent_too_small():
+    """Covers samplers.py:363 — RuntimeError when final_radius <= 0.
+
+    The fast_blob_initialization autouse fixture patches Blob.__init__ so
+    that ``empirical_min_offset = -0.025``.  With a parent radius of 0.001:
+      parent_inner_radius = 0.001 * (1 - 0.025) = 0.000975
+      parent_allowed_radius = 0.000975 - 0.01 = -0.009025   (< 0)
+      final_radius = -0.009025 * 0.98                        (<= 0)
+    → RuntimeError is raised before the sampler returns.
+    """
+    sampler = BlobSampler(radius_decrease_factor=0.5)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=0.001)
+    child_radius_with_margin = 0.01
+
+    with pytest.raises(RuntimeError, match="too small to fit"):
+        sampler._calculate_parent_sampling_radius(parent_blob, child_radius_with_margin)
+
+
 def test_blob_sampler_sample_children_blobs_fails_with_too_many_children():
     sampler = BlobSampler(radius_decrease_factor=0.5)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=2.0)
