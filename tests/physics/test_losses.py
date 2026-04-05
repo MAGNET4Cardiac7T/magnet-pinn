@@ -271,3 +271,24 @@ def test_physics_constants_are_exported():
     """
     assert MRI_FREQ_EXPORTED == 297.2e6
     assert abs(VACUUM_PERM_EXPORTED - 1.256637061e-6) < 1e-15
+
+
+def test_check_dtype_device_with_dict_input():
+    """Covers physics.py:143-145 — the ``isinstance(field, dict)`` branch of
+    ``_check_dtype_device``."""
+    loss_fn = DivergenceLoss()
+    tensor = torch.zeros(1, 3, 8, 8, 8)
+
+    dtype, device = loss_fn._check_dtype_device({"field": tensor})
+
+    assert dtype == tensor.dtype
+    assert device == tensor.device
+
+
+def test_check_dtype_device_with_invalid_input():
+    """Covers physics.py:146-147 — the ``else`` branch that raises
+    ``ValueError`` for non-tensor, non-collection inputs."""
+    loss_fn = DivergenceLoss()
+
+    with pytest.raises(ValueError, match="must be a torch.Tensor"):
+        loss_fn._check_dtype_device(42)

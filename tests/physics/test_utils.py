@@ -281,6 +281,24 @@ def test_diff_filter_factory_invalid_accuracy():
         DiffFilterFactory(accuracy=-2)
 
 
+def test_loss_reducer_raises_on_invalid_aggregation():
+    """Covers utils.py:43 — the ``raise ValueError`` for unsupported agg methods."""
+    with pytest.raises(ValueError, match="Unknown aggregation method"):
+        LossReducer(agg="invalid")
+
+
+def test_diff_filter_factory_raises_on_zero_num_dims():
+    """Covers utils.py:192 — ``num_dims <= 0`` guard with zero."""
+    with pytest.raises(ValueError, match="num_dims must be positive"):
+        DiffFilterFactory(num_dims=0)
+
+
+def test_diff_filter_factory_raises_on_negative_num_dims():
+    """Covers utils.py:192 — ``num_dims <= 0`` guard with negative value."""
+    with pytest.raises(ValueError, match="num_dims must be positive"):
+        DiffFilterFactory(num_dims=-1)
+
+
 def test_diff_filter_factory_padding_calculation():
     """Test that padding calculation is correct for different accuracy levels."""
     factory_acc2 = DiffFilterFactory(accuracy=2, num_dims=3)

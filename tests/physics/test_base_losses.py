@@ -205,3 +205,20 @@ def test_loss_feature_dims_tuple():
 
     assert loss.shape == torch.Size([])
     assert torch.isclose(loss, expected, rtol=1e-5, atol=1e-8)
+
+
+def test_mse_loss_reduction_none_returns_unreduced_tensor():
+    """Covers base.py:30 — the ``reduction='none'`` branch that sets the
+    identity lambda instead of a ``LossReducer``."""
+    batch, features = 4, 8
+    loss_fn = MSELoss(reduction="none")
+    pred = torch.randn(batch, features)
+    target = torch.randn(batch, features)
+
+    output = loss_fn(pred, target)
+
+    # With reduction='none', forward returns loss averaged over feature_dims (dim=1)
+    # but does NOT reduce over the batch — output shape should be (batch,).
+    assert output.shape == torch.Size([batch]), (
+        f"Expected shape ({batch},) for reduction='none', got {output.shape}"
+    )
