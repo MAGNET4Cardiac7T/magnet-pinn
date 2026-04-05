@@ -50,9 +50,21 @@ pandas = "^2.2.2"
 pytest = "^8.3.2"
 pytest-cov = "^6.0.0"
 coverage = "^7.6.3"
+flake8-pyproject = "^1.2.4"
 
 [tool.poetry.extras]
 linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
+
+[tool.black]
+line-length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "E501"]
+
+[tool.mypy]
+explicit_package_bases = true
+ignore_missing_imports = true
 
 [tool.isort]
 multi_line_output = 3
