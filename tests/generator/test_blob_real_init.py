@@ -43,9 +43,9 @@ def test_blob_real_init_sets_empirical_offsets():
         radius * (1 + blob.empirical_max_offset),
     )
     assert blob.empirical_max_offset > blob.empirical_min_offset
-    assert blob.empirical_max_offset > 0, (
-        "max offset must be positive so effective_radius >= radius"
-    )
+    assert (
+        blob.empirical_max_offset > 0
+    ), "max offset must be positive so effective_radius >= radius"
     # Perlin noise spans both positive and negative values; with 10 000 sample
     # points the empirical minimum is reliably negative for the default setup.
     assert blob.empirical_min_offset < 0, "min offset must stay negative"
@@ -54,12 +54,12 @@ def test_blob_real_init_sets_empirical_offsets():
 
     assert offsets.shape == (sample_vertices.shape[0], 1)
     assert np.isfinite(offsets).all()
-    assert np.all(offsets >= blob.empirical_min_offset), (
-        "calculate_offsets result below empirical minimum"
-    )
-    assert np.all(offsets <= blob.empirical_max_offset), (
-        "calculate_offsets result above empirical maximum"
-    )
+    assert np.all(
+        offsets >= blob.empirical_min_offset
+    ), "calculate_offsets result below empirical minimum"
+    assert np.all(
+        offsets <= blob.empirical_max_offset
+    ), "calculate_offsets result above empirical maximum"
 
 
 def test_blob_real_init_is_reproducible_for_fixed_seed():
@@ -75,14 +75,12 @@ def test_blob_real_init_is_reproducible_for_fixed_seed():
     assert np.isclose(blob_a.empirical_min_offset, blob_b.empirical_min_offset)
     assert np.isclose(blob_a.effective_radius, blob_b.effective_radius)
 
-    test_vertices = np.array(
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-    )
+    test_vertices = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     offsets_a = blob_a.calculate_offsets(test_vertices)
     offsets_b = blob_b.calculate_offsets(test_vertices)
-    assert np.allclose(offsets_a, offsets_b), (
-        "identical seeds must produce identical calculate_offsets output"
-    )
+    assert np.allclose(
+        offsets_a, offsets_b
+    ), "identical seeds must produce identical calculate_offsets output"
 
     assert not (
         np.isclose(blob_a.empirical_max_offset, blob_c.empirical_max_offset)

@@ -22,7 +22,7 @@ def test_main_runs_grid_preprocessing(monkeypatch):
         z_min=-3.0,
         z_max=3.0,
         voxel_size=4.0,
-        simulations=[Path("sim_a"), Path("sim_b")]
+        simulations=[Path("sim_a"), Path("sim_b")],
     )
     grid_calls: dict[str, Any] = {}
 
@@ -39,7 +39,7 @@ def test_main_runs_grid_preprocessing(monkeypatch):
             y_max,
             z_min,
             z_max,
-            voxel_size
+            voxel_size,
         ):
             grid_calls["init"] = dict(
                 batches=batches,
@@ -52,7 +52,7 @@ def test_main_runs_grid_preprocessing(monkeypatch):
                 y_max=y_max,
                 z_min=z_min,
                 z_max=z_max,
-                voxel_size=voxel_size
+                voxel_size=voxel_size,
             )
             grid_calls["instance"] = self
 
@@ -61,11 +61,18 @@ def test_main_runs_grid_preprocessing(monkeypatch):
 
     print_mock = Mock()
 
-    monkeypatch.setattr("magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args)
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args
+    )
     monkeypatch.setattr("magnet_pinn.preprocessing.cli.print_report", print_mock)
-    monkeypatch.setattr("magnet_pinn.preprocessing.preprocessing.GridPreprocessing", DummyGrid)
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.preprocessing.GridPreprocessing", DummyGrid
+    )
 
-    result = runpy.run_module("magnet_pinn.preprocessing.__main__", run_name="magnet_pinn.preprocessing.__main__")
+    result = runpy.run_module(
+        "magnet_pinn.preprocessing.__main__",
+        run_name="magnet_pinn.preprocessing.__main__",
+    )
 
     assert grid_calls["init"] == dict(
         batches=fake_args.batches,
@@ -78,7 +85,7 @@ def test_main_runs_grid_preprocessing(monkeypatch):
         y_max=fake_args.y_max,
         z_min=fake_args.z_min,
         z_max=fake_args.z_max,
-        voxel_size=fake_args.voxel_size
+        voxel_size=fake_args.voxel_size,
     )
     assert grid_calls["processed"] == fake_args.simulations
     assert result["args"] is fake_args
@@ -92,17 +99,14 @@ def test_main_runs_point_preprocessing(monkeypatch):
         antenna=Path("antenna_dir"),
         output=Path("output_dir"),
         field_dtype=np.float64,
-        simulations=None
+        simulations=None,
     )
     point_calls: dict[str, Any] = {}
 
     class DummyPoint:
         def __init__(self, batches, antenna, output, field_dtype):
             point_calls["init"] = dict(
-                batches=batches,
-                antenna=antenna,
-                output=output,
-                field_dtype=field_dtype
+                batches=batches, antenna=antenna, output=output, field_dtype=field_dtype
             )
             point_calls["instance"] = self
 
@@ -110,22 +114,33 @@ def test_main_runs_point_preprocessing(monkeypatch):
             point_calls["processed"] = simulations
 
     def _fail_grid(*args, **kwargs):
-        raise AssertionError("GridPreprocessing should not be used for point preprocessing")
+        raise AssertionError(
+            "GridPreprocessing should not be used for point preprocessing"
+        )
 
     print_mock = Mock()
 
-    monkeypatch.setattr("magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args)
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args
+    )
     monkeypatch.setattr("magnet_pinn.preprocessing.cli.print_report", print_mock)
-    monkeypatch.setattr("magnet_pinn.preprocessing.preprocessing.GridPreprocessing", _fail_grid)
-    monkeypatch.setattr("magnet_pinn.preprocessing.preprocessing.PointPreprocessing", DummyPoint)
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.preprocessing.GridPreprocessing", _fail_grid
+    )
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.preprocessing.PointPreprocessing", DummyPoint
+    )
 
-    result = runpy.run_module("magnet_pinn.preprocessing.__main__", run_name="magnet_pinn.preprocessing.__main__")
+    result = runpy.run_module(
+        "magnet_pinn.preprocessing.__main__",
+        run_name="magnet_pinn.preprocessing.__main__",
+    )
 
     assert point_calls["init"] == dict(
         batches=fake_args.batches,
         antenna=fake_args.antenna,
         output=fake_args.output,
-        field_dtype=fake_args.field_dtype
+        field_dtype=fake_args.field_dtype,
     )
     assert point_calls["processed"] is None
     assert result["args"] is fake_args
@@ -139,12 +154,23 @@ def test_main_invalid_preprocessing_type(monkeypatch):
         antenna=Path("antenna_dir"),
         output=Path("output_dir"),
         field_dtype=np.float32,
-        simulations=[]
+        simulations=[],
     )
 
-    monkeypatch.setattr("magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args)
-    monkeypatch.setattr("magnet_pinn.preprocessing.preprocessing.GridPreprocessing", lambda *args, **kwargs: None)
-    monkeypatch.setattr("magnet_pinn.preprocessing.preprocessing.PointPreprocessing", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.cli.parse_arguments", lambda: fake_args
+    )
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.preprocessing.GridPreprocessing",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "magnet_pinn.preprocessing.preprocessing.PointPreprocessing",
+        lambda *args, **kwargs: None,
+    )
 
     with pytest.raises(ValueError):
-        runpy.run_module("magnet_pinn.preprocessing.__main__", run_name="magnet_pinn.preprocessing.__main__")
+        runpy.run_module(
+            "magnet_pinn.preprocessing.__main__",
+            run_name="magnet_pinn.preprocessing.__main__",
+        )

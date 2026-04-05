@@ -45,7 +45,9 @@ def get_dataset(f: File, key: str) -> NDArray[Any]:
     return np.asarray(dataset[:])
 
 
-def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_out_dir_structure(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     p = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -80,7 +82,9 @@ def test_grid_out_dir_structure(raw_central_batch_dir_path, raw_antenna_dir_path
         assert simulation_dir.is_file()
 
 
-def test_grid_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_antenna(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     p = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -96,7 +100,9 @@ def test_grid_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processe
     )
     p.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    out_antenna_file = Path(p.out_antenna_dir_path) / TARGET_FILE_NAME.format(name="antenna")
+    out_antenna_file = Path(p.out_antenna_dir_path) / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert out_antenna_file.exists()
 
     with File(str(out_antenna_file)) as f:
@@ -115,7 +121,9 @@ def test_grid_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processe
         assert np.equal(received_mask, expected_mask).all()
 
 
-def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_grid_out_simulation_structure(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     p = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -131,7 +139,9 @@ def test_grid_out_simulation_structure(raw_central_batch_dir_path, raw_antenna_d
     )
     p.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = p.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = p.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
 
     with File(str(sim_file)) as f:
         assert set(f.keys()) == {
@@ -174,7 +184,9 @@ def test_grid_central_float32_one_simulation_valid_preprocessing(
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     assert out_simulations_dir.exists()
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert out_simulation_file.exists()
 
     assert len(list(listdir(out_simulations_dir))) == 1
@@ -208,7 +220,9 @@ def test_grid_central_float32_multiple_simulations_valid_preprocessing(
         z_max=4,
         voxel_size=1,
     )
-    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+    )
 
     case_name = "grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
@@ -216,7 +230,9 @@ def test_grid_central_float32_multiple_simulations_valid_preprocessing(
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     assert out_simulations_dir.exists()
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert out_simulation_file.exists()
 
     assert len(list(listdir(out_simulations_dir))) == 2
@@ -233,7 +249,9 @@ def test_grid_central_float32_multiple_simulations_valid_preprocessing(
         check_central_features(f)
         check_central_subject_mask(f)
 
-    next_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    next_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     assert next_sim_file.exists()
 
     with File(str(next_sim_file)) as f:
@@ -298,7 +316,9 @@ def test_grid_central_float_one_simulation_valid_preprocessing(
 
     assert len(list(listdir(out_simulations_dir))) == 1
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert out_simulation_file.exists()
 
     with File(str(out_simulation_file)) as f:
@@ -330,7 +350,9 @@ def test_grid_central_float_multiple_simulations_valid_preprocessing(
         z_max=4,
         voxel_size=1,
     )
-    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+    )
 
     case_name = "grid_voxel_size_1_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
@@ -341,7 +363,9 @@ def test_grid_central_float_multiple_simulations_valid_preprocessing(
 
     assert len(list(listdir(out_simulations_dir))) == 2
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert out_simulation_file.exists()
 
     with File(str(out_simulation_file)) as f:
@@ -356,7 +380,9 @@ def test_grid_central_float_multiple_simulations_valid_preprocessing(
         check_central_features(f)
         check_central_subject_mask(f)
 
-    another_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    another_sim_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     assert another_sim_file.exists()
 
     with File(str(another_sim_file)) as f:
@@ -396,7 +422,9 @@ def test_grid_shifted_one_simulation_valid_preprocessing(
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
     assert out_simulations_dir.exists()
 
-    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    out_simulation_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=SHIFTED_SPHERE_SIM_NAME
+    )
     assert out_simulation_file.exists()
 
     with File(str(out_simulation_file)) as f:
@@ -521,7 +549,14 @@ def check_shifted_features(f: File):
 
 
 def check_grid_coordinates(
-    f: File, voxel_size: int, x_min: float, x_max: float, y_min: float, y_max: float, z_min: float, z_max: float
+    f: File,
+    voxel_size: int,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+    z_min: float,
+    z_max: float,
 ):
     """
     Validates that the coordinates dataset contains the expected grid points
@@ -540,7 +575,9 @@ def check_grid_coordinates(
     z_min, z_max : float
         Z-axis extent boundaries
     """
-    assert COORDINATES_OUT_KEY in f.keys(), f"Coordinates dataset '{COORDINATES_OUT_KEY}' not found in file"
+    assert (
+        COORDINATES_OUT_KEY in f.keys()
+    ), f"Coordinates dataset '{COORDINATES_OUT_KEY}' not found in file"
 
     coordinates = get_dataset(f, COORDINATES_OUT_KEY)
 
@@ -553,33 +590,60 @@ def check_grid_coordinates(
         coordinates.shape == expected_shape
     ), f"Coordinates shape {coordinates.shape} does not match expected {expected_shape}"
 
-    assert coordinates.dtype == np.float32, f"Coordinates dtype {coordinates.dtype} should be float32"
+    assert (
+        coordinates.dtype == np.float32
+    ), f"Coordinates dtype {coordinates.dtype} should be float32"
 
     x_expected = np.linspace(x_min, x_max, expected_x_count, dtype=np.float32)
     y_expected = np.linspace(y_min, y_max, expected_y_count, dtype=np.float32)
     z_expected = np.linspace(z_min, z_max, expected_z_count, dtype=np.float32)
 
     for i, x_val in enumerate(x_expected):
-        assert np.allclose(coordinates[0, i, :, :], x_val), f"X coordinates at index {i} should all be {x_val}"
+        assert np.allclose(
+            coordinates[0, i, :, :], x_val
+        ), f"X coordinates at index {i} should all be {x_val}"
 
     for j, y_val in enumerate(y_expected):
-        assert np.allclose(coordinates[1, :, j, :], y_val), f"Y coordinates at index {j} should all be {y_val}"
+        assert np.allclose(
+            coordinates[1, :, j, :], y_val
+        ), f"Y coordinates at index {j} should all be {y_val}"
 
     for k, z_val in enumerate(z_expected):
-        assert np.allclose(coordinates[2, :, :, k], z_val), f"Z coordinates at index {k} should all be {z_val}"
+        assert np.allclose(
+            coordinates[2, :, :, k], z_val
+        ), f"Z coordinates at index {k} should all be {z_val}"
 
-    assert np.isclose(coordinates[0, 0, 0, 0], x_min), f"Minimum X coordinate should be {x_min}"
-    assert np.isclose(coordinates[0, -1, 0, 0], x_max), f"Maximum X coordinate should be {x_max}"
+    assert np.isclose(
+        coordinates[0, 0, 0, 0], x_min
+    ), f"Minimum X coordinate should be {x_min}"
+    assert np.isclose(
+        coordinates[0, -1, 0, 0], x_max
+    ), f"Maximum X coordinate should be {x_max}"
 
-    assert np.isclose(coordinates[1, 0, 0, 0], y_min), f"Minimum Y coordinate should be {y_min}"
-    assert np.isclose(coordinates[1, 0, -1, 0], y_max), f"Maximum Y coordinate should be {y_max}"
+    assert np.isclose(
+        coordinates[1, 0, 0, 0], y_min
+    ), f"Minimum Y coordinate should be {y_min}"
+    assert np.isclose(
+        coordinates[1, 0, -1, 0], y_max
+    ), f"Maximum Y coordinate should be {y_max}"
 
-    assert np.isclose(coordinates[2, 0, 0, 0], z_min), f"Minimum Z coordinate should be {z_min}"
-    assert np.isclose(coordinates[2, 0, 0, -1], z_max), f"Maximum Z coordinate should be {z_max}"
+    assert np.isclose(
+        coordinates[2, 0, 0, 0], z_min
+    ), f"Minimum Z coordinate should be {z_min}"
+    assert np.isclose(
+        coordinates[2, 0, 0, -1], z_max
+    ), f"Maximum Z coordinate should be {z_max}"
 
 
 def check_grid_attributes(
-    f: File, voxel_size: int, x_min: float, x_max: float, y_min: float, y_max: float, z_min: float, z_max: float
+    f: File,
+    voxel_size: int,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+    z_min: float,
+    z_max: float,
 ):
     """
     Validates that the file attributes contain the correct metadata.
@@ -605,12 +669,16 @@ def check_grid_attributes(
     assert MIN_EXTENT_OUT_KEY in f.attrs, f"Attribute '{MIN_EXTENT_OUT_KEY}' not found"
     min_extent = np.asarray(f.attrs[MIN_EXTENT_OUT_KEY])
     expected_min = np.array([x_min, y_min, z_min], dtype=np.float32)
-    assert np.allclose(min_extent, expected_min), f"Min extent {min_extent} does not match expected {expected_min}"
+    assert np.allclose(
+        min_extent, expected_min
+    ), f"Min extent {min_extent} does not match expected {expected_min}"
 
     assert MAX_EXTENT_OUT_KEY in f.attrs, f"Attribute '{MAX_EXTENT_OUT_KEY}' not found"
     max_extent = np.asarray(f.attrs[MAX_EXTENT_OUT_KEY])
     expected_max = np.array([x_max, y_max, z_max], dtype=np.float32)
-    assert np.allclose(max_extent, expected_max), f"Max extent {max_extent} does not match expected {expected_max}"
+    assert np.allclose(
+        max_extent, expected_max
+    ), f"Max extent {max_extent} does not match expected {expected_max}"
 
 
 def test_grid_coordinates_voxel_size_1_central(
@@ -640,7 +708,9 @@ def test_grid_coordinates_voxel_size_1_central(
     case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     out_simulation_file = (
-        out_dir / PROCESSED_SIMULATIONS_DIR_PATH / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+        out_dir
+        / PROCESSED_SIMULATIONS_DIR_PATH
+        / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
     )
 
     with File(str(out_simulation_file)) as f:
@@ -675,7 +745,9 @@ def test_grid_coordinates_voxel_size_2_shifted(
     case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     out_simulation_file = (
-        out_dir / PROCESSED_SIMULATIONS_DIR_PATH / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+        out_dir
+        / PROCESSED_SIMULATIONS_DIR_PATH
+        / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
     )
 
     with File(str(out_simulation_file)) as f:
@@ -705,13 +777,17 @@ def test_grid_coordinates_consistency_multiple_files(
         z_max=z_max,
         voxel_size=voxel_size,
     )
-    grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+    grid_preprocessor.process_simulations(
+        [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+    )
 
     case_name = f"grid_voxel_size_{voxel_size}_data_type_float32"
     out_dir = processed_batch_dir_path / case_name
     out_simulations_dir = out_dir / PROCESSED_SIMULATIONS_DIR_PATH
 
-    sim1_file = out_simulations_dir / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim1_file = out_simulations_dir / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim1_file)) as f1:
         coords1 = get_dataset(f1, COORDINATES_OUT_KEY)
         check_grid_coordinates(f1, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
@@ -721,12 +797,19 @@ def test_grid_coordinates_consistency_multiple_files(
         coords2 = get_dataset(f2, COORDINATES_OUT_KEY)
         check_grid_coordinates(f2, voxel_size, x_min, x_max, y_min, y_max, z_min, z_max)
 
-    assert np.array_equal(coords1, coords2), "Coordinates should be identical across all simulations in the same batch"
+    assert np.array_equal(
+        coords1, coords2
+    ), "Coordinates should be identical across all simulations in the same batch"
 
 
-def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_float_out_dirs(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
@@ -734,9 +817,14 @@ def test_pointcloud_float_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_p
     assert out_case_dir.exists()
 
 
-def test_pointcloud_float32_out_dirs(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_float32_out_dirs(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
@@ -744,7 +832,9 @@ def test_pointcloud_float32_out_dirs(raw_central_batch_dir_path, raw_antenna_dir
     assert out_case_dir.exists()
 
 
-def test_pointcloud_antenna(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_antenna(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     """
     This testcase checks creation antenna milestones and coils mask correction.
     In details it sequentially checks the directory structure, the existence of
@@ -846,14 +936,20 @@ def test_pointcloud_general_structure_for_multiple_simulations(
     out_sim_dir = preprop.out_simulations_dir_path
     assert len(list(listdir(out_sim_dir))) == 2
 
-    first_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    first_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert first_sim_file.exists()
 
-    second_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    second_sim_file = Path(out_sim_dir) / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     assert second_sim_file.exists()
 
 
-def test_pointcloud_resulting_keys(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_resulting_keys(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     preprop = PointPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -863,13 +959,23 @@ def test_pointcloud_resulting_keys(raw_central_batch_dir_path, raw_antenna_dir_p
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         assert set(f.keys()) == set(
-            [E_FIELD_OUT_KEY, H_FIELD_OUT_KEY, FEATURES_OUT_KEY, SUBJECT_OUT_KEY, COORDINATES_OUT_KEY]
+            [
+                E_FIELD_OUT_KEY,
+                H_FIELD_OUT_KEY,
+                FEATURES_OUT_KEY,
+                SUBJECT_OUT_KEY,
+                COORDINATES_OUT_KEY,
+            ]
         )
 
-        assert set(f.attrs.keys()) == set([DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY])
+        assert set(f.attrs.keys()) == set(
+            [DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY]
+        )
 
 
 def test_pointcloud_resulting_dtype_values_for_float(
@@ -884,7 +990,9 @@ def test_pointcloud_resulting_dtype_values_for_float(
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         assert efield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
@@ -912,7 +1020,9 @@ def test_pointcloud_resulting_dtype_values_for_float32(
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         assert efield.dtype == np.dtype([("re", np.float32), ("im", np.float32)])
@@ -943,7 +1053,9 @@ def test_pointcloud_datasets_shapes_and_non_changable_dtypes(
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         assert efield.shape == (4, 3, 729)
@@ -979,7 +1091,9 @@ def test_pointcloud_squared_coils_sphere_central_object(
     )
     preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
 
@@ -1019,7 +1133,9 @@ def test_pointcloud_squared_coils_central_box_object(
     )
     preprop.process_simulations([CENTRAL_BOX_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         expected_re_field = np.concatenate(
@@ -1058,7 +1174,9 @@ def test_pointcloud_squared_coils_shifted_sphere_object(
     )
     preprop.process_simulations([SHIFTED_SPHERE_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=SHIFTED_SPHERE_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         expected_re_field = np.concatenate(
@@ -1097,7 +1215,9 @@ def test_pointcloud_squared_coils_shifted_box_object(
     )
     preprop.process_simulations([SHIFTED_BOX_SIM_NAME])
 
-    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(name=SHIFTED_BOX_SIM_NAME)
+    sim_file = Path(preprop.out_simulations_dir_path) / TARGET_FILE_NAME.format(
+        name=SHIFTED_BOX_SIM_NAME
+    )
     with File(str(sim_file)) as f:
         efield = get_dataset(f, E_FIELD_OUT_KEY)
         expected_re_field = np.concatenate(
@@ -1124,7 +1244,9 @@ def test_pointcloud_squared_coils_shifted_box_object(
         len(np.where(subject)[0]) == 1
 
 
-def test_pointcloud_invalid_batch_path(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_invalid_batch_path(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     with pytest.raises(FileNotFoundError):
         PointPreprocessing(
             "invalid_batch_path",
@@ -1135,7 +1257,9 @@ def test_pointcloud_invalid_batch_path(raw_central_batch_dir_path, raw_antenna_d
         )
 
 
-def test_pointcloud_with_empty_batch(raw_central_batch_short_term, raw_antenna_dir_path, processed_batch_dir_path):
+def test_pointcloud_with_empty_batch(
+    raw_central_batch_short_term, raw_antenna_dir_path, processed_batch_dir_path
+):
     list(map(rmtree, raw_central_batch_short_term.iterdir()))
     with pytest.raises(FileNotFoundError):
         PointPreprocessing(
@@ -1148,7 +1272,9 @@ def test_pointcloud_with_empty_batch(raw_central_batch_short_term, raw_antenna_d
 
 
 def test_pointcloud_with_no_antenna_dir(
-    raw_central_batch_short_term, raw_antenna_dir_path_short_term, processed_batch_dir_path
+    raw_central_batch_short_term,
+    raw_antenna_dir_path_short_term,
+    processed_batch_dir_path,
 ):
     rmtree(raw_antenna_dir_path_short_term)
     with pytest.raises(FileNotFoundError):
@@ -1162,7 +1288,9 @@ def test_pointcloud_with_no_antenna_dir(
 
 
 def test_pointcloud_with_empty_antenna_dir(
-    raw_central_batch_dir_path, raw_antenna_dir_path_short_term, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_antenna_dir_path_short_term,
+    processed_batch_dir_path,
 ):
     list(map(lambda x: x.unlink(), raw_antenna_dir_path_short_term.iterdir()))
     with pytest.raises(FileNotFoundError):
@@ -1176,7 +1304,10 @@ def test_pointcloud_with_empty_antenna_dir(
 
 
 def test_multiple_batch_dirs_grid(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     grid_preprocessor = GridPreprocessing(
         [raw_central_batch_dir_path, raw_shifted_batch_dir_path],
@@ -1226,9 +1357,18 @@ def test_grid_preprocessing_check_explicit_none_simulations_value(
     grid_preprocessor.process_simulations(simulations=None)
 
     expected_sim_list = list(
-        natsorted(map(lambda x: TARGET_FILE_NAME.format(name=x.name), raw_central_batch_dir_path.iterdir()))
+        natsorted(
+            map(
+                lambda x: TARGET_FILE_NAME.format(name=x.name),
+                raw_central_batch_dir_path.iterdir(),
+            )
+        )
     )
-    existing_sim_list = list(natsorted(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())))
+    existing_sim_list = list(
+        natsorted(
+            map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+        )
+    )
 
     assert expected_sim_list == existing_sim_list
 
@@ -1258,7 +1398,10 @@ def test_grid_preprocessing_check_explicit_empty_list_simulations_value(
 
 
 def test_grid_preprocessing_check_simulations_value_as_one_simulation_name_with_two_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations property as a single simulation name from one of the batches
@@ -1279,7 +1422,9 @@ def test_grid_preprocessing_check_simulations_value_as_one_simulation_name_with_
     grid_preprocessor.process_simulations(simulations=[CENTRAL_BOX_SIM_NAME])
 
     expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
-    existing = list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir()))
+    existing = list(
+        map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+    )
 
     assert expected == existing
 
@@ -1303,16 +1448,23 @@ def test_grid_preprocessing_check_one_path_simulations_value_with_one_batch(
         z_max=4,
         voxel_size=1,
     )
-    grid_preprocessor.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+    grid_preprocessor.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME]
+    )
 
     expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
-    existing = list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir()))
+    existing = list(
+        map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+    )
 
     assert expected == existing
 
 
 def test_grid_preprocessing_check_one_simulations_value_from_one_of_the_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a single simulation path from one of the batches
@@ -1330,10 +1482,14 @@ def test_grid_preprocessing_check_one_simulations_value_from_one_of_the_batches(
         z_max=4,
         voxel_size=1,
     )
-    grid_preprocessor.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+    grid_preprocessor.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME]
+    )
 
     expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
-    existing = list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir()))
+    existing = list(
+        map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+    )
 
     assert expected == existing
 
@@ -1365,15 +1521,25 @@ def test_grid_preprocessing_check_multiple_paths_simulations_value_from_one_batc
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(
+            map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+        )
+    )
 
     assert expected == existing
 
 
 def test_grid_preprocessing_check_multiple_paths_simulations_value_from_different_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a list of simulations path from different batches
@@ -1399,9 +1565,16 @@ def test_grid_preprocessing_check_multiple_paths_simulations_value_from_differen
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(
+            map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+        )
+    )
 
     assert expected == existing
 
@@ -1426,19 +1599,32 @@ def test_grid_preprocessing_check_mixed_simulations_value_from_one_batch(
         voxel_size=1,
     )
     grid_preprocessor.process_simulations(
-        simulations=[CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+        simulations=[
+            CENTRAL_BOX_SIM_NAME,
+            raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME,
+        ]
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(
+            map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+        )
+    )
 
     assert expected == existing
 
 
 def test_grid_preprocessing_check_mixed_simulations_value_from_different_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a list of simulation names and paths from different batches
@@ -1457,13 +1643,23 @@ def test_grid_preprocessing_check_mixed_simulations_value_from_different_batches
         voxel_size=1,
     )
     grid_preprocessor.process_simulations(
-        simulations=[CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+        simulations=[
+            CENTRAL_BOX_SIM_NAME,
+            raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME,
+        ]
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(
+            map(lambda x: x.name, grid_preprocessor.out_simulations_dir_path.iterdir())
+        )
+    )
 
     assert expected == existing
 
@@ -1475,14 +1671,24 @@ def test_point_preprocessing_check_explicit_none_simulations_value(
     Set simulations as None explicitly
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(simulations=None)
 
     expected_sim_list = list(
-        natsorted(map(lambda x: TARGET_FILE_NAME.format(name=x.name), raw_central_batch_dir_path.iterdir()))
+        natsorted(
+            map(
+                lambda x: TARGET_FILE_NAME.format(name=x.name),
+                raw_central_batch_dir_path.iterdir(),
+            )
+        )
     )
-    existing_sim_list = list(natsorted(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir())))
+    existing_sim_list = list(
+        natsorted(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
+    )
 
     assert expected_sim_list == existing_sim_list
 
@@ -1494,7 +1700,10 @@ def test_point_preprocessing_check_explicit_empty_list_simulations_value(
     Set simulations as an empty list explicitly
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(simulations=[])
 
@@ -1508,7 +1717,10 @@ def test_point_preprocessing_check_simulations_value_as_one_simulation_name(
     Set simulations property as a single simulation name
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(simulations=[CENTRAL_BOX_SIM_NAME])
 
@@ -1519,7 +1731,10 @@ def test_point_preprocessing_check_simulations_value_as_one_simulation_name(
 
 
 def test_point_preprocessing_check_simulations_value_as_one_simulation_name_with_two_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations property as a single simulation name from one of the batches
@@ -1545,9 +1760,14 @@ def test_point_preprocessing_check_one_path_simulations_value_with_one_batch(
     Set simulations as a single path from the only one existing batch
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
-    preprop.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+    preprop.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME]
+    )
 
     expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
     existing = list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
@@ -1556,7 +1776,10 @@ def test_point_preprocessing_check_one_path_simulations_value_with_one_batch(
 
 
 def test_point_preprocessing_check_one_simulations_value_from_one_of_the_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a single simulation path from one of the batches
@@ -1567,7 +1790,9 @@ def test_point_preprocessing_check_one_simulations_value_from_one_of_the_batches
         processed_batch_dir_path,
         field_dtype=np.dtype(np.float32),
     )
-    preprop.process_simulations(simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME])
+    preprop.process_simulations(
+        simulations=[raw_central_batch_dir_path / CENTRAL_BOX_SIM_NAME]
+    )
 
     expected = [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)]
     existing = list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
@@ -1582,7 +1807,10 @@ def test_point_preprocessing_check_multiple_paths_simulations_value_from_one_bat
     Set simulations as a list of simulations path from the only batch
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(
         simulations=[
@@ -1592,15 +1820,23 @@ def test_point_preprocessing_check_multiple_paths_simulations_value_from_one_bat
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
+    )
 
     assert expected == existing
 
 
 def test_point_preprocessing_check_multiple_paths_simulations_value_from_different_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a list of simulations path from different batches
@@ -1619,9 +1855,14 @@ def test_point_preprocessing_check_multiple_paths_simulations_value_from_differe
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
+    )
 
     assert expected == existing
 
@@ -1633,22 +1874,36 @@ def test_point_preprocessing_check_mixed_simulations_value_from_one_batch(
     Set simulations as a list of simulation names and paths from the only batch
     """
     preprop = PointPreprocessing(
-        [raw_central_batch_dir_path], raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        [raw_central_batch_dir_path],
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(
-        simulations=[CENTRAL_BOX_SIM_NAME, raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME]
+        simulations=[
+            CENTRAL_BOX_SIM_NAME,
+            raw_central_batch_dir_path / CENTRAL_SPHERE_SIM_NAME,
+        ]
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
+    )
 
     assert expected == existing
 
 
 def test_point_preprocessing_check_mixed_simulations_value_from_different_batches(
-    raw_central_batch_dir_path, raw_shifted_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_shifted_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Set simulations as a list of simulation names and paths from different batches
@@ -1660,25 +1915,38 @@ def test_point_preprocessing_check_mixed_simulations_value_from_different_batche
         field_dtype=np.dtype(np.float32),
     )
     preprop.process_simulations(
-        simulations=[CENTRAL_BOX_SIM_NAME, raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME]
+        simulations=[
+            CENTRAL_BOX_SIM_NAME,
+            raw_shifted_batch_dir_path / SHIFTED_SPHERE_SIM_NAME,
+        ]
     )
 
     expected = natsorted(
-        [TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME), TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME)]
+        [
+            TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME),
+            TARGET_FILE_NAME.format(name=SHIFTED_SPHERE_SIM_NAME),
+        ]
     )
-    existing = natsorted(list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir())))
+    existing = natsorted(
+        list(map(lambda x: x.name, preprop.out_simulations_dir_path.iterdir()))
+    )
 
     assert expected == existing
 
 
 def test_grid_duplicate_simulations_warning(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that a warning is raised when duplicate simulation names exist
     in different batches for grid preprocessing
     """
-    with pytest.warns(UserWarning, match=r"Simulation '.*' is not unique and will be overridden"):
+    with pytest.warns(
+        UserWarning, match=r"Simulation '.*' is not unique and will be overridden"
+    ):
         GridPreprocessing(
             [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
             raw_antenna_dir_path,
@@ -1695,7 +1963,10 @@ def test_grid_duplicate_simulations_warning(
 
 
 def test_grid_duplicate_simulations_only_one_saved(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that only one simulation file is saved when duplicate simulation names
@@ -1728,7 +1999,10 @@ def test_grid_duplicate_simulations_only_one_saved(
 
 
 def test_grid_duplicate_simulations_valid_preprocessing(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that preprocessing completes successfully and produces valid output when duplicate simulation names exist
@@ -1749,7 +2023,9 @@ def test_grid_duplicate_simulations_valid_preprocessing(
         )
         preprop.process_simulations()
 
-    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert sim_file.exists()
 
     with File(str(sim_file)) as f:
@@ -1764,7 +2040,10 @@ def test_grid_duplicate_simulations_valid_preprocessing(
 
 
 def test_grid_duplicate_simulations_with_explicit_names(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that only specified simulations are processed when duplicate names exist
@@ -1790,17 +2069,24 @@ def test_grid_duplicate_simulations_with_explicit_names(
     existing_files = list(out_simulations_dir.iterdir())
 
     assert len(existing_files) == 1
-    assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert existing_files[0].name == TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
 
 
 def test_point_duplicate_simulations_warning(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that a warning is raised when duplicate simulation names exist
     in different batches for point preprocessing
     """
-    with pytest.warns(UserWarning, match=r"Simulation '.*' is not unique and will be overridden"):
+    with pytest.warns(
+        UserWarning, match=r"Simulation '.*' is not unique and will be overridden"
+    ):
         PointPreprocessing(
             [raw_central_batch_dir_path, raw_duplicate_batch_dir_path],
             raw_antenna_dir_path,
@@ -1810,7 +2096,10 @@ def test_point_duplicate_simulations_warning(
 
 
 def test_point_duplicate_simulations_only_one_saved(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that only one simulation file is saved when duplicate simulation names
@@ -1836,7 +2125,10 @@ def test_point_duplicate_simulations_only_one_saved(
 
 
 def test_point_duplicate_simulations_valid_preprocessing(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that preprocessing completes successfully and produces valid output when duplicate simulation names exist
@@ -1850,7 +2142,9 @@ def test_point_duplicate_simulations_valid_preprocessing(
         )
         preprop.process_simulations()
 
-    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    sim_file = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
     assert sim_file.exists()
 
     with File(str(sim_file)) as f:
@@ -1862,7 +2156,10 @@ def test_point_duplicate_simulations_valid_preprocessing(
 
 
 def test_point_duplicate_simulations_with_explicit_names(
-    raw_central_batch_dir_path, raw_duplicate_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+    raw_central_batch_dir_path,
+    raw_duplicate_batch_dir_path,
+    raw_antenna_dir_path,
+    processed_batch_dir_path,
 ):
     """
     Test that only specified simulations are processed when duplicate names exist
@@ -1881,7 +2178,9 @@ def test_point_duplicate_simulations_with_explicit_names(
     existing_files = list(out_simulations_dir.iterdir())
 
     assert len(existing_files) == 1
-    assert existing_files[0].name == TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
+    assert existing_files[0].name == TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
 
 
 def test_grid_dipoles_written_with_empty_simulation_list(
@@ -1906,9 +2205,13 @@ def test_grid_dipoles_written_with_empty_simulation_list(
     )
 
     with (
-        patch.object(grid_preprocessor, "_write_dipoles", wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles,
         patch.object(
-            grid_preprocessor, "_format_and_write_dataset", wraps=grid_preprocessor._format_and_write_dataset
+            grid_preprocessor, "_write_dipoles", wraps=grid_preprocessor._write_dipoles
+        ) as mock_write_dipoles,
+        patch.object(
+            grid_preprocessor,
+            "_format_and_write_dataset",
+            wraps=grid_preprocessor._format_and_write_dataset,
         ) as mock_write_dataset,
     ):
 
@@ -1917,7 +2220,9 @@ def test_grid_dipoles_written_with_empty_simulation_list(
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_not_called()
 
-    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
     assert len(list(grid_preprocessor.out_simulations_dir_path.iterdir())) == 0
@@ -1947,16 +2252,22 @@ def test_grid_dipoles_written_before_multiple_simulations(
     manager = Mock()
 
     with (
-        patch.object(grid_preprocessor, "_write_dipoles", wraps=grid_preprocessor._write_dipoles) as mock_write_dipoles,
         patch.object(
-            grid_preprocessor, "_format_and_write_dataset", wraps=grid_preprocessor._format_and_write_dataset
+            grid_preprocessor, "_write_dipoles", wraps=grid_preprocessor._write_dipoles
+        ) as mock_write_dipoles,
+        patch.object(
+            grid_preprocessor,
+            "_format_and_write_dataset",
+            wraps=grid_preprocessor._format_and_write_dataset,
         ) as mock_write_dataset,
     ):
 
         manager.attach_mock(mock_write_dipoles, "_write_dipoles")
         manager.attach_mock(mock_write_dataset, "_format_and_write_dataset")
 
-        grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+        grid_preprocessor.process_simulations(
+            [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+        )
 
         mock_write_dipoles.assert_called_once()
         assert mock_write_dataset.call_count == 2
@@ -1965,11 +2276,17 @@ def test_grid_dipoles_written_before_multiple_simulations(
         assert manager.mock_calls[1][0] == "_format_and_write_dataset"
         assert manager.mock_calls[2][0] == "_format_and_write_dataset"
 
-    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
-    sim_file1 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
-    sim_file2 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    sim_file1 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
+    sim_file2 = grid_preprocessor.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     assert sim_file1.exists()
     assert sim_file2.exists()
 
@@ -1996,11 +2313,19 @@ def test_grid_dipoles_written_even_when_first_simulation_fails(
         voxel_size=1,
     )
 
-    with patch.object(grid_preprocessor, "_process_simulation", side_effect=Exception("Simulated failure")):
+    with patch.object(
+        grid_preprocessor,
+        "_process_simulation",
+        side_effect=Exception("Simulated failure"),
+    ):
         with pytest.raises(Exception, match="Simulated failure"):
-            grid_preprocessor.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
+            grid_preprocessor.process_simulations(
+                [CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME]
+            )
 
-    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = grid_preprocessor.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
     assert len(list(grid_preprocessor.out_simulations_dir_path.iterdir())) == 0
@@ -2014,13 +2339,20 @@ def test_point_dipoles_written_with_empty_simulation_list(
     Verifies _write_dipoles is called but _format_and_write_dataset is not called.
     """
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
     with (
-        patch.object(preprop, "_write_dipoles", wraps=preprop._write_dipoles) as mock_write_dipoles,
         patch.object(
-            preprop, "_format_and_write_dataset", wraps=preprop._format_and_write_dataset
+            preprop, "_write_dipoles", wraps=preprop._write_dipoles
+        ) as mock_write_dipoles,
+        patch.object(
+            preprop,
+            "_format_and_write_dataset",
+            wraps=preprop._format_and_write_dataset,
         ) as mock_write_dataset,
     ):
 
@@ -2029,7 +2361,9 @@ def test_point_dipoles_written_with_empty_simulation_list(
         mock_write_dipoles.assert_called_once()
         mock_write_dataset.assert_not_called()
 
-    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
     assert len(list(preprop.out_simulations_dir_path.iterdir())) == 0
@@ -2043,15 +2377,22 @@ def test_point_dipoles_written_before_multiple_simulations(
     Verifies _write_dipoles is called once before any _format_and_write_dataset calls.
     """
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
     manager = Mock()
 
     with (
-        patch.object(preprop, "_write_dipoles", wraps=preprop._write_dipoles) as mock_write_dipoles,
         patch.object(
-            preprop, "_format_and_write_dataset", wraps=preprop._format_and_write_dataset
+            preprop, "_write_dipoles", wraps=preprop._write_dipoles
+        ) as mock_write_dipoles,
+        patch.object(
+            preprop,
+            "_format_and_write_dataset",
+            wraps=preprop._format_and_write_dataset,
         ) as mock_write_dataset,
     ):
 
@@ -2067,11 +2408,17 @@ def test_point_dipoles_written_before_multiple_simulations(
         assert manager.mock_calls[1][0] == "_format_and_write_dataset"
         assert manager.mock_calls[2][0] == "_format_and_write_dataset"
 
-    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
-    sim_file1 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_SPHERE_SIM_NAME)
-    sim_file2 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(name=CENTRAL_BOX_SIM_NAME)
+    sim_file1 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_SPHERE_SIM_NAME
+    )
+    sim_file2 = preprop.out_simulations_dir_path / TARGET_FILE_NAME.format(
+        name=CENTRAL_BOX_SIM_NAME
+    )
     assert sim_file1.exists()
     assert sim_file2.exists()
 
@@ -2085,14 +2432,21 @@ def test_point_dipoles_written_even_when_first_simulation_fails(
     despite the failure.
     """
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
-    with patch.object(preprop, "_process_simulation", side_effect=Exception("Simulated failure")):
+    with patch.object(
+        preprop, "_process_simulation", side_effect=Exception("Simulated failure")
+    ):
         with pytest.raises(Exception, match="Simulated failure"):
             preprop.process_simulations([CENTRAL_SPHERE_SIM_NAME, CENTRAL_BOX_SIM_NAME])
 
-    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(name="antenna")
+    antenna_file = preprop.out_antenna_dir_path / TARGET_FILE_NAME.format(
+        name="antenna"
+    )
     assert antenna_file.exists()
 
     assert len(list(preprop.out_simulations_dir_path.iterdir())) == 0
@@ -2116,7 +2470,9 @@ def test_preprocessing_import_fallback(monkeypatch):
             def fast_winding_number_for_meshes(*args, **kwargs):
                 return "fallback"
 
-            dummy = types.SimpleNamespace(fast_winding_number_for_meshes=fast_winding_number_for_meshes)
+            dummy = types.SimpleNamespace(
+                fast_winding_number_for_meshes=fast_winding_number_for_meshes
+            )
             sys.modules.setdefault("igl", cast(ModuleType, dummy))
             return dummy
         return original_import(name, globals, locals, fromlist, level)
@@ -2184,7 +2540,9 @@ def test_batches_argument_type_validation(processed_batch_dir_path, tmp_path):
         )
 
 
-def test_coil_thickness_positive(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_coil_thickness_positive(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     with pytest.raises(Exception, match="Coil thick coef should be greater than 0"):
         GridPreprocessing(
             raw_central_batch_dir_path,
@@ -2202,7 +2560,9 @@ def test_coil_thickness_positive(raw_central_batch_dir_path, raw_antenna_dir_pat
         )
 
 
-def test_extract_simulations_rejects_file_path(raw_antenna_dir_path, processed_batch_dir_path, tmp_path):
+def test_extract_simulations_rejects_file_path(
+    raw_antenna_dir_path, processed_batch_dir_path, tmp_path
+):
     file_path = tmp_path / "not_a_dir.txt"
     file_path.write_text("data")
 
@@ -2222,7 +2582,9 @@ def test_extract_simulations_rejects_file_path(raw_antenna_dir_path, processed_b
         )
 
 
-def test_extract_simulations_raises_when_empty(processed_batch_dir_path, raw_antenna_dir_path):
+def test_extract_simulations_raises_when_empty(
+    processed_batch_dir_path, raw_antenna_dir_path
+):
     with pytest.raises(FileNotFoundError, match="No simulations found"):
         GridPreprocessing(
             [],
@@ -2256,17 +2618,38 @@ def test_base_preprocessing_methods_can_be_called(
         voxel_size=1,
     )
 
-    assert Preprocessing._output_target_dir.__get__(grid_preprocessor, Preprocessing) is None
-    assert Preprocessing._check_coordinates(grid_preprocessor, Mock(coordinates=None), Mock(coordinates=None)) is None
+    assert (
+        Preprocessing._output_target_dir.__get__(grid_preprocessor, Preprocessing)
+        is None
+    )
+    assert (
+        Preprocessing._check_coordinates(
+            grid_preprocessor, Mock(coordinates=None), Mock(coordinates=None)
+        )
+        is None
+    )
     assert Preprocessing._set_air_features(grid_preprocessor, np.array([])) is None
     assert Preprocessing._get_mask(grid_preprocessor, None) is None  # type: ignore[arg-type]
-    assert Preprocessing._masks_stack_pattern.__get__(grid_preprocessor, Preprocessing) is None
-    assert Preprocessing._extend_props(grid_preprocessor, np.array([]), np.array([])) is None
-    assert Preprocessing._extend_masks_pattern.__get__(grid_preprocessor, Preprocessing) is None
-    assert Preprocessing._features_sum_pattern.__get__(grid_preprocessor, Preprocessing) is None
+    assert (
+        Preprocessing._masks_stack_pattern.__get__(grid_preprocessor, Preprocessing)
+        is None
+    )
+    assert (
+        Preprocessing._extend_props(grid_preprocessor, np.array([]), np.array([]))
+        is None
+    )
+    assert (
+        Preprocessing._extend_masks_pattern.__get__(grid_preprocessor, Preprocessing)
+        is None
+    )
+    assert (
+        Preprocessing._features_sum_pattern.__get__(grid_preprocessor, Preprocessing)
+        is None
+    )
     assert (
         Preprocessing._format_features(
-            grid_preprocessor, Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0])
+            grid_preprocessor,
+            Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0]),
         )
         is None
     )
@@ -2314,7 +2697,9 @@ def test_resolve_simulation_rejects_unknown_name(
         getattr(grid_preprocessor, "_Preprocessing__resolve_simulations")(["unknown"])
 
 
-def test_resolve_simulation_validates_type(raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path):
+def test_resolve_simulation_validates_type(
+    raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
+):
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_dir_path,
         raw_antenna_dir_path,
@@ -2334,7 +2719,9 @@ def test_resolve_simulation_validates_type(raw_central_batch_dir_path, raw_anten
 
 
 def test_resolve_simulation_missing_directory(
-    raw_central_batch_short_term, raw_antenna_dir_path_short_term, processed_batch_dir_path
+    raw_central_batch_short_term,
+    raw_antenna_dir_path_short_term,
+    processed_batch_dir_path,
 ):
     grid_preprocessor = GridPreprocessing(
         raw_central_batch_short_term,
@@ -2354,7 +2741,9 @@ def test_resolve_simulation_missing_directory(
     rmtree(missing_path)
 
     with pytest.raises(FileNotFoundError, match="Simulation .* does not exist"):
-        getattr(grid_preprocessor, "_Preprocessing__resolve_simulations")([missing_path])
+        getattr(grid_preprocessor, "_Preprocessing__resolve_simulations")(
+            [missing_path]
+        )
 
 
 def test_format_fields_rejects_non_float_dtype(
@@ -2376,7 +2765,9 @@ def test_format_fields_rejects_non_float_dtype(
     grid_preprocessor.field_dtype = np.dtype(np.int32)
 
     with pytest.raises(Exception, match="Unsupported field data type"):
-        grid_preprocessor._format_fields(Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0]))
+        grid_preprocessor._format_fields(
+            Simulation(name="dummy", path=grid_preprocessor.all_sim_paths[0])
+        )
 
 
 def test_feature_truncation_coefficients_float16(
@@ -2444,7 +2835,9 @@ def test_grid_check_coordinates_mismatched_fields(
     e_reader = Mock(coordinates=(np.array([0, 1]), np.array([0]), np.array([0])))
     h_reader = Mock(coordinates=(np.array([0]), np.array([0]), np.array([0])))
 
-    with pytest.raises(Exception, match="Different coordinate systems for E and H fields"):
+    with pytest.raises(
+        Exception, match="Different coordinate systems for E and H fields"
+    ):
         grid_preprocessor._check_coordinates(e_reader, h_reader)
 
 
@@ -2502,7 +2895,10 @@ def test_point_initialize_coordinates_returns_with_empty_paths(
     raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
 ):
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
     preprop.all_sim_paths = []
@@ -2516,13 +2912,18 @@ def test_point_check_coordinates_mismatched_fields(
     raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
 ):
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
     e_reader = Mock(coordinates=np.array([[0, 0, 0]]))
     h_reader = Mock(coordinates=np.array([[1, 0, 0]]))
 
-    with pytest.raises(Exception, match="Different coordinate systems for E and H fields"):
+    with pytest.raises(
+        Exception, match="Different coordinate systems for E and H fields"
+    ):
         preprop._check_coordinates(e_reader, h_reader)
 
 
@@ -2530,7 +2931,10 @@ def test_point_check_coordinates_against_reference(
     raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path
 ):
     preprop = PointPreprocessing(
-        raw_central_batch_dir_path, raw_antenna_dir_path, processed_batch_dir_path, field_dtype=np.dtype(np.float32)
+        raw_central_batch_dir_path,
+        raw_antenna_dir_path,
+        processed_batch_dir_path,
+        field_dtype=np.dtype(np.float32),
     )
 
     original_coords = preprop.coordinates

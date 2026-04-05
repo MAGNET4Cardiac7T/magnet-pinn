@@ -8,22 +8,20 @@ from shutil import rmtree
 from trimesh import Trimesh
 
 from magnet_pinn.preprocessing.reading_properties import (
-    MATERIALS_FILE_NAME, FILE_COLUMN_NAME
+    MATERIALS_FILE_NAME,
+    FILE_COLUMN_NAME,
 )
 from magnet_pinn.preprocessing.preprocessing import INPUT_DIR_PATH
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def property_data_invalid_columns(grid_simulation_path):
     """Create property data with invalid column names."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
     prop_path.mkdir(parents=True, exist_ok=True)
 
     df = pd.DataFrame(
-        {
-            "invalid_column": [1, 2, 3],
-            "another_invalid_column": [4, 5, 6]
-        }
+        {"invalid_column": [1, 2, 3], "another_invalid_column": [4, 5, 6]}
     )
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
 
@@ -32,7 +30,7 @@ def property_data_invalid_columns(grid_simulation_path):
         rmtree(prop_path)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def property_data_invalid_file_name(grid_simulation_path):
     """Create property data with a non-existent file reference."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
@@ -43,7 +41,7 @@ def property_data_invalid_file_name(grid_simulation_path):
             FILE_COLUMN_NAME: ["file1"],
             "density": [1],
             "permittivity": [4],
-            "conductivity": [7]
+            "conductivity": [7],
         }
     )
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
@@ -73,7 +71,7 @@ def create_mesh(cols: int, rows: int) -> Trimesh:
     return Trimesh(vertices=vertices, faces=faces)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def property_data_valid(grid_simulation_path):
     """Create valid property data with a mesh file."""
     prop_path = grid_simulation_path / INPUT_DIR_PATH
@@ -83,12 +81,14 @@ def property_data_valid(grid_simulation_path):
     mesh = create_mesh(50, 50)
     mesh.export(prop_path / mesh_file_name)
 
-    df = pd.DataFrame({
-        FILE_COLUMN_NAME: [mesh_file_name],
-        "density": [1],
-        "permittivity": [4],
-        "conductivity": [7]
-    })
+    df = pd.DataFrame(
+        {
+            FILE_COLUMN_NAME: [mesh_file_name],
+            "density": [1],
+            "permittivity": [4],
+            "conductivity": [7],
+        }
+    )
     df.to_csv(prop_path / MATERIALS_FILE_NAME, index=False)
 
     yield prop_path

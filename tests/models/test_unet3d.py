@@ -61,7 +61,9 @@ def _assert_nonzero_gradients(
     if module is not None:
         grads = [p.grad for p in module.parameters() if p.requires_grad]
         if grads:
-            assert all(g is not None for g in grads), "Some parameters received no gradient"
+            assert all(
+                g is not None for g in grads
+            ), "Some parameters received no gradient"
             assert all(
                 torch.count_nonzero(g).item() > 0 for g in grads
             ), "Some parameter gradients are zero"
@@ -102,7 +104,12 @@ class TestChannelSELayer3D:
         reduction_ratio: int,
     ) -> None:
         layer = ChannelSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
-        input_tensor = _expand_to_eight_channels(small_3d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = layer(input_tensor)
 
@@ -120,9 +127,16 @@ class TestSpatialSELayer3D:
 
         assert output_tensor.shape == input_tensor.shape
 
-    def test_backward_produces_nonzero_input_gradients(self, small_3d_input: torch.Tensor) -> None:
+    def test_backward_produces_nonzero_input_gradients(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
         layer = SpatialSELayer3D(num_channels=8)
-        input_tensor = _expand_to_eight_channels(small_3d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = layer(input_tensor)
 
@@ -147,7 +161,9 @@ class TestSpatialSELayer3D:
         # Provide a non-None, multi-element weights tensor to trigger the boolean guard.
         weights = torch.ones(1, 8, 1, 1)
 
-        with pytest.raises(RuntimeError, match="Boolean value of Tensor with more than one"):
+        with pytest.raises(
+            RuntimeError, match="Boolean value of Tensor with more than one"
+        ):
             layer(input_tensor, weights=weights)
 
 
@@ -172,7 +188,12 @@ class TestChannelSpatialSELayer3D:
         reduction_ratio: int,
     ) -> None:
         layer = ChannelSpatialSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
-        input_tensor = _expand_to_eight_channels(small_3d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = layer(input_tensor)
 
@@ -200,7 +221,9 @@ class TestSingleConv:
         else:
             assert layer.conv.bias is not None
 
-    def test_capital_d_order_creates_dropout2d_layer(self, small_2d_input: torch.Tensor) -> None:
+    def test_capital_d_order_creates_dropout2d_layer(
+        self, small_2d_input: torch.Tensor
+    ) -> None:
         layer = SingleConv(1, 8, order="cbrD", num_groups=8, is3d=False)
 
         output_tensor = layer(small_2d_input)
@@ -220,7 +243,9 @@ class TestDoubleConv:
         upscale: int,
         expected_conv1_out_channels: int,
     ) -> None:
-        module = DoubleConv(8, 16, encoder=True, upscale=upscale, num_groups=8, is3d=True)
+        module = DoubleConv(
+            8, 16, encoder=True, upscale=upscale, num_groups=8, is3d=True
+        )
         input_tensor = _expand_to_eight_channels(small_3d_input)
 
         output_tensor = module(input_tensor)
@@ -256,7 +281,9 @@ class TestDoubleConv:
         assert module.SingleConv2.conv.out_channels == 8
         assert output_tensor.shape == (1, 8, *small_3d_input.shape[2:])
 
-    def test_tuple_dropout_prob_applies_to_each_convolution(self, small_3d_input: torch.Tensor) -> None:
+    def test_tuple_dropout_prob_applies_to_each_convolution(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
         module = DoubleConv(
             8,
             16,
@@ -289,7 +316,12 @@ class TestResNetBlock:
         expected_non_linearity: type[nn.Module],
     ) -> None:
         block = ResNetBlock(8, 8, order=order, num_groups=8, is3d=True)
-        input_tensor = _expand_to_eight_channels(small_3d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = block(input_tensor)
 
@@ -310,7 +342,12 @@ class TestResNetBlock:
         small_2d_input: torch.Tensor,
     ) -> None:
         block = ResNetBlock(1, 8, order="cge", num_groups=8, is3d=is3d)
-        input_tensor = (small_3d_input if is3d else small_2d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            (small_3d_input if is3d else small_2d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = block(input_tensor)
 
@@ -335,7 +372,12 @@ class TestResNetBlockSE:
         expected_se_type: type[nn.Module],
     ) -> None:
         block = ResNetBlockSE(8, 8, num_groups=8, se_module=se_module)
-        input_tensor = _expand_to_eight_channels(small_3d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = block(input_tensor)
 
@@ -383,7 +425,9 @@ class TestEncoder:
         assert isinstance(encoder.pooling, expected_pool_type)
         assert output_tensor.shape == expected_shape
 
-    def test_without_pooling_preserves_spatial_dimensions(self, small_3d_input: torch.Tensor) -> None:
+    def test_without_pooling_preserves_spatial_dimensions(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
         encoder = Encoder(
             1,
             8,
@@ -398,7 +442,9 @@ class TestEncoder:
         assert encoder.pooling is None
         assert output_tensor.shape == (1, 8, *small_3d_input.shape[2:])
 
-    def test_resnet_block_encoder_supports_2d_inputs(self, small_2d_input: torch.Tensor) -> None:
+    def test_resnet_block_encoder_supports_2d_inputs(
+        self, small_2d_input: torch.Tensor
+    ) -> None:
         encoder = Encoder(
             1,
             8,
@@ -418,7 +464,14 @@ class TestEncoder:
 
     def test_invalid_pool_type_raises_assertion(self) -> None:
         with pytest.raises(AssertionError):
-            Encoder(1, 8, pool_type="median", basic_module=DoubleConv, num_groups=8, is3d=True)
+            Encoder(
+                1,
+                8,
+                pool_type="median",
+                basic_module=DoubleConv,
+                num_groups=8,
+                is3d=True,
+            )
 
     def test_create_encoders_builds_first_level_without_pooling(
         self,
@@ -491,7 +544,9 @@ class TestDecoder:
 
         assert isinstance(decoder.upsampling, TransposeConvUpsampling)
         assert decoder.joining.keywords == {"concat": False}
-        assert isinstance(decoder.upsampling.upsample.conv_transposed, nn.ConvTranspose3d)
+        assert isinstance(
+            decoder.upsampling.upsample.conv_transposed, nn.ConvTranspose3d
+        )
         assert isinstance(decoder.basic_module.conv1, nn.Identity)
         assert decoder.basic_module.conv2.conv.in_channels == 8
         assert output_tensor.shape == encoder_features.shape
@@ -592,7 +647,9 @@ class TestUpsamplingModules:
         assert isinstance(upsampling.upsample.conv_transposed, expected_conv_type)
         assert output_tensor.shape == encoder_features.shape
 
-    def test_no_upsampling_returns_input_tensor_unchanged(self, small_3d_input: torch.Tensor) -> None:
+    def test_no_upsampling_returns_input_tensor_unchanged(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
         upsampling = NoUpsampling()
         encoder_features = _expand_to_eight_channels(small_3d_input)
         x = encoder_features.clone()
@@ -609,7 +666,9 @@ class TestCreateConvErrors:
             create_conv(1, 8, 3, "gr", 8, 1, 0.1, True)
 
     def test_non_linearity_first_raises_assertion(self) -> None:
-        with pytest.raises(AssertionError, match="Non-linearity cannot be the first operation"):
+        with pytest.raises(
+            AssertionError, match="Non-linearity cannot be the first operation"
+        ):
             create_conv(1, 8, 3, "rc", 8, 1, 0.1, True)
 
     def test_unsupported_layer_character_raises_value_error(self) -> None:
@@ -645,7 +704,12 @@ class TestUNetModels:
         small_2d_input: torch.Tensor,
     ) -> None:
         model = model_class(1, 2, f_maps=8, num_levels=2, num_groups=8)
-        input_tensor = (small_3d_input if is3d else small_2d_input).clone().detach().requires_grad_(True)
+        input_tensor = (
+            (small_3d_input if is3d else small_2d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
 
         output_tensor = model(input_tensor)
 
@@ -697,11 +761,15 @@ class TestUNetFMapsVariants:
 
 class TestAbstractUNetAssertions:
     def test_single_level_f_maps_raises_assertion(self) -> None:
-        with pytest.raises(AssertionError, match="Required at least 2 levels in the U-Net"):
+        with pytest.raises(
+            AssertionError, match="Required at least 2 levels in the U-Net"
+        ):
             UNet3D(1, 2, f_maps=[8])
 
     def test_groupnorm_layer_order_requires_num_groups(self) -> None:
-        with pytest.raises(AssertionError, match="num_groups must be specified if GroupNorm is used"):
+        with pytest.raises(
+            AssertionError, match="num_groups must be specified if GroupNorm is used"
+        ):
             UNet3D(1, 2, layer_order="gcr", num_groups=None, f_maps=[8, 16])
 
 
@@ -731,10 +799,10 @@ class TestGetModel:
             "num_groups": 8,
         }
         model = get_model(cfg)
-        assert isinstance(model, nn.Module), (
-            f"get_model should return an nn.Module, got {type(model)}"
-        )
+        assert isinstance(
+            model, nn.Module
+        ), f"get_model should return an nn.Module, got {type(model)}"
         # Confirm the class was resolved from the external package, not our local models.py
-        assert type(model).__module__.startswith("pytorch3dunet"), (
-            f"Expected model from pytorch3dunet, got {type(model).__module__}"
-        )
+        assert type(model).__module__.startswith(
+            "pytorch3dunet"
+        ), f"Expected model from pytorch3dunet, got {type(model).__module__}"

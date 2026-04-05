@@ -5,6 +5,7 @@ mimic the processed simulation data format used by the data iterators. These
 helpers are used in test fixtures to set up grid and pointcloud test data
 with proper directory structures, antenna coils, and simulation files.
 """
+
 from pathlib import Path
 from typing import Any, Dict, Callable
 
@@ -13,11 +14,22 @@ from h5py import File
 
 from magnet_pinn.data.dataitem import DataItem
 from magnet_pinn.preprocessing.preprocessing import (
-    ANTENNA_MASKS_OUT_KEY, E_FIELD_OUT_KEY, H_FIELD_OUT_KEY,
-    FEATURES_OUT_KEY, SUBJECT_OUT_KEY, FLOAT_DTYPE_KIND, COMPLEX_DTYPE_KIND,
-    DTYPE_OUT_KEY, TRUNCATION_COEFFICIENTS_OUT_KEY, VOXEL_SIZE_OUT_KEY,
-    MIN_EXTENT_OUT_KEY, MAX_EXTENT_OUT_KEY, PROCESSED_SIMULATIONS_DIR_PATH,
-    TARGET_FILE_NAME, PROCESSED_ANTENNA_DIR_PATH, COORDINATES_OUT_KEY
+    ANTENNA_MASKS_OUT_KEY,
+    E_FIELD_OUT_KEY,
+    H_FIELD_OUT_KEY,
+    FEATURES_OUT_KEY,
+    SUBJECT_OUT_KEY,
+    FLOAT_DTYPE_KIND,
+    COMPLEX_DTYPE_KIND,
+    DTYPE_OUT_KEY,
+    TRUNCATION_COEFFICIENTS_OUT_KEY,
+    VOXEL_SIZE_OUT_KEY,
+    MIN_EXTENT_OUT_KEY,
+    MAX_EXTENT_OUT_KEY,
+    PROCESSED_SIMULATIONS_DIR_PATH,
+    TARGET_FILE_NAME,
+    PROCESSED_ANTENNA_DIR_PATH,
+    COORDINATES_OUT_KEY,
 )
 
 
@@ -95,13 +107,23 @@ def create_simulation_dir(grid_processed_dir, random_item, zero_item, is_grid: b
     simulations_dir_path = grid_processed_dir / PROCESSED_SIMULATIONS_DIR_PATH
     simulations_dir_path.mkdir()
 
-    additional_attributes = add_grid_attribures_to_file if is_grid else add_pointcloud_attributes_to_file
+    additional_attributes = (
+        add_grid_attribures_to_file if is_grid else add_pointcloud_attributes_to_file
+    )
 
-    random_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=RANDOM_SIM_FILE_NAME)
-    create_processed_simulation_file(random_grid_file_path, random_item, additional_attributes)
+    random_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(
+        name=RANDOM_SIM_FILE_NAME
+    )
+    create_processed_simulation_file(
+        random_grid_file_path, random_item, additional_attributes
+    )
 
-    zero_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(name=ZERO_SIM_FILE_NAME)
-    create_processed_simulation_file(zero_grid_file_path, zero_item, additional_attributes)
+    zero_grid_file_path = simulations_dir_path / TARGET_FILE_NAME.format(
+        name=ZERO_SIM_FILE_NAME
+    )
+    create_processed_simulation_file(
+        zero_grid_file_path, zero_item, additional_attributes
+    )
 
 
 def create_processed_coils_file(path: Path, simulation: DataItem):
@@ -120,7 +142,11 @@ def create_processed_coils_file(path: Path, simulation: DataItem):
     """
     with File(str(path), "w") as f:
         assert simulation.coils is not None
-        f.create_dataset(ANTENNA_MASKS_OUT_KEY, data=simulation.coils.astype(np.bool_), dtype=np.bool_)
+        f.create_dataset(
+            ANTENNA_MASKS_OUT_KEY,
+            data=simulation.coils.astype(np.bool_),
+            dtype=np.bool_,
+        )
 
 
 def create_processed_simulation_file(
@@ -152,12 +178,16 @@ def create_processed_simulation_file(
     with File(str(path), "w") as f:
         f.create_dataset(E_FIELD_OUT_KEY, data=efield)
         f.create_dataset(H_FIELD_OUT_KEY, data=hfield)
-        f.create_dataset(FEATURES_OUT_KEY, data=simulation.input.astype(other_prop_field))
+        f.create_dataset(
+            FEATURES_OUT_KEY, data=simulation.input.astype(other_prop_field)
+        )
         f.create_dataset(SUBJECT_OUT_KEY, data=simulation.subject.astype(np.bool_))
 
         f.attrs[DTYPE_OUT_KEY] = simulation.dtype
         assert simulation.truncation_coefficients is not None
-        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = simulation.truncation_coefficients.astype(other_prop_field)
+        f.attrs[TRUNCATION_COEFFICIENTS_OUT_KEY] = (
+            simulation.truncation_coefficients.astype(other_prop_field)
+        )
 
         additional_attributes(f, simulation)
 
@@ -231,7 +261,7 @@ def format_field(
     """
     writing_type = np.dtype(dtype)
     real = field[0]  # Shape: (coils, components, spatial...)
-    im = field[1]    # Shape: (coils, components, spatial...)
+    im = field[1]  # Shape: (coils, components, spatial...)
     if writing_type.kind == FLOAT_DTYPE_KIND:
         field_type = [("re", writing_type), ("im", writing_type)]
         other_types = writing_type
@@ -247,7 +277,9 @@ def format_field(
     return result_field, other_types
 
 
-def check_dtypes_between_iter_result_and_supposed_simulation(result: Dict, item: DataItem):
+def check_dtypes_between_iter_result_and_supposed_simulation(
+    result: Dict, item: DataItem
+):
     """Validate that iterator output dtypes match expected dtypes from reference item.
 
     Compares all data component dtypes between the iterator result dictionary and
@@ -281,13 +313,12 @@ def check_dtypes_between_iter_result_and_supposed_simulation(result: Dict, item:
     assert item.mask.dtype == result["mask"].dtype
     assert item.coils.dtype == result["coils"].dtype
     assert isinstance(item.dtype, type(result["dtype"]))
-    assert (
-        item.truncation_coefficients.dtype
-        == result["truncation_coefficients"].dtype
-    )
+    assert item.truncation_coefficients.dtype == result["truncation_coefficients"].dtype
 
 
-def check_shapes_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
+def check_shapes_between_item_result_and_supposed_simulation(
+    result: Dict, item: DataItem
+):
     """Validate that iterator output shapes match expected shapes from reference item.
 
     Compares all data component shapes between the iterator result dictionary and
@@ -325,13 +356,12 @@ def check_shapes_between_item_result_and_supposed_simulation(result: Dict, item:
     assert item.mask.shape == result["mask"].shape
     assert tuple([2] + list(item.coils.shape[1:])) == result["coils"].shape
     assert len(item.dtype) == len(result["dtype"])
-    assert (
-        item.truncation_coefficients.shape
-        == result["truncation_coefficients"].shape
-    )
+    assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
 
 
-def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(result: Dict, item: DataItem):
+def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(
+    result: Dict, item: DataItem
+):
     """Validate iterator output shapes for pointcloud data after PointPhaseShift transform.
 
     Similar to check_shapes_between_item_result_and_supposed_simulation but specifically
@@ -365,12 +395,18 @@ def check_shapes_between_item_result_and_supposed_simulation_for_pointclous(resu
     assert len(item.dtype) == len(result["dtype"])
     assert item.truncation_coefficients.shape == result["truncation_coefficients"].shape
 
-    expected_field_shape = (item.field.shape[0], item.field.shape[1], *item.field.shape[3:])
+    expected_field_shape = (
+        item.field.shape[0],
+        item.field.shape[1],
+        *item.field.shape[3:],
+    )
     assert expected_field_shape == result["field"].shape
     assert tuple([2] + list(item.coils.shape[1:])) == result["coils"].shape
 
 
-def check_values_between_item_result_and_supposed_simulation(result: Dict, item: DataItem):
+def check_values_between_item_result_and_supposed_simulation(
+    result: Dict, item: DataItem
+):
     """Validate that iterator output values match expected values from reference item.
 
     Checks that non-transformed data components (simulation ID, input, positions,
@@ -400,4 +436,6 @@ def check_values_between_item_result_and_supposed_simulation(result: Dict, item:
     assert not np.equal(item.phase, result["phase"]).all()
     assert not np.equal(item.mask, result["mask"]).all()
     assert item.dtype == result["dtype"]
-    assert np.equal(item.truncation_coefficients, result["truncation_coefficients"]).all()
+    assert np.equal(
+        item.truncation_coefficients, result["truncation_coefficients"]
+    ).all()
