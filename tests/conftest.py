@@ -3,13 +3,13 @@
 This module provides common test fixtures including deterministic random seeds,
 temporary directory management, and cleanup utilities for the entire test suite.
 """
+
 import random
-from shutil import rmtree
 from pathlib import Path
+from shutil import rmtree
 
-import pytest
 import numpy as np
-
+import pytest
 
 PROCESSED_DIR_PATH = "processed"
 
@@ -27,7 +27,7 @@ def deterministicity():
     random.seed(seed)
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def cleanup_basetemp(request):
     """Clean up the basetemp directory after all tests complete."""
     yield
@@ -39,7 +39,7 @@ def cleanup_basetemp(request):
             rmtree(basetemp_path, ignore_errors=True)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def data_dir_path(tmp_path_factory):
     """Create a temporary data directory for module-scoped tests.
 
@@ -53,13 +53,13 @@ def data_dir_path(tmp_path_factory):
     pathlib.Path
         Path to the temporary data directory.
     """
-    data_path = tmp_path_factory.mktemp('data')
+    data_path = tmp_path_factory.mktemp("data")
     yield data_path
     if data_path.exists():
         rmtree(data_path)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def processed_dir_path(data_dir_path):
     """Create a processed data subdirectory within the data directory.
 

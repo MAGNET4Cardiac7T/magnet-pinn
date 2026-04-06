@@ -409,7 +409,7 @@ class DiffFilterFactory:
 
 def mask_padding(input_shape_mask: torch.Tensor, padding: int = 1) -> torch.Tensor:
     """
-    Convenience function for ObjectMaskPadding.
+    Convenience function for ObjectMaskCropping.
 
     Pads object mask to create a boundary region around objects.
 
@@ -426,4 +426,4 @@ def mask_padding(input_shape_mask: torch.Tensor, padding: int = 1) -> torch.Tens
         Boolean tensor where True indicates all neighbors within
         padding distance are filled.
     """
-    return ObjectMaskPadding(padding=padding)(input_shape_mask)
+    return ObjectMaskCropping(padding=padding)(input_shape_mask)

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import cast
 
 from magnet_pinn.preprocessing.cli.helpers import print_report
-from magnet_pinn.preprocessing.preprocessing import Preprocessing, GridPreprocessing
+from magnet_pinn.preprocessing.preprocessing import GridPreprocessing, Preprocessing
 
 
 def test_print_report_without_grid_preprocessing(capsys):
@@ -15,7 +15,9 @@ def test_print_report_without_grid_preprocessing(capsys):
         field_dtype="float32",
         preprocessing_type="point",
     )
-    prep = cast(Preprocessing, Namespace(all_sim_paths=[Path("s1"), Path("s2"), Path("s3")]))
+    prep = cast(
+        Preprocessing, Namespace(all_sim_paths=[Path("s1"), Path("s2"), Path("s3")])
+    )
 
     print_report(args, prep)
     captured = capsys.readouterr().out

@@ -89,7 +89,9 @@ def test_compose_transform_not_inplace_processing_for_grid(zero_grid_item):
     assert result_item is not zero_grid_item
 
 
-def test_compose_transform_not_inplace_processing_for_pointcloud(random_pointcloud_item):
+def test_compose_transform_not_inplace_processing_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     aug = Compose([FirstAugmentation(), SecondAugmentation(), ThirdAugmentation()])
@@ -153,7 +155,9 @@ def test_crop_transform_valid_random_crop_position_shape(zero_grid_item):
     check_cropped_shapes(result)
 
 
-def test_crop_transform_crop_size_matches_original_central_crop_position(zero_grid_item):
+def test_crop_transform_crop_size_matches_original_central_crop_position(
+    zero_grid_item,
+):
     crop = Crop(crop_size=(20, 20, 20), crop_position="center")
     result = crop(zero_grid_item)
     check_items_shapes_supposed_to_be_equal(result, zero_grid_item)
@@ -181,14 +185,18 @@ def test_crop_transform_crop_size_axis_less_equal_zero():
         _ = Crop(crop_size=(10, 10, -1), crop_position="random")
 
 
-def test_crop_transform_crop_size_axis_bigger_than_original_central_crop_position(zero_grid_item):
+def test_crop_transform_crop_size_axis_bigger_than_original_central_crop_position(
+    zero_grid_item,
+):
     with pytest.raises(ValueError):
         _ = Crop(crop_size=(21, 10, 10), crop_position="center")(zero_grid_item)
         _ = Crop(crop_size=(10, 21, 10), crop_position="center")(zero_grid_item)
         _ = Crop(crop_size=(10, 10, 21), crop_position="center")(zero_grid_item)
 
 
-def test_crop_transform_crop_size_axis_bigger_than_original_random_crop_position(zero_grid_item):
+def test_crop_transform_crop_size_axis_bigger_than_original_random_crop_position(
+    zero_grid_item,
+):
     with pytest.raises(ValueError):
         _ = Crop(crop_size=(21, 10, 10), crop_position="random")(zero_grid_item)
         _ = Crop(crop_size=(10, 21, 10), crop_position="random")(zero_grid_item)
@@ -203,10 +211,14 @@ def test_crop_transform_valid_central_crop_position_check_values(random_grid_ite
 
     check_elements_not_changed_by_crop(result, random_grid_item)
     assert np.equal(result.input, random_grid_item.input[:, 5:15, 5:15, 5:15]).all()
-    assert np.equal(result.field, random_grid_item.field[:, :, :, :, 5:15, 5:15, 5:15]).all()
+    assert np.equal(
+        result.field, random_grid_item.field[:, :, :, :, 5:15, 5:15, 5:15]
+    ).all()
     assert np.equal(result.subject, random_grid_item.subject[5:15, 5:15, 5:15]).all()
     assert np.equal(result.coils, random_grid_item.coils[:, 5:15, 5:15, 5:15]).all()
-    assert np.equal(result.positions, random_grid_item.positions[:, 5:15, 5:15, 5:15]).all()
+    assert np.equal(
+        result.positions, random_grid_item.positions[:, 5:15, 5:15, 5:15]
+    ).all()
 
 
 def test_crop_transform_valid_random_crop_position(zero_grid_item):
@@ -219,11 +231,15 @@ def test_crop_transform_valid_random_crop_position(zero_grid_item):
     result = crop(zero_grid_item)
 
     check_elements_not_changed_by_crop(result, zero_grid_item)
-    assert np.equal(result.field, zero_grid_item.field[:, :, :, :, 0:10, 0:10, 0:10]).all()
+    assert np.equal(
+        result.field, zero_grid_item.field[:, :, :, :, 0:10, 0:10, 0:10]
+    ).all()
     assert np.equal(result.input, zero_grid_item.input[:, 0:10, 0:10, 0:10]).all()
     assert np.equal(result.subject, zero_grid_item.subject[0:10, 0:10, 0:10]).all()
     assert np.equal(result.coils, zero_grid_item.coils[:, 0:10, 0:10, 0:10]).all()
-    assert np.equal(result.positions, zero_grid_item.positions[:, 0:10, 0:10, 0:10]).all()
+    assert np.equal(
+        result.positions, zero_grid_item.positions[:, 0:10, 0:10, 0:10]
+    ).all()
 
 
 def test_crop_transform_actions_not_inplace(zero_grid_item):
@@ -319,14 +335,18 @@ def test_phase_shift_transform_check_invalid_simulation_for_binomial():
         _ = PhaseShift(num_coils=8, sampling_method="binomial")(None)  # type: ignore[arg-type]
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_grid(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_grid(
+    random_grid_item,
+):
     aug = PhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
     check_items_datatypes(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_grid(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_grid(
+    random_grid_item,
+):
     """
     Indeed the data item does not have a phase property in the normal case before entering the
     phase shifter, but we have anyway created it in the item fixture for easy check later
@@ -337,21 +357,27 @@ def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_grid(r
     check_items_datatypes(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_uniform_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
     check_items_datatypes(result, random_pointcloud_item)
 
 
-def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_valid_processing_dtypes_binomial_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
     check_items_datatypes(result, random_pointcloud_item)
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(
+    random_grid_item,
+):
     aug = PhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
@@ -367,12 +393,16 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_grid(ra
     assert result.coils.shape == (2, *random_grid_item.coils.shape[1:])
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(
+        result, random_pointcloud_item
+    )
     # Field: coils dimension (axis 2) removed -> (2, 2, 8, 3, 8000) -> (2, 2, 3, 8000)
     expected_field_shape = (
         random_pointcloud_item.field.shape[0],
@@ -384,7 +414,9 @@ def test_phase_shift_transform_check_valid_processing_shapes_uniform_for_pointcl
     assert result.coils.shape == (2, *random_pointcloud_item.coils.shape[1:])
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(random_grid_item):
+def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(
+    random_grid_item,
+):
     aug = PhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
 
@@ -400,12 +432,16 @@ def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_grid(r
     assert result.coils.shape == (2, *random_grid_item.coils.shape[1:])
 
 
-def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_valid_processing_shapes_binomial_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
 
-    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(
+        result, random_pointcloud_item
+    )
     # Field: coils dimension (axis 2) removed -> (2, 2, 8, 3, 8000) -> (2, 2, 3, 8000)
     expected_field_shape = (
         random_pointcloud_item.field.shape[0],
@@ -424,7 +460,9 @@ def test_phase_shift_transform_check_values_uniform_for_grid(random_grid_item):
     check_complex_number_calculations_in_phase_shift(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_values_uniform_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_values_uniform_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
@@ -440,7 +478,9 @@ def test_phase_shift_transform_check_values_binomial_for_grid(random_grid_item):
     check_complex_number_calculations_in_phase_shift(result, random_grid_item)
 
 
-def test_phase_shift_transform_check_values_binomial_for_pointcloud(random_pointcloud_item):
+def test_phase_shift_transform_check_values_binomial_for_pointcloud(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
@@ -449,19 +489,25 @@ def test_phase_shift_transform_check_values_binomial_for_pointcloud(random_point
     check_complex_number_calculations_in_phase_shift(result, random_pointcloud_item)
 
 
-def test_phase_shift_transform_check_not_inplace_processing_for_grid_uniform(random_grid_item):
+def test_phase_shift_transform_check_not_inplace_processing_for_grid_uniform(
+    random_grid_item,
+):
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_grid_item)
 
     assert result is not random_grid_item
 
 
-def test_phase_shift_transform_check_not_inplace_processing_for_grid_binomial(random_grid_item):
+def test_phase_shift_transform_check_not_inplace_processing_for_grid_binomial(
+    random_grid_item,
+):
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_grid_item)
 
     assert result is not random_grid_item
 
 
-def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_uniform(random_pointcloud_item):
+def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_uniform(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
@@ -469,7 +515,9 @@ def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_unifo
     assert result is not random_pointcloud_item
 
 
-def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_binomial(random_pointcloud_item):
+def test_phase_shift_transform_check_not_inplace_processing_for_pointcloud_binomial(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
@@ -501,28 +549,36 @@ def test_point_sampling_transform_check_invalid_simulation():
         _ = PointSampling(points_sampled=1)(None)  # type: ignore[arg-type]  # Intentionally testing invalid input
 
 
-def test_point_sampling_transform_check_points_sampling_integer_equal_zero(random_pointcloud_item):
+def test_point_sampling_transform_check_points_sampling_integer_equal_zero(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=0)(random_pointcloud_item)
 
 
-def test_point_sampling_transform_check_points_sampling_float_equal_zero(random_pointcloud_item):
+def test_point_sampling_transform_check_points_sampling_float_equal_zero(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=0.0)(random_pointcloud_item)
 
 
-def test_point_sampling_transform_check_points_sampling_integer_less_than_zero(random_pointcloud_item):
+def test_point_sampling_transform_check_points_sampling_integer_less_than_zero(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     with pytest.raises(ValueError):
         _ = PointSampling(points_sampled=-1)(random_pointcloud_item)
 
 
-def test_point_sampling_transform_check_points_sampling_float_less_than_zero(random_pointcloud_item):
+def test_point_sampling_transform_check_points_sampling_float_less_than_zero(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     with pytest.raises(ValueError):
@@ -595,7 +651,9 @@ def test_points_sampling_transform_check_points_sampling_parameter_float_and_big
         _ = PointSampling(points_sampled=1.0001)(random_pointcloud_item)
 
 
-def test_points_sampling_transform_check_not_inplace_processing_for_float(random_pointcloud_item):
+def test_points_sampling_transform_check_not_inplace_processing_for_float(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PointSampling(points_sampled=0.5)(random_pointcloud_item)
@@ -603,7 +661,9 @@ def test_points_sampling_transform_check_not_inplace_processing_for_float(random
     assert result is not random_pointcloud_item
 
 
-def test_points_sampling_transform_check_not_inplace_processing_for_int(random_pointcloud_item):
+def test_points_sampling_transform_check_not_inplace_processing_for_int(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
     result = PointSampling(points_sampled=4000)(random_pointcloud_item)
@@ -651,14 +711,18 @@ def test_grid_phase_shift_transform_check_invalid_simulation_for_binomial():
         _ = PhaseShift(num_coils=8, sampling_method="binomial")(None)  # type: ignore[arg-type]
 
 
-def test_grid_phase_shift_transform_check_valid_processing_dtypes_uniform(random_grid_item):
+def test_grid_phase_shift_transform_check_valid_processing_dtypes_uniform(
+    random_grid_item,
+):
     aug = GridPhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
     check_items_datatypes(result, random_grid_item)
 
 
-def test_grid_phase_shift_transform_check_valid_processing_dtypes_binomial(random_grid_item):
+def test_grid_phase_shift_transform_check_valid_processing_dtypes_binomial(
+    random_grid_item,
+):
     """
     Indeed the data item does not have a phase property in the normal case before entering the
     phase shifter, but we have anyway created it in the item fixture for easy check later
@@ -669,7 +733,9 @@ def test_grid_phase_shift_transform_check_valid_processing_dtypes_binomial(rando
     check_items_datatypes(result, random_grid_item)
 
 
-def test_grid_phase_shift_transform_check_valid_processing_shapes_uniform(random_grid_item):
+def test_grid_phase_shift_transform_check_valid_processing_shapes_uniform(
+    random_grid_item,
+):
     aug = GridPhaseShift(num_coils=8, sampling_method="uniform")
     result = aug(random_grid_item)
 
@@ -685,7 +751,9 @@ def test_grid_phase_shift_transform_check_valid_processing_shapes_uniform(random
     assert result.coils.shape == (2, *random_grid_item.coils.shape[1:])
 
 
-def test_grid_phase_shift_transform_check_valid_processing_shapes_binomial(random_grid_item):
+def test_grid_phase_shift_transform_check_valid_processing_shapes_binomial(
+    random_grid_item,
+):
     aug = GridPhaseShift(num_coils=8, sampling_method="binomial")
     result = aug(random_grid_item)
 
@@ -715,13 +783,17 @@ def test_grid_phase_shift_transform_check_values_binomial(random_grid_item):
     check_complex_number_calculations_in_phase_shift(result, random_grid_item)
 
 
-def test_grid_phase_shift_transform_check_not_inplace_processing_for_uniform(random_grid_item):
+def test_grid_phase_shift_transform_check_not_inplace_processing_for_uniform(
+    random_grid_item,
+):
     result = GridPhaseShift(num_coils=8, sampling_method="uniform")(random_grid_item)
 
     assert result is not random_grid_item
 
 
-def test_grid_phase_shift_transform_check_not_inplace_processing_for_binomial(random_grid_item):
+def test_grid_phase_shift_transform_check_not_inplace_processing_for_binomial(
+    random_grid_item,
+):
     result = GridPhaseShift(num_coils=8, sampling_method="binomial")(random_grid_item)
 
     assert result is not random_grid_item
@@ -759,29 +831,43 @@ def test_point_phase_shift_transform_check_invalid_simulation_for_binomial():
         _ = PointPhaseShift(num_coils=8, sampling_method="binomial")(None)  # type: ignore[arg-type]
 
 
-def test_point_phase_shift_transform_check_valid_processing_dtypes_uniform(random_pointcloud_item):
+def test_point_phase_shift_transform_check_valid_processing_dtypes_uniform(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(
+        random_pointcloud_item
+    )
     check_items_datatypes(result, random_pointcloud_item)
 
 
-def test_point_phase_shift_transform_check_valid_processing_dtypes_binomial(random_pointcloud_item):
+def test_point_phase_shift_transform_check_valid_processing_dtypes_binomial(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(
+        random_pointcloud_item
+    )
     check_items_datatypes(result, random_pointcloud_item)
 
 
-def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(random_pointcloud_item):
+def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(
+    random_pointcloud_item,
+):
     """
     Validates shapes after PointPhaseShift transform with uniform sampling.
     """
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(
+        random_pointcloud_item
+    )
 
-    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(
+        result, random_pointcloud_item
+    )
     expected_field_shape = (
         random_pointcloud_item.field.shape[0],
         random_pointcloud_item.field.shape[1],
@@ -791,22 +877,30 @@ def test_point_phase_shift_transform_check_valid_processing_shapes_uniform(rando
     assert result.coils.shape == (2, *random_pointcloud_item.coils.shape[1:])
 
 
-def test_point_phase_shift_transform_check_valid_processing_shapes_binomial(random_pointcloud_item):
+def test_point_phase_shift_transform_check_valid_processing_shapes_binomial(
+    random_pointcloud_item,
+):
     """
     Validates shapes after PointPhaseShift transform with binomial sampling.
     """
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(
+        random_pointcloud_item
+    )
 
-    check_constant_shapes_not_changed_except_for_field_coils(result, random_pointcloud_item)
+    check_constant_shapes_not_changed_except_for_field_coils(
+        result, random_pointcloud_item
+    )
     expected_field_shape = (
         random_pointcloud_item.field.shape[0],
         random_pointcloud_item.field.shape[1],
         *random_pointcloud_item.field.shape[3:],
     )
     assert result.field.shape == expected_field_shape
-    assert result.coils.shape == tuple([2] + list(random_pointcloud_item.coils.shape[1:]))
+    assert result.coils.shape == tuple(
+        [2] + list(random_pointcloud_item.coils.shape[1:])
+    )
 
 
 def test_point_phase_shift_transform_check_values_uniform(random_pointcloud_item):
@@ -816,10 +910,14 @@ def test_point_phase_shift_transform_check_values_uniform(random_pointcloud_item
     """
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(
+        random_pointcloud_item
+    )
 
     check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
-    check_complex_number_calculations_in_pointscloud_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_pointscloud_phase_shift(
+        result, random_pointcloud_item
+    )
 
 
 def test_point_phase_shift_transform_check_values_binomial(random_pointcloud_item):
@@ -829,24 +927,36 @@ def test_point_phase_shift_transform_check_values_binomial(random_pointcloud_ite
     """
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(
+        random_pointcloud_item
+    )
 
     check_constant_values_not_changed_by_phase_shift(result, random_pointcloud_item)
-    check_complex_number_calculations_in_pointscloud_phase_shift(result, random_pointcloud_item)
+    check_complex_number_calculations_in_pointscloud_phase_shift(
+        result, random_pointcloud_item
+    )
 
 
-def test_point_phase_shift_transform_check_not_inplace_processing_for_uniform(random_pointcloud_item):
+def test_point_phase_shift_transform_check_not_inplace_processing_for_uniform(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="uniform")(
+        random_pointcloud_item
+    )
 
     assert result is not random_pointcloud_item
 
 
-def test_point_phase_shift_transform_check_not_inplace_processing_for_binomial(random_pointcloud_item):
+def test_point_phase_shift_transform_check_not_inplace_processing_for_binomial(
+    random_pointcloud_item,
+):
     random_pointcloud_item = deepcopy(random_pointcloud_item)
     random_pointcloud_item.subject = np.max(random_pointcloud_item.subject, axis=0)
-    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(random_pointcloud_item)
+    result = PointPhaseShift(num_coils=8, sampling_method="binomial")(
+        random_pointcloud_item
+    )
 
     assert result is not random_pointcloud_item
 
@@ -914,13 +1024,25 @@ def test_rotate_transform_90_degrees_z_axis_for_grid(zero_grid_item):
     assert np.equal(result.phase, zero_grid_item.phase).all()
     assert np.equal(result.mask, zero_grid_item.mask).all()
     assert result.dtype == zero_grid_item.dtype
-    assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
+    assert np.equal(
+        result.truncation_coefficients, zero_grid_item.truncation_coefficients
+    ).all()
 
-    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
-    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
-    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))).all()
-    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))).all()
-    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))).all()
+    assert np.equal(
+        result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))
+    ).all()
 
 
 def test_rotate_transform_90_degrees_x_axis_for_grid(zero_grid_item):
@@ -929,11 +1051,21 @@ def test_rotate_transform_90_degrees_x_axis_for_grid(zero_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="x")
     result = aug(zero_grid_item)
 
-    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-2, -1))).all()
-    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-2, -1))).all()
-    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-2, -1))).all()
-    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-2, -1))).all()
-    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-2, -1))).all()
+    assert np.equal(
+        result.input, np.rot90(zero_grid_item.input, k=1, axes=(-2, -1))
+    ).all()
+    assert np.equal(
+        result.field, np.rot90(zero_grid_item.field, k=1, axes=(-2, -1))
+    ).all()
+    assert np.equal(
+        result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-2, -1))
+    ).all()
+    assert np.equal(
+        result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-2, -1))
+    ).all()
+    assert np.equal(
+        result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-2, -1))
+    ).all()
 
 
 def test_rotate_transform_90_degrees_y_axis_for_grid(zero_grid_item):
@@ -942,11 +1074,21 @@ def test_rotate_transform_90_degrees_y_axis_for_grid(zero_grid_item):
     aug = Rotate(rot_angle="90", rot_axis="y")
     result = aug(zero_grid_item)
 
-    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -1))).all()
-    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -1))).all()
-    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -1))).all()
-    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -1))).all()
-    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -1))).all()
+    assert np.equal(
+        result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -1))
+    ).all()
+    assert np.equal(
+        result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -1))
+    ).all()
+    assert np.equal(
+        result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -1))
+    ).all()
+    assert np.equal(
+        result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -1))
+    ).all()
+    assert np.equal(
+        result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -1))
+    ).all()
 
 
 def test_rotate_transform_random_angle_z_axis_for_grid(zero_grid_item):
@@ -956,11 +1098,21 @@ def test_rotate_transform_random_angle_z_axis_for_grid(zero_grid_item):
     result = aug(zero_grid_item)
 
     assert aug.n_rot in [0, 1, 2, 3]
-    assert np.equal(result.input, np.rot90(zero_grid_item.input, k=aug.n_rot, axes=(-3, -2))).all()
-    assert np.equal(result.field, np.rot90(zero_grid_item.field, k=aug.n_rot, axes=(-3, -2))).all()
-    assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=aug.n_rot, axes=(-3, -2))).all()
-    assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=aug.n_rot, axes=(-3, -2))).all()
-    assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=aug.n_rot, axes=(-3, -2))).all()
+    assert np.equal(
+        result.input, np.rot90(zero_grid_item.input, k=aug.n_rot, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.field, np.rot90(zero_grid_item.field, k=aug.n_rot, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.subject, np.rot90(zero_grid_item.subject, k=aug.n_rot, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.coils, np.rot90(zero_grid_item.coils, k=aug.n_rot, axes=(-3, -2))
+    ).all()
+    assert np.equal(
+        result.positions, np.rot90(zero_grid_item.positions, k=aug.n_rot, axes=(-3, -2))
+    ).all()
 
 
 def test_rotate_transform_random_angle_correct_range_parameters(zero_grid_item):
@@ -1007,11 +1159,21 @@ def test_rotate_transform_random_angle_k1_rotation(zero_grid_item):
         result = aug(zero_grid_item)
 
         assert aug.n_rot == 1
-        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))).all()
-        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))).all()
-        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))).all()
-        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))).all()
-        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))).all()
+        assert np.equal(
+            result.input, np.rot90(zero_grid_item.input, k=1, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.field, np.rot90(zero_grid_item.field, k=1, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.subject, np.rot90(zero_grid_item.subject, k=1, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.coils, np.rot90(zero_grid_item.coils, k=1, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.positions, np.rot90(zero_grid_item.positions, k=1, axes=(-3, -2))
+        ).all()
 
 
 def test_rotate_transform_random_angle_k2_rotation(zero_grid_item):
@@ -1026,11 +1188,21 @@ def test_rotate_transform_random_angle_k2_rotation(zero_grid_item):
         result = aug(zero_grid_item)
 
         assert aug.n_rot == 2
-        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=2, axes=(-3, -2))).all()
-        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=2, axes=(-3, -2))).all()
-        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=2, axes=(-3, -2))).all()
-        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=2, axes=(-3, -2))).all()
-        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=2, axes=(-3, -2))).all()
+        assert np.equal(
+            result.input, np.rot90(zero_grid_item.input, k=2, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.field, np.rot90(zero_grid_item.field, k=2, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.subject, np.rot90(zero_grid_item.subject, k=2, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.coils, np.rot90(zero_grid_item.coils, k=2, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.positions, np.rot90(zero_grid_item.positions, k=2, axes=(-3, -2))
+        ).all()
 
 
 def test_rotate_transform_random_angle_k3_rotation(zero_grid_item):
@@ -1045,11 +1217,21 @@ def test_rotate_transform_random_angle_k3_rotation(zero_grid_item):
         result = aug(zero_grid_item)
 
         assert aug.n_rot == 3
-        assert np.equal(result.input, np.rot90(zero_grid_item.input, k=3, axes=(-3, -2))).all()
-        assert np.equal(result.field, np.rot90(zero_grid_item.field, k=3, axes=(-3, -2))).all()
-        assert np.equal(result.subject, np.rot90(zero_grid_item.subject, k=3, axes=(-3, -2))).all()
-        assert np.equal(result.coils, np.rot90(zero_grid_item.coils, k=3, axes=(-3, -2))).all()
-        assert np.equal(result.positions, np.rot90(zero_grid_item.positions, k=3, axes=(-3, -2))).all()
+        assert np.equal(
+            result.input, np.rot90(zero_grid_item.input, k=3, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.field, np.rot90(zero_grid_item.field, k=3, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.subject, np.rot90(zero_grid_item.subject, k=3, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.coils, np.rot90(zero_grid_item.coils, k=3, axes=(-3, -2))
+        ).all()
+        assert np.equal(
+            result.positions, np.rot90(zero_grid_item.positions, k=3, axes=(-3, -2))
+        ).all()
 
 
 def test_rotate_transform_not_inplace_processing_for_grid(random_grid_item):
@@ -1142,7 +1324,9 @@ def test_mirror_transform_z_axis_for_grid(zero_grid_item):
     assert np.equal(result.phase, zero_grid_item.phase).all()
     assert np.equal(result.mask, zero_grid_item.mask).all()
     assert result.dtype == zero_grid_item.dtype
-    assert np.equal(result.truncation_coefficients, zero_grid_item.truncation_coefficients).all()
+    assert np.equal(
+        result.truncation_coefficients, zero_grid_item.truncation_coefficients
+    ).all()
 
     assert np.equal(result.input, np.flip(zero_grid_item.input, axis=-1)).all()
     assert np.equal(result.field, np.flip(zero_grid_item.field, axis=-1)).all()
@@ -1200,7 +1384,9 @@ def test_mirror_transform_z_axis_for_pointcloud(random_pointcloud_item):
     assert np.equal(result.phase, random_pointcloud_item.phase).all()
     assert np.equal(result.mask, random_pointcloud_item.mask).all()
     assert result.dtype == random_pointcloud_item.dtype
-    assert np.equal(result.truncation_coefficients, random_pointcloud_item.truncation_coefficients).all()
+    assert np.equal(
+        result.truncation_coefficients, random_pointcloud_item.truncation_coefficients
+    ).all()
 
 
 def test_mirror_transform_not_inplace_processing_for_grid(random_grid_item):
@@ -1237,14 +1423,20 @@ def test_check_transforms_with_single_phase_shift():
 def test_check_transforms_with_compose_no_phase_shift():
     """Test check_transforms raises error when Compose has no PhaseShift transform."""
     aug = Compose([FirstAugmentation(), SecondAugmentation()])
-    with pytest.raises(ValueError, match="Exactly one of the composed transforms should be a PhaseShift transform"):
+    with pytest.raises(
+        ValueError,
+        match="Exactly one of the composed transforms should be a PhaseShift transform",
+    ):
         check_transforms(aug)
 
 
 def test_check_transforms_with_compose_multiple_phase_shifts():
     """Test check_transforms raises error when Compose has multiple PhaseShift transforms."""
     aug = Compose([PhaseShift(num_coils=8), PhaseShift(num_coils=8)])
-    with pytest.raises(ValueError, match="Exactly one of the composed transforms should be a PhaseShift transform"):
+    with pytest.raises(
+        ValueError,
+        match="Exactly one of the composed transforms should be a PhaseShift transform",
+    ):
         check_transforms(aug)
 
 
@@ -1256,7 +1448,9 @@ def test_check_transforms_with_invalid_transform_type():
 
 def test_check_transforms_with_not_base_transform():
     """Test check_transforms raises error when transform is not BaseTransform instance."""
-    with pytest.raises(ValueError, match="Transforms should be an instance of BaseTransform"):
+    with pytest.raises(
+        ValueError, match="Transforms should be an instance of BaseTransform"
+    ):
         check_transforms("not a transform")
 
 

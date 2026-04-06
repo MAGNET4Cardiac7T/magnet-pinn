@@ -1,0 +1,827 @@
+"""Tests for foundational 3D U-Net utilities, building blocks, and squeeze-excitation blocks."""
+
+import importlib.util
+from typing import cast
+
+import pytest
+import torch
+from torch import nn
+
+from magnet_pinn.models import (
+    ResidualUNet2D,
+    ResidualUNet3D,
+    ResidualUNetSE3D,
+    UNet2D,
+    UNet3D,
+)
+from magnet_pinn.models._unet3d.buildingblocks import (
+    Decoder,
+    DoubleConv,
+    Encoder,
+    InterpolateUpsampling,
+    NoUpsampling,
+    ResNetBlock,
+    ResNetBlockSE,
+    SingleConv,
+    TransposeConvUpsampling,
+    create_conv,
+    create_decoders,
+    create_encoders,
+)
+from magnet_pinn.models._unet3d.models import get_model
+from magnet_pinn.models._unet3d.se import (
+    ChannelSELayer3D,
+    ChannelSpatialSELayer3D,
+    SpatialSELayer3D,
+)
+from magnet_pinn.models._unet3d.utils import get_class, number_of_features_per_level
+
+
+def _repeat_channels(input_tensor: torch.Tensor, channels: int) -> torch.Tensor:
+    """Repeat the fixture along the channel axis to create a multi-channel input."""
+    repeats = [1, channels] + [1] * (input_tensor.dim() - 2)
+    return input_tensor.repeat(*repeats)
+
+
+def _expand_to_eight_channels(input_tensor: torch.Tensor) -> torch.Tensor:
+    """Repeat the single-channel fixture to create an 8-channel input."""
+    return _repeat_channels(input_tensor, 8)
+
+
+def _assert_nonzero_gradients(
+    output_tensor: torch.Tensor,
+    input_tensor: torch.Tensor,
+    module: nn.Module | None = None,
+) -> None:
+    """Backpropagate and assert all parameters and the input received nonzero gradients."""
+    output_tensor.sum().backward()
+
+    assert input_tensor.grad is not None
+    assert torch.count_nonzero(input_tensor.grad).item() > 0
+
+    if module is not None:
+        grads = [p.grad for p in module.parameters() if p.requires_grad]
+        if grads:
+            assert all(
+                g is not None for g in grads
+            ), "Some parameters received no gradient"
+            grads_nonnull: list[torch.Tensor] = [g for g in grads if g is not None]
+            assert all(
+                torch.count_nonzero(g).item() > 0 for g in grads_nonnull
+            ), "Some parameter gradients are zero"
+
+
+class TestUtils:
+    def test_get_class_returns_requested_class(self) -> None:
+        loaded_class = get_class("ReLU", ["torch.nn"])
+
+        assert loaded_class is nn.ReLU
+
+    def test_get_class_raises_for_unknown_class(self) -> None:
+        with pytest.raises(RuntimeError, match="Unsupported dataset class"):
+            get_class("MissingClass", ["torch.nn"])
+
+    def test_number_of_features_per_level_doubles_per_level(self) -> None:
+        assert number_of_features_per_level(8, 3) == [8, 16, 32]
+
+
+class TestChannelSELayer3D:
+    @pytest.mark.parametrize("reduction_ratio", [1, 2, 4])
+    def test_forward_preserves_shape(
+        self,
+        small_3d_input: torch.Tensor,
+        reduction_ratio: int,
+    ) -> None:
+        layer = ChannelSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+
+        output_tensor = layer(input_tensor)
+
+        assert output_tensor.shape == input_tensor.shape
+
+    @pytest.mark.parametrize("reduction_ratio", [1, 2, 4])
+    def test_backward_produces_nonzero_input_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+        reduction_ratio: int,
+    ) -> None:
+        layer = ChannelSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = layer(input_tensor)
+
+        _assert_nonzero_gradients(output_tensor, input_tensor, layer)
+
+
+class TestSpatialSELayer3D:
+    """Tests for SpatialSELayer3D covering the default path and the known-broken weights branch."""
+
+    def test_forward_preserves_shape(self, small_3d_input: torch.Tensor) -> None:
+        layer = SpatialSELayer3D(num_channels=8)
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+
+        output_tensor = layer(input_tensor)
+
+        assert output_tensor.shape == input_tensor.shape
+
+    def test_backward_produces_nonzero_input_gradients(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        layer = SpatialSELayer3D(num_channels=8)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = layer(input_tensor)
+
+        _assert_nonzero_gradients(output_tensor, input_tensor, layer)
+
+    def test_weights_branch_raises_boolean_ambiguity_on_multi_element_tensor(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        """Regression: ``SpatialSELayer3D.forward`` guards the few-shot path with ``if weights:``.
+
+        When ``weights`` is a multi-element tensor, PyTorch cannot reduce it to a single
+        boolean, so a ``RuntimeError`` ("Boolean value of Tensor with more than one element
+        is ambiguous") is raised at that guard — before the internal ``F.conv2d`` call is
+        even reached.  This test pins that specific failure so any change to the guard
+        condition is caught immediately.
+
+        Note: the deeper bug (``F.conv2d`` being called on a 5-D tensor) is a separate
+        issue that is not exercised here.
+        """
+        layer = SpatialSELayer3D(num_channels=8)
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+        # Provide a non-None, multi-element weights tensor to trigger the boolean guard.
+        weights = torch.ones(1, 8, 1, 1)
+
+        with pytest.raises(
+            RuntimeError, match="Boolean value of Tensor with more than one"
+        ):
+            layer(input_tensor, weights=weights)
+
+
+class TestChannelSpatialSELayer3D:
+    @pytest.mark.parametrize("reduction_ratio", [1, 2])
+    def test_forward_preserves_shape(
+        self,
+        small_3d_input: torch.Tensor,
+        reduction_ratio: int,
+    ) -> None:
+        layer = ChannelSpatialSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+
+        output_tensor = layer(input_tensor)
+
+        assert output_tensor.shape == input_tensor.shape
+
+    @pytest.mark.parametrize("reduction_ratio", [1, 2])
+    def test_backward_produces_nonzero_input_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+        reduction_ratio: int,
+    ) -> None:
+        layer = ChannelSpatialSELayer3D(num_channels=8, reduction_ratio=reduction_ratio)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = layer(input_tensor)
+
+        _assert_nonzero_gradients(output_tensor, input_tensor, layer)
+
+
+class TestSingleConv:
+    @pytest.mark.parametrize("order", ["cr", "gcr", "cl", "ce", "bcr", "cbrd"])
+    @pytest.mark.parametrize("is3d", [True, False])
+    def test_forward_preserves_spatial_shape_and_uses_expected_bias(
+        self,
+        order: str,
+        is3d: bool,
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
+    ) -> None:
+        input_tensor = small_3d_input if is3d else small_2d_input
+        layer = SingleConv(1, 8, order=order, num_groups=8, is3d=is3d)
+
+        output_tensor = layer(input_tensor)
+
+        assert output_tensor.shape == (1, 8, *input_tensor.shape[2:])
+        conv = cast(nn.Conv3d, layer.conv)
+        if "g" in order or "b" in order:
+            assert conv.bias is None
+        else:
+            assert conv.bias is not None
+
+    def test_capital_d_order_creates_dropout2d_layer(
+        self, small_2d_input: torch.Tensor
+    ) -> None:
+        layer = SingleConv(1, 8, order="cbrD", num_groups=8, is3d=False)
+
+        output_tensor = layer(small_2d_input)
+
+        assert isinstance(layer.dropout2d, nn.Dropout2d)
+        assert output_tensor.shape == (1, 8, *small_2d_input.shape[2:])
+
+
+class TestDoubleConv:
+    @pytest.mark.parametrize(
+        ("upscale", "expected_conv1_out_channels"),
+        [(1, 16), (2, 8)],
+    )
+    def test_encoder_path_uses_expected_intermediate_channels(
+        self,
+        small_3d_input: torch.Tensor,
+        upscale: int,
+        expected_conv1_out_channels: int,
+    ) -> None:
+        module = DoubleConv(
+            8, 16, encoder=True, upscale=upscale, num_groups=8, is3d=True
+        )
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+
+        output_tensor = module(input_tensor)
+
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.in_channels == 8
+        assert conv1.out_channels == expected_conv1_out_channels
+        assert conv2.in_channels == expected_conv1_out_channels
+        assert conv2.out_channels == 16
+        assert output_tensor.shape == (1, 16, *small_3d_input.shape[2:])
+
+    def test_encoder_path_clamps_intermediate_channels_to_input_channels(self) -> None:
+        module = DoubleConv(32, 16, encoder=True, upscale=2, num_groups=8, is3d=True)
+        input_tensor = torch.randn(1, 32, 8, 8, 8)
+
+        output_tensor = module(input_tensor)
+
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.out_channels == 32
+        assert conv2.in_channels == 32
+        assert output_tensor.shape == (1, 16, 8, 8, 8)
+
+    def test_decoder_path_reduces_channels_in_first_convolution(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        module = DoubleConv(24, 8, encoder=False, num_groups=8, is3d=True)
+        input_tensor = _repeat_channels(small_3d_input, 24)
+
+        output_tensor = module(input_tensor)
+
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.in_channels == 24
+        assert conv1.out_channels == 8
+        assert conv2.in_channels == 8
+        assert conv2.out_channels == 8
+        assert output_tensor.shape == (1, 8, *small_3d_input.shape[2:])
+
+    def test_tuple_dropout_prob_applies_to_each_convolution(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        module = DoubleConv(
+            8,
+            16,
+            encoder=True,
+            order="cbrd",
+            num_groups=8,
+            dropout_prob=(0.1, 0.2),
+            is3d=True,
+        )
+        input_tensor = _expand_to_eight_channels(small_3d_input)
+
+        output_tensor = module(input_tensor)
+
+        assert output_tensor.shape == (1, 16, *small_3d_input.shape[2:])
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        d1 = cast(nn.Dropout, sc1.dropout)
+        d2 = cast(nn.Dropout, sc2.dropout)
+        assert isinstance(sc1.dropout, nn.Dropout)
+        assert isinstance(sc2.dropout, nn.Dropout)
+        assert d1.p == pytest.approx(0.1)
+        assert d2.p == pytest.approx(0.2)
+
+
+class TestResNetBlock:
+    @pytest.mark.parametrize(
+        ("order", "expected_non_linearity"),
+        [("cge", nn.ELU), ("cgr", nn.ReLU), ("cgl", nn.LeakyReLU)],
+    )
+    def test_identity_shortcut_preserves_shape_and_selects_non_linearity(
+        self,
+        small_3d_input: torch.Tensor,
+        order: str,
+        expected_non_linearity: type[nn.Module],
+    ) -> None:
+        block = ResNetBlock(8, 8, order=order, num_groups=8, is3d=True)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = block(input_tensor)
+
+        assert isinstance(block.conv1, nn.Identity)
+        assert isinstance(block.non_linearity, expected_non_linearity)
+        assert output_tensor.shape == input_tensor.shape
+        _assert_nonzero_gradients(output_tensor, input_tensor, block)
+
+    @pytest.mark.parametrize(
+        ("is3d", "expected_projection_type"),
+        [(True, nn.Conv3d), (False, nn.Conv2d)],
+    )
+    def test_projection_shortcut_uses_convolution_when_channels_change(
+        self,
+        is3d: bool,
+        expected_projection_type: type[nn.Module],
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
+    ) -> None:
+        block = ResNetBlock(1, 8, order="cge", num_groups=8, is3d=is3d)
+        input_tensor = (
+            (small_3d_input if is3d else small_2d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = block(input_tensor)
+
+        assert isinstance(block.conv1, expected_projection_type)
+        assert output_tensor.shape == (1, 8, *input_tensor.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, block)
+
+
+class TestResNetBlockSE:
+    @pytest.mark.parametrize(
+        ("se_module", "expected_se_type"),
+        [
+            ("scse", ChannelSpatialSELayer3D),
+            ("cse", ChannelSELayer3D),
+            ("sse", SpatialSELayer3D),
+        ],
+    )
+    def test_forward_preserves_shape_and_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+        se_module: str,
+        expected_se_type: type[nn.Module],
+    ) -> None:
+        block = ResNetBlockSE(8, 8, num_groups=8, se_module=se_module)
+        input_tensor = (
+            _expand_to_eight_channels(small_3d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = block(input_tensor)
+
+        assert isinstance(block.se_module, expected_se_type)
+        assert output_tensor.shape == input_tensor.shape
+        _assert_nonzero_gradients(output_tensor, input_tensor, block)
+
+    def test_invalid_se_module_raises_assertion(self) -> None:
+        with pytest.raises(AssertionError):
+            ResNetBlockSE(8, 8, num_groups=8, se_module="invalid")
+
+
+class TestEncoder:
+    @pytest.mark.parametrize(
+        ("pool_type", "is3d", "expected_pool_type"),
+        [
+            ("max", True, nn.MaxPool3d),
+            ("avg", True, nn.AvgPool3d),
+            ("max", False, nn.MaxPool2d),
+            ("avg", False, nn.AvgPool2d),
+        ],
+    )
+    def test_pooling_halves_spatial_dimensions(
+        self,
+        pool_type: str,
+        is3d: bool,
+        expected_pool_type: type[nn.Module],
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
+    ) -> None:
+        input_tensor = small_3d_input if is3d else small_2d_input
+        encoder = Encoder(
+            1,
+            8,
+            apply_pooling=True,
+            pool_type=pool_type,
+            basic_module=DoubleConv,
+            num_groups=8,
+            is3d=is3d,
+        )
+
+        output_tensor = encoder(input_tensor)
+
+        expected_shape = (1, 8, 4, 4, 4) if is3d else (1, 8, 8, 8)
+        assert isinstance(encoder.pooling, expected_pool_type)
+        assert output_tensor.shape == expected_shape
+
+    def test_without_pooling_preserves_spatial_dimensions(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        encoder = Encoder(
+            1,
+            8,
+            apply_pooling=False,
+            basic_module=DoubleConv,
+            num_groups=8,
+            is3d=True,
+        )
+
+        output_tensor = encoder(small_3d_input)
+
+        assert encoder.pooling is None
+        assert output_tensor.shape == (1, 8, *small_3d_input.shape[2:])
+
+    def test_resnet_block_encoder_supports_2d_inputs(
+        self, small_2d_input: torch.Tensor
+    ) -> None:
+        encoder = Encoder(
+            1,
+            8,
+            apply_pooling=True,
+            pool_type="max",
+            basic_module=ResNetBlock,
+            conv_layer_order="cge",
+            num_groups=8,
+            is3d=False,
+        )
+
+        output_tensor = encoder(small_2d_input)
+
+        assert isinstance(encoder.pooling, nn.MaxPool2d)
+        assert isinstance(encoder.basic_module, ResNetBlock)
+        assert output_tensor.shape == (1, 8, 8, 8)
+
+    def test_invalid_pool_type_raises_assertion(self) -> None:
+        with pytest.raises(AssertionError):
+            Encoder(
+                1,
+                8,
+                pool_type="median",
+                basic_module=DoubleConv,
+                num_groups=8,
+                is3d=True,
+            )
+
+    def test_create_encoders_builds_first_level_without_pooling(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        encoders = create_encoders(
+            in_channels=1,
+            f_maps=[8, 16],
+            basic_module=DoubleConv,
+            conv_kernel_size=3,
+            conv_padding=1,
+            conv_upscale=2,
+            dropout_prob=0.1,
+            layer_order="gcr",
+            num_groups=8,
+            pool_kernel_size=2,
+            is3d=True,
+        )
+
+        first_output = encoders[0](small_3d_input)
+        second_output = encoders[1](first_output)
+
+        assert len(encoders) == 2
+        assert encoders[0].pooling is None
+        assert isinstance(encoders[1].pooling, nn.MaxPool3d)
+        assert first_output.shape == (1, 8, 8, 8, 8)
+        assert second_output.shape == (1, 16, 4, 4, 4)
+
+
+class TestDecoder:
+    def test_double_conv_default_uses_interpolation_and_concat(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        encoder_features = _expand_to_eight_channels(small_3d_input)
+        x = torch.randn(1, 16, 4, 4, 4)
+        decoder = Decoder(
+            24,
+            8,
+            basic_module=DoubleConv,
+            num_groups=8,
+            upsample="default",
+            is3d=True,
+        )
+
+        output_tensor = decoder(encoder_features, x)
+
+        assert isinstance(decoder.upsampling, InterpolateUpsampling)
+        assert decoder.joining.keywords == {"concat": True}
+        assert decoder.basic_module.SingleConv1.conv.in_channels == 24
+        assert output_tensor.shape == encoder_features.shape
+
+    def test_resnet_default_uses_transposed_convolution_and_sum_joining(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        encoder_features = _expand_to_eight_channels(small_3d_input)
+        x = torch.randn(1, 16, 4, 4, 4)
+        decoder = Decoder(
+            16,
+            8,
+            basic_module=ResNetBlock,
+            conv_layer_order="cge",
+            num_groups=8,
+            upsample="default",
+            is3d=True,
+        )
+
+        output_tensor = decoder(encoder_features, x)
+
+        assert isinstance(decoder.upsampling, TransposeConvUpsampling)
+        assert decoder.joining.keywords == {"concat": False}
+        assert isinstance(
+            decoder.upsampling.upsample.conv_transposed, nn.ConvTranspose3d
+        )
+        assert isinstance(decoder.basic_module.conv1, nn.Identity)
+        assert decoder.basic_module.conv2.conv.in_channels == 8
+        assert output_tensor.shape == encoder_features.shape
+
+    @pytest.mark.parametrize("upsample", [None, "none"])
+    def test_none_upsampling_uses_no_upsampling(
+        self,
+        small_3d_input: torch.Tensor,
+        upsample: str | None,
+    ) -> None:
+        encoder_features = _expand_to_eight_channels(small_3d_input)
+        x = encoder_features.clone()
+        decoder = Decoder(
+            16,
+            8,
+            basic_module=DoubleConv,
+            num_groups=8,
+            upsample=upsample,
+            is3d=True,
+        )
+
+        output_tensor = decoder(encoder_features, x)
+
+        assert isinstance(decoder.upsampling, NoUpsampling)
+        assert decoder.joining.keywords == {"concat": True}
+        assert decoder.basic_module.SingleConv1.conv.in_channels == 16
+        assert output_tensor.shape == encoder_features.shape
+
+    def test_create_decoders_uses_concat_channel_count_for_double_conv(self) -> None:
+        decoders = create_decoders(
+            f_maps=[8, 16],
+            basic_module=DoubleConv,
+            conv_kernel_size=3,
+            conv_padding=1,
+            layer_order="gcr",
+            num_groups=8,
+            upsample="default",
+            dropout_prob=0.1,
+            is3d=True,
+        )
+
+        assert len(decoders) == 1
+        assert isinstance(decoders[0].upsampling, InterpolateUpsampling)
+        assert decoders[0].basic_module.SingleConv1.conv.in_channels == 24
+
+    def test_create_decoders_uses_sum_channel_count_for_residual_blocks(self) -> None:
+        decoders = create_decoders(
+            f_maps=[8, 16],
+            basic_module=ResNetBlock,
+            conv_kernel_size=3,
+            conv_padding=1,
+            layer_order="cge",
+            num_groups=8,
+            upsample="default",
+            dropout_prob=0.1,
+            is3d=True,
+        )
+
+        assert len(decoders) == 1
+        assert isinstance(decoders[0].upsampling, TransposeConvUpsampling)
+        assert decoders[0].upsampling.upsample.conv_transposed.in_channels == 16
+        assert decoders[0].joining.keywords == {"concat": False}
+
+
+class TestUpsamplingModules:
+    def test_interpolate_upsampling_matches_encoder_spatial_size(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        upsampling = InterpolateUpsampling(mode="nearest")
+        encoder_features = _expand_to_eight_channels(small_3d_input)
+        x = torch.randn(1, 16, 4, 4, 4)
+
+        output_tensor = upsampling(encoder_features=encoder_features, x=x)
+
+        assert output_tensor.shape == (1, 16, 8, 8, 8)
+
+    @pytest.mark.parametrize(
+        ("is3d", "encoder_shape", "decoder_shape", "expected_conv_type"),
+        [
+            (True, (1, 8, 8, 8, 8), (1, 16, 4, 4, 4), nn.ConvTranspose3d),
+            (False, (1, 8, 16, 16), (1, 16, 8, 8), nn.ConvTranspose2d),
+        ],
+    )
+    def test_transpose_conv_upsampling_matches_encoder_spatial_size(
+        self,
+        is3d: bool,
+        encoder_shape: tuple[int, ...],
+        decoder_shape: tuple[int, ...],
+        expected_conv_type: type[nn.Module],
+    ) -> None:
+        upsampling = TransposeConvUpsampling(16, 8, is3d=is3d)
+        encoder_features = torch.randn(*encoder_shape)
+        x = torch.randn(*decoder_shape)
+
+        output_tensor = upsampling(encoder_features=encoder_features, x=x)
+
+        assert isinstance(upsampling.upsample.conv_transposed, expected_conv_type)
+        assert output_tensor.shape == encoder_features.shape
+
+    def test_no_upsampling_returns_input_tensor_unchanged(
+        self, small_3d_input: torch.Tensor
+    ) -> None:
+        upsampling = NoUpsampling()
+        encoder_features = _expand_to_eight_channels(small_3d_input)
+        x = encoder_features.clone()
+
+        output_tensor = upsampling(encoder_features=encoder_features, x=x)
+
+        assert output_tensor is x
+        assert output_tensor.shape == x.shape
+
+
+class TestCreateConvErrors:
+    def test_missing_convolution_layer_raises_assertion(self) -> None:
+        with pytest.raises(AssertionError, match="Conv layer MUST be present"):
+            create_conv(1, 8, 3, "gr", 8, 1, 0.1, True)
+
+    def test_non_linearity_first_raises_assertion(self) -> None:
+        with pytest.raises(
+            AssertionError, match="Non-linearity cannot be the first operation"
+        ):
+            create_conv(1, 8, 3, "rc", 8, 1, 0.1, True)
+
+    def test_unsupported_layer_character_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported layer type 'z'"):
+            create_conv(1, 8, 3, "cz", 8, 1, 0.1, True)
+
+    def test_groupnorm_clamps_num_groups_to_one_when_channels_are_smaller(self) -> None:
+        modules = create_conv(4, 8, 3, "gcr", 8, 1, 0.1, True)
+        module_name, first_module = modules[0]
+
+        assert isinstance(first_module, nn.GroupNorm)
+        assert module_name == "groupnorm"
+        assert first_module.num_groups == 1
+        assert first_module.num_channels == 4
+
+
+class TestUNetModels:
+    @pytest.mark.parametrize(
+        ("model_class", "is3d"),
+        [
+            pytest.param(UNet3D, True, id="unet3d"),
+            pytest.param(ResidualUNet3D, True, id="residual-unet3d"),
+            pytest.param(ResidualUNetSE3D, True, id="residual-unetse3d"),
+            pytest.param(UNet2D, False, id="unet2d"),
+            pytest.param(ResidualUNet2D, False, id="residual-unet2d"),
+        ],
+    )
+    def test_forward_preserves_shape_and_gradients(
+        self,
+        model_class: type[nn.Module],
+        is3d: bool,
+        small_3d_input: torch.Tensor,
+        small_2d_input: torch.Tensor,
+    ) -> None:
+        model = model_class(1, 2, f_maps=8, num_levels=2, num_groups=8)
+        input_tensor = (
+            (small_3d_input if is3d else small_2d_input)
+            .clone()
+            .detach()
+            .requires_grad_(True)
+        )
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, *input_tensor.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+    def test_residual_unet3d_preserves_odd_spatial_shape_and_gradients(self) -> None:
+        model = ResidualUNet3D(1, 2, f_maps=8, num_levels=2, num_groups=8)
+        input_tensor = torch.randn(1, 1, 9, 11, 13).requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, 9, 11, 13)
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+    def test_unet3d_num_levels_three_preserves_shape_and_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+    ) -> None:
+        model = UNet3D(1, 2, f_maps=8, num_levels=3, num_groups=8)
+        input_tensor = small_3d_input.clone().detach().requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert len(model.encoders) == 3
+        assert len(model.decoders) == 2
+        assert output_tensor.shape == (1, 2, *small_3d_input.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+
+class TestUNetFMapsVariants:
+    @pytest.mark.parametrize(
+        "f_maps",
+        [pytest.param((8, 16), id="tuple")],
+    )
+    def test_tuple_f_maps_preserves_forward_shape_and_gradients(
+        self,
+        small_3d_input: torch.Tensor,
+        f_maps: tuple[int, int],
+    ) -> None:
+        model = UNet3D(1, 2, f_maps=f_maps, num_groups=8)
+        input_tensor = small_3d_input.clone().detach().requires_grad_(True)
+
+        output_tensor = model(input_tensor)
+
+        assert output_tensor.shape == (1, 2, *small_3d_input.shape[2:])
+        _assert_nonzero_gradients(output_tensor, input_tensor, model)
+
+
+class TestAbstractUNetAssertions:
+    def test_single_level_f_maps_raises_assertion(self) -> None:
+        with pytest.raises(
+            AssertionError, match="Required at least 2 levels in the U-Net"
+        ):
+            UNet3D(1, 2, f_maps=[8])
+
+    def test_groupnorm_layer_order_requires_num_groups(self) -> None:
+        with pytest.raises(
+            AssertionError, match="num_groups must be specified if GroupNorm is used"
+        ):
+            UNet3D(1, 2, layer_order="gcr", num_groups=None, f_maps=[8, 16])
+
+
+class TestGetModel:
+    @pytest.mark.skipif(
+        importlib.util.find_spec("pytorch3dunet") is not None,
+        reason="pytorch3dunet is installed; install-guard test not applicable",
+    )
+    def test_get_model_raises_when_pytorch3dunet_is_not_installed(self) -> None:
+        with pytest.raises(ModuleNotFoundError, match="pytorch3dunet"):
+            get_model({"name": "UNet3D"})
+
+    @pytest.mark.skipif(
+        importlib.util.find_spec("pytorch3dunet") is None,
+        reason="pytorch3dunet is not installed; success-path test requires it",
+    )
+    def test_get_model_returns_nn_module_when_pytorch3dunet_is_installed(self) -> None:
+        """get_model resolves UNet3D from pytorch3dunet and returns an nn.Module."""
+        import torch.nn as nn
+
+        cfg = {
+            "name": "UNet3D",
+            "in_channels": 1,
+            "out_channels": 1,
+            "f_maps": [8, 16],
+            "num_levels": 2,
+            "num_groups": 8,
+        }
+        model = get_model(cfg)
+        assert isinstance(
+            model, nn.Module
+        ), f"get_model should return an nn.Module, got {type(model)}"
+        # Confirm the class was resolved from the external package, not our local models.py
+        assert type(model).__module__.startswith(
+            "pytorch3dunet"
+        ), f"Expected model from pytorch3dunet, got {type(model).__module__}"

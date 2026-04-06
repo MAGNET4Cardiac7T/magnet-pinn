@@ -48,7 +48,7 @@ class BaseRegressionLoss(torch.nn.Module, ABC):
         torch.Tensor
             Loss tensor
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def forward(self, pred, target, mask: Optional[torch.Tensor] = None):
         """

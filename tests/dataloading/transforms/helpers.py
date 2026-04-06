@@ -50,7 +50,10 @@ def check_items_datatypes(result, random_item):
     assert result.coils.dtype == random_item.coils.dtype
     assert result.dtype == random_item.dtype
     assert isinstance(result.dtype, type(random_item.dtype))
-    assert result.truncation_coefficients.dtype == random_item.truncation_coefficients.dtype
+    assert (
+        result.truncation_coefficients.dtype
+        == random_item.truncation_coefficients.dtype
+    )
 
 
 def check_cropped_shapes(result):
@@ -74,7 +77,9 @@ def check_items_shapes_supposed_to_be_equal(result, input_item):
     assert result.phase.shape == input_item.phase.shape
     assert result.mask.shape == input_item.mask.shape
     assert result.coils.shape == input_item.coils.shape
-    assert result.truncation_coefficients.shape == input_item.truncation_coefficients.shape
+    assert (
+        result.truncation_coefficients.shape == input_item.truncation_coefficients.shape
+    )
 
 
 def check_elements_not_changed_by_crop(result, input_item):
@@ -83,7 +88,9 @@ def check_elements_not_changed_by_crop(result, input_item):
     assert np.equal(result.phase, input_item.phase).all()
     assert np.equal(result.mask, input_item.mask).all()
     assert result.dtype == input_item.dtype
-    assert np.equal(result.truncation_coefficients, input_item.truncation_coefficients).all()
+    assert np.equal(
+        result.truncation_coefficients, input_item.truncation_coefficients
+    ).all()
 
 
 def check_constant_shapes_not_changed_except_for_field_coils(result, item):
@@ -116,7 +123,11 @@ def check_default_transform_resulting_shapes(result, item):
     assert result.phase.shape == item.phase.shape
     assert result.mask.shape == item.mask.shape
 
-    expected_field_shape = (item.field.shape[0], item.field.shape[1], *item.field.shape[3:])
+    expected_field_shape = (
+        item.field.shape[0],
+        item.field.shape[1],
+        *item.field.shape[3:],
+    )
     assert result.field.shape == expected_field_shape
     expected_coils_shape = (2, *item.coils.shape[1:])
     assert result.coils.shape == expected_coils_shape
@@ -138,7 +149,11 @@ def check_default_transform_resulting_values(result, item):
     assert np.equal(result.mask, np.ones(coils_num, dtype=item.mask.dtype)).all()
 
     expected_coils = np.stack(
-        [np.sum(item.coils, axis=0), np.zeros(item.coils.shape[1:], dtype=item.coils.dtype)], axis=0
+        [
+            np.sum(item.coils, axis=0),
+            np.zeros(item.coils.shape[1:], dtype=item.coils.dtype),
+        ],
+        axis=0,
     )
     assert np.equal(result.coils, expected_coils).all()
 
@@ -179,8 +194,12 @@ def check_complex_number_calculations_in_pointscloud_phase_shift(result, item):
     coefs_re_bc = coefs_re.reshape(1, -1, 1, 1)
     coefs_im_bc = coefs_im.reshape(1, -1, 1, 1)
 
-    field_shifted_re = np.sum(field_re * coefs_re_bc, axis=1) - np.sum(field_im * coefs_im_bc, axis=1)
-    field_shifted_im = np.sum(field_re * coefs_im_bc, axis=1) + np.sum(field_im * coefs_re_bc, axis=1)
+    field_shifted_re = np.sum(field_re * coefs_re_bc, axis=1) - np.sum(
+        field_im * coefs_im_bc, axis=1
+    )
+    field_shifted_im = np.sum(field_re * coefs_im_bc, axis=1) + np.sum(
+        field_im * coefs_re_bc, axis=1
+    )
 
     expected_field_result = np.stack([field_shifted_re, field_shifted_im], axis=1)
     assert np.allclose(result.field, expected_field_result, atol=1e-6, rtol=1e-6)

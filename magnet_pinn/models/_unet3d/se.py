@@ -91,6 +91,7 @@ class SpatialSELayer3D(nn.Module):
         batch_size, channel, D, H, W = x.size()
 
         if weights:
+            # BUG: calls F.conv2d on a 5D tensor (B, C, D, H, W) — this will raise at runtime if weights is truthy.
             weights = weights.view(1, channel, 1, 1)
             out = F.conv2d(x, weights)
         else:

@@ -5,8 +5,8 @@ initialization patterns (zero-filled and random data) to support transformation
 and dataloading test scenarios.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from magnet_pinn.data.dataitem import AugmentedDataItem, DataItem
 
@@ -33,7 +33,7 @@ def zero_grid_item():
         mask=np.zeros(8, dtype=np.bool_),
         coils=np.zeros((8, 20, 20, 20), dtype=np.float32),
         dtype="float32",
-        truncation_coefficients=np.zeros(3, dtype=np.float32)
+        truncation_coefficients=np.zeros(3, dtype=np.float32),
     )
 
 
@@ -59,7 +59,7 @@ def random_grid_item():
         mask=np.random.choice([0, 1], size=8).astype(np.bool_),
         coils=np.random.choice([0, 1], size=(8, 20, 20, 20)).astype(np.float32),
         dtype="float32",
-        truncation_coefficients=np.ones(3, dtype=np.float32)
+        truncation_coefficients=np.ones(3, dtype=np.float32),
     )
 
 
@@ -85,7 +85,7 @@ def random_pointcloud_item():
         mask=np.random.choice([0, 1], size=8).astype(np.bool_),
         coils=np.random.choice([0, 1], size=(8, 8000)).astype(np.float32),
         dtype="float32",
-        truncation_coefficients=np.ones(3, dtype=np.float32)
+        truncation_coefficients=np.ones(3, dtype=np.float32),
     )
 
 
@@ -111,7 +111,7 @@ def zero_pointcloud_item():
         mask=np.zeros(8, dtype=np.bool_),
         coils=np.zeros((8, 8000), dtype=np.float32),
         dtype="float32",
-        truncation_coefficients=np.zeros(3, dtype=np.float32)
+        truncation_coefficients=np.zeros(3, dtype=np.float32),
     )
 
 

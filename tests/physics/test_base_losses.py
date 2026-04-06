@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from magnet_pinn.losses.base import MSELoss, MAELoss, HuberLoss, LogCoshLoss
+from magnet_pinn.losses.base import HuberLoss, LogCoshLoss, MAELoss, MSELoss
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def test_mse_loss_with_mask(batch_size, feature_size):
     pred = torch.randn(batch_size, feature_size)
     target = torch.randn(batch_size, feature_size)
     mask = torch.ones(batch_size, dtype=torch.bool)
-    mask[:batch_size//2] = False
+    mask[: batch_size // 2] = False
 
     loss = loss_fn(pred, target, mask=mask)
     errors = torch.mean((pred - target) ** 2, dim=1)
@@ -68,7 +68,7 @@ def test_mae_loss_with_mask(batch_size, feature_size):
     pred = torch.randn(batch_size, feature_size)
     target = torch.randn(batch_size, feature_size)
     mask = torch.ones(batch_size, dtype=torch.bool)
-    mask[:batch_size//2] = False
+    mask[: batch_size // 2] = False
 
     loss = loss_fn(pred, target, mask=mask)
     errors = torch.mean(torch.abs(pred - target), dim=1)
@@ -99,7 +99,7 @@ def test_huber_loss_basic(batch_size, feature_size):
     expected = torch.mean(
         torch.where(
             abs_diff < delta,
-            0.5 * abs_diff ** 2,
+            0.5 * abs_diff**2,
             delta * (abs_diff - 0.5 * delta),
         )
     )
@@ -139,7 +139,7 @@ def test_huber_loss_with_mask(batch_size, feature_size):
     pred = torch.randn(batch_size, feature_size)
     target = torch.randn(batch_size, feature_size)
     mask = torch.ones(batch_size, dtype=torch.bool)
-    mask[:batch_size//2] = False
+    mask[: batch_size // 2] = False
 
     loss = loss_fn(pred, target, mask=mask)
     delta = 1.0
@@ -147,7 +147,7 @@ def test_huber_loss_with_mask(batch_size, feature_size):
     errors = torch.mean(
         torch.where(
             abs_diff < delta,
-            0.5 * abs_diff ** 2,
+            0.5 * abs_diff**2,
             delta * (abs_diff - 0.5 * delta),
         ),
         dim=1,
@@ -175,7 +175,7 @@ def test_logcosh_loss_with_mask(batch_size, feature_size):
     pred = torch.randn(batch_size, feature_size)
     target = torch.randn(batch_size, feature_size)
     mask = torch.ones(batch_size, dtype=torch.bool)
-    mask[:batch_size//2] = False
+    mask[: batch_size // 2] = False
 
     loss = loss_fn(pred, target, mask=mask)
     errors = torch.mean(torch.log(torch.cosh(pred - target)), dim=1)
@@ -205,3 +205,20 @@ def test_loss_feature_dims_tuple():
 
     assert loss.shape == torch.Size([])
     assert torch.isclose(loss, expected, rtol=1e-5, atol=1e-8)
+
+
+def test_mse_loss_reduction_none_returns_unreduced_tensor():
+    """Covers base.py:30 — the ``reduction='none'`` branch that sets the
+    identity lambda instead of a ``LossReducer``."""
+    batch, features = 4, 8
+    loss_fn = MSELoss(reduction="none")
+    pred = torch.randn(batch, features)
+    target = torch.randn(batch, features)
+
+    output = loss_fn(pred, target)
+
+    # With reduction='none', forward returns loss averaged over feature_dims (dim=1)
+    # but does NOT reduce over the batch — output shape should be (batch,).
+    assert output.shape == torch.Size(
+        [batch]
+    ), f"Expected shape ({batch},) for reduction='none', got {output.shape}"

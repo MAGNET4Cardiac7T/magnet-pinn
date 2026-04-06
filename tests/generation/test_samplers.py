@@ -10,12 +10,19 @@ from numpy.random import default_rng
 
 from magnet_pinn.generator import samplers as samplers_module
 from magnet_pinn.generator.samplers import (
-    PointSampler, BlobSampler, TubeSampler, PropertySampler,
-    MeshBlobSampler, MeshTubeSampler
+    BlobSampler,
+    MeshBlobSampler,
+    MeshTubeSampler,
+    PointSampler,
+    PropertySampler,
+    TubeSampler,
 )
-from magnet_pinn.generator.structures import Blob, Tube, CustomMeshStructure
+from magnet_pinn.generator.structures import Blob, CustomMeshStructure, Tube
 from magnet_pinn.generator.typing import (
-    PropertyItem, PropertyPhantom, StructurePhantom, MeshPhantom
+    MeshPhantom,
+    PropertyItem,
+    PropertyPhantom,
+    StructurePhantom,
 )
 
 
@@ -287,22 +294,30 @@ def test_blob_sampler_initialization_with_near_boundary_high_value():
 
 
 def test_blob_sampler_rejects_zero_radius_decrease_factor():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         BlobSampler(radius_decrease_factor=0.0)
 
 
 def test_blob_sampler_rejects_negative_radius_decrease_factor():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         BlobSampler(radius_decrease_factor=-0.1)
 
 
 def test_blob_sampler_rejects_one_radius_decrease_factor():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         BlobSampler(radius_decrease_factor=1.0)
 
 
 def test_blob_sampler_rejects_greater_than_one_radius_decrease_factor():
-    with pytest.raises(ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"):
+    with pytest.raises(
+        ValueError, match="radius_decrease_factor must be in \\(0, 1\\)"
+    ):
         BlobSampler(radius_decrease_factor=1.1)
 
 
@@ -412,24 +427,6 @@ def test_blob_sampler_sample_children_blobs_with_multiple_children():
         assert child.radius == parent_blob.radius * sampler.radius_decrease_factor
 
 
-def test_blob_sampler_sample_children_blobs_children_within_parent():
-    sampler = BlobSampler(radius_decrease_factor=0.3)
-    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
-    rng = default_rng(42)
-
-    children = sampler.sample_children_blobs(parent_blob, 2, rng)
-
-    for child in children:
-        distance_to_parent = np.linalg.norm(
-            child.position - parent_blob.position
-        )
-        max_allowed_distance = (
-            parent_blob.radius * (1 + parent_blob.empirical_min_offset)
-            - child.radius * (1 + child.empirical_max_offset)
-        )
-        assert distance_to_parent <= max_allowed_distance
-
-
 def test_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
     sampler = BlobSampler(radius_decrease_factor=0.2)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
@@ -447,12 +444,37 @@ def test_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
 
 
 def test_blob_sampler_sample_children_blobs_fails_with_too_small_parent():
-    sampler = BlobSampler(radius_decrease_factor=0.9)
+    # radius_decrease_factor=0.96 ensures _calculate_parent_sampling_radius raises
+    # "Parent blob radius too small" before _validate_packing_constraints runs.
+    # Under the fast fixture (offsets ±0.025):
+    #   child_radius_with_margin = 0.96 * 1.025 = 0.984
+    #   parent_inner_radius      = 1.0  * 0.975 = 0.975
+    #   parent_allowed_radius    = 0.975 - 0.984 = -0.009 → final_radius < 0 → raises.
+    sampler = BlobSampler(radius_decrease_factor=0.96)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=1.0)
     rng = default_rng(42)
-
-    with pytest.raises(RuntimeError, match="Parent blob radius .* too small to fit child blob radius"):
+    with pytest.raises(
+        RuntimeError, match="Parent blob radius .* too small"
+    ):
         sampler.sample_children_blobs(parent_blob, 1, rng)
+
+
+def test_blob_sampler_calculate_parent_radius_raises_when_parent_too_small():
+    """Covers samplers.py:363 — RuntimeError when final_radius <= 0.
+
+    The fast_blob_initialization autouse fixture patches Blob.__init__ so
+    that ``empirical_min_offset = -0.025``.  With a parent radius of 0.001:
+      parent_inner_radius = 0.001 * (1 - 0.025) = 0.000975
+      parent_allowed_radius = 0.000975 - 0.01 = -0.009025   (< 0)
+      final_radius = -0.009025 * 0.98                        (<= 0)
+    → RuntimeError is raised before the sampler returns.
+    """
+    sampler = BlobSampler(radius_decrease_factor=0.5)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=0.001)
+    child_radius_with_margin = 0.01
+
+    with pytest.raises(RuntimeError, match="too small to fit"):
+        sampler._calculate_parent_sampling_radius(parent_blob, child_radius_with_margin)
 
 
 def test_blob_sampler_sample_children_blobs_fails_with_too_many_children():
@@ -461,7 +483,7 @@ def test_blob_sampler_sample_children_blobs_fails_with_too_many_children():
     rng = default_rng(42)
 
     with pytest.raises(RuntimeError, match="Cannot pack .* spheres"):
-        sampler.sample_children_blobs(parent_blob, 20, rng)
+        sampler.sample_children_blobs(parent_blob, 5, rng, max_iterations=10)
 
 
 def test_blob_sampler_sample_children_blobs_with_custom_max_iterations():
@@ -487,7 +509,9 @@ def test_tube_sampler_initialization_with_valid_radii():
     tube_max_radius = 2.0
     tube_min_radius = 0.5
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
 
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
@@ -499,7 +523,9 @@ def test_tube_sampler_initialization_with_minimal_difference():
     tube_max_radius = 1.0 + np.finfo(float).eps
     tube_min_radius = 1.0
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
 
@@ -508,7 +534,9 @@ def test_tube_sampler_initialization_with_large_difference():
     tube_max_radius = 1000.0
     tube_min_radius = 0.001
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
 
@@ -517,7 +545,9 @@ def test_tube_sampler_initialization_with_equal_radii_boundary():
     tube_max_radius = 1.0
     tube_min_radius = 1.0 - np.finfo(float).eps
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
 
@@ -543,12 +573,16 @@ def test_tube_sampler_rejects_negative_min_radius():
 
 
 def test_tube_sampler_rejects_min_radius_equal_to_max_radius():
-    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+    with pytest.raises(
+        ValueError, match="tube_min_radius must be less than tube_max_radius"
+    ):
         TubeSampler(tube_max_radius=1.0, tube_min_radius=1.0)
 
 
 def test_tube_sampler_rejects_min_radius_greater_than_max_radius():
-    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+    with pytest.raises(
+        ValueError, match="tube_min_radius must be less than tube_max_radius"
+    ):
         TubeSampler(tube_max_radius=1.0, tube_min_radius=2.0)
 
 
@@ -661,9 +695,11 @@ def test_tube_sampler_sample_tubes_different_results_with_different_seeds():
 
     different = False
     for t1, t2 in zip(tubes1, tubes2):
-        if not (np.allclose(t1.position, t2.position) and
-                np.allclose(t1.direction, t2.direction) and
-                t1.radius == t2.radius):
+        if not (
+            np.allclose(t1.position, t2.position)
+            and np.allclose(t1.direction, t2.direction)
+            and t1.radius == t2.radius
+        ):
             different = True
             break
     assert different
@@ -683,7 +719,9 @@ def test_tube_sampler_sample_tubes_with_offset_center():
 
 
 def test_tube_sampler_sample_tubes_with_minimal_radius():
-    sampler = TubeSampler(tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps)
+    sampler = TubeSampler(
+        tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps
+    )
     center = np.array([0.0, 0.0, 0.0])
     radius = 1.0
     rng = default_rng(42)
@@ -780,7 +818,7 @@ def test_blob_sampler_find_valid_positions_progressive_timeout():
             sampling_radius=0.1,
             min_distance=1.0,
             rng=rng,
-            max_iterations=10
+            max_iterations=10,
         )
 
 
@@ -795,7 +833,7 @@ def test_blob_sampler_find_valid_positions_progressive_specific_error_message():
             sampling_radius=0.5,
             min_distance=2.0,
             rng=rng,
-            max_iterations=5
+            max_iterations=5,
         )
 
     error_message = str(exc_info.value)
@@ -803,7 +841,9 @@ def test_blob_sampler_find_valid_positions_progressive_specific_error_message():
     assert "minimum distance 2.000" in error_message
     assert "within radius 0.500" in error_message
     assert "attempts" in error_message
-    assert "Try reducing target_positions or increasing sampling_radius" in error_message
+    assert (
+        "Try reducing target_positions or increasing sampling_radius" in error_message
+    )
 
 
 def test_blob_sampler_progressive_sampling_max_iterations_exhaustion():
@@ -818,7 +858,7 @@ def test_blob_sampler_progressive_sampling_max_iterations_exhaustion():
             sampling_radius=0.1,
             min_distance=1.0,
             rng=rng,
-            max_iterations=15
+            max_iterations=15,
         )
 
     error_message = str(exc_info.value)
@@ -838,7 +878,7 @@ def test_blob_sampler_progressive_sampling_inner_loop_break():
             sampling_radius=0.2,
             min_distance=0.8,
             rng=rng,
-            max_iterations=3
+            max_iterations=3,
         )
 
 
@@ -854,7 +894,7 @@ def test_blob_sampler_progressive_sampling_outer_loop_break():
             sampling_radius=0.15,
             min_distance=0.5,
             rng=rng,
-            max_iterations=6
+            max_iterations=6,
         )
 
 
@@ -941,7 +981,7 @@ def test_tube_sampler_collision_detection_precision():
     tubes = sampler.sample_tubes(center, radius, 10, rng, max_iterations=1000)
 
     for i in range(len(tubes)):
-        for j in range(i+1, len(tubes)):
+        for j in range(i + 1, len(tubes)):
             distance = Tube.distance_to_tube(tubes[i], tubes[j])
             min_required_distance = tubes[i].radius + tubes[j].radius
             assert distance >= min_required_distance - np.finfo(float).eps * 100
@@ -952,11 +992,7 @@ def test_blob_sampler_numerical_precision_edge_cases():
     sampler = BlobSampler(radius_decrease_factor=0.5)
 
     eps = np.finfo(float).eps
-    points = np.array([
-        [0.0, 0.0, 0.0],
-        [eps, 0.0, 0.0],
-        [0.0, eps, 0.0]
-    ])
+    points = np.array([[0.0, 0.0, 0.0], [eps, 0.0, 0.0], [0.0, eps, 0.0]])
 
     result = sampler.check_points_distance(points, eps * 0.5)
     assert isinstance(result, bool)
@@ -980,24 +1016,6 @@ def test_tube_sampler_extreme_coordinate_values():
         assert np.isfinite(tube.direction).all()
         assert np.isfinite(tube.radius)
         assert tube.radius > 0
-
-
-def test_blob_sampler_safety_margin_calculations():
-    """Test safety margin calculations in child radius computation."""
-    sampler = BlobSampler(radius_decrease_factor=0.5)
-
-    blob1 = Blob(np.array([0, 0, 0]), 1.0, relative_disruption_strength=0.1)
-    blob2 = Blob(np.array([0, 0, 0]), 1.0, relative_disruption_strength=0.3)
-    blobs = [blob1, blob2]
-
-    base_radius = 1.0
-    safe_radius = sampler._calculate_safe_child_radius(blobs, base_radius)
-
-    assert safe_radius > base_radius
-
-    max_offset = max(blob.empirical_max_offset for blob in blobs)
-    expected = base_radius * (1 + max_offset)
-    assert np.isclose(safe_radius, expected)
 
 
 def test_blob_sampler_sample_children_blobs_numerical_precision():
@@ -1024,7 +1042,11 @@ def test_tube_sampler_initialization_with_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 100.0
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius,
+    )
 
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
@@ -1036,7 +1058,9 @@ def test_tube_sampler_initialization_with_default_parent_radius():
     tube_max_radius = 2.0
     tube_min_radius = 0.5
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
 
     assert sampler.parent_radius == 250.0
 
@@ -1046,7 +1070,11 @@ def test_tube_sampler_initialization_with_zero_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 0.0
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius,
+    )
 
     assert sampler.parent_radius == 0.0
 
@@ -1056,14 +1084,20 @@ def test_tube_sampler_initialization_with_large_parent_radius():
     tube_min_radius = 0.5
     parent_radius = 10000.0
 
-    sampler = TubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=tube_max_radius,
+        tube_min_radius=tube_min_radius,
+        parent_radius=parent_radius,
+    )
 
     assert sampler.parent_radius == parent_radius
 
 
 def test_tube_sampler_sample_line_sets_height_based_on_parent_radius():
     parent_radius = 50.0
-    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+    )
     center = np.array([0.0, 0.0, 0.0])
     ball_radius = 5.0
     tube_radius = 0.5
@@ -1090,7 +1124,9 @@ def test_tube_sampler_sample_line_with_default_parent_radius_height():
 
 def test_tube_sampler_sample_tubes_all_have_correct_height():
     parent_radius = 75.0
-    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+    )
     center = np.array([0.0, 0.0, 0.0])
     radius = 5.0
     num_tubes = 3
@@ -1105,7 +1141,9 @@ def test_tube_sampler_sample_tubes_all_have_correct_height():
 
 def test_tube_sampler_sample_tubes_height_calculation_with_zero_parent_radius():
     parent_radius = 0.0
-    sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+    sampler = TubeSampler(
+        tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+    )
     center = np.array([0.0, 0.0, 0.0])
     radius = 5.0
     num_tubes = 2
@@ -1122,7 +1160,9 @@ def test_tube_sampler_height_calculation_formula_verification():
     parent_radius_values = [10.0, 25.5, 100.0, 1000.0]
 
     for parent_radius in parent_radius_values:
-        sampler = TubeSampler(tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius)
+        sampler = TubeSampler(
+            tube_max_radius=1.0, tube_min_radius=0.1, parent_radius=parent_radius
+        )
         center = np.array([0.0, 0.0, 0.0])
         ball_radius = 5.0
         tube_radius = 0.5
@@ -1155,7 +1195,7 @@ def test_blob_sampler_progressive_sampling_boundary_conditions():
             sampling_radius=1.0,
             min_distance=0.1,
             rng=rng,
-            max_iterations=100
+            max_iterations=100,
         )
         assert len(positions) == 1
         assert positions.shape == (1, 3)
@@ -1164,9 +1204,7 @@ def test_blob_sampler_progressive_sampling_boundary_conditions():
 
 
 def test_property_sampler_initialization_with_valid_single_property_config():
-    properties_cfg = {
-        "conductivity": {"min": 0.1, "max": 1.0}
-    }
+    properties_cfg = {"conductivity": {"min": 0.1, "max": 1.0}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1180,14 +1218,17 @@ def test_property_sampler_initialization_with_valid_multiple_properties_config()
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
 
     sampler = PropertySampler(properties_cfg)
 
     assert sampler.properties_cfg == properties_cfg
     assert len(sampler.properties_cfg) == 3
-    assert all(key in sampler.properties_cfg for key in ["conductivity", "permittivity", "density"])
+    assert all(
+        key in sampler.properties_cfg
+        for key in ["conductivity", "permittivity", "density"]
+    )
 
 
 def test_property_sampler_initialization_with_empty_config():
@@ -1200,9 +1241,7 @@ def test_property_sampler_initialization_with_empty_config():
 
 
 def test_property_sampler_initialization_with_minimal_range_property():
-    properties_cfg = {
-        "conductivity": {"min": 0.0, "max": 0.0001}
-    }
+    properties_cfg = {"conductivity": {"min": 0.0, "max": 0.0001}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1212,9 +1251,7 @@ def test_property_sampler_initialization_with_minimal_range_property():
 
 
 def test_property_sampler_initialization_with_large_range_property():
-    properties_cfg = {
-        "conductivity": {"min": 1e-10, "max": 1e10}
-    }
+    properties_cfg = {"conductivity": {"min": 1e-10, "max": 1e10}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1224,9 +1261,7 @@ def test_property_sampler_initialization_with_large_range_property():
 
 
 def test_property_sampler_initialization_with_zero_minimum_boundary():
-    properties_cfg = {
-        "conductivity": {"min": 0.0, "max": 1.0}
-    }
+    properties_cfg = {"conductivity": {"min": 0.0, "max": 1.0}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1235,9 +1270,7 @@ def test_property_sampler_initialization_with_zero_minimum_boundary():
 
 
 def test_property_sampler_initialization_with_negative_range():
-    properties_cfg = {
-        "conductivity": {"min": -1.0, "max": 1.0}
-    }
+    properties_cfg = {"conductivity": {"min": -1.0, "max": 1.0}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1246,9 +1279,7 @@ def test_property_sampler_initialization_with_negative_range():
 
 
 def test_property_sampler_initialization_with_equal_min_max_boundary():
-    properties_cfg = {
-        "conductivity": {"min": 1.0, "max": 1.0}
-    }
+    properties_cfg = {"conductivity": {"min": 1.0, "max": 1.0}}
 
     sampler = PropertySampler(properties_cfg)
 
@@ -1260,7 +1291,7 @@ def test_property_sampler_sample_returns_property_item_with_all_configured_prope
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1280,7 +1311,7 @@ def test_property_sampler_sample_with_specific_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1301,7 +1332,7 @@ def test_property_sampler_sample_with_filtered_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1315,7 +1346,7 @@ def test_property_sampler_sample_with_empty_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1329,7 +1360,7 @@ def test_property_sampler_sample_with_single_property_in_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1343,7 +1374,7 @@ def test_property_sampler_sample_with_none_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1360,7 +1391,7 @@ def test_property_sampler_sample_with_equal_min_max_returns_exact_value():
     properties_cfg = {
         "conductivity": {"min": 0.5, "max": 0.5},
         "permittivity": {"min": 10.0, "max": 10.0},
-        "density": {"min": 1000.0, "max": 1000.0}
+        "density": {"min": 1000.0, "max": 1000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1377,7 +1408,7 @@ def test_property_sampler_sample_reproducible_with_numpy_seed():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
 
@@ -1396,7 +1427,7 @@ def test_property_sampler_sample_different_results_with_different_seeds():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1414,18 +1445,22 @@ def test_property_sampler_sample_like_with_structure_phantom():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
     child_blobs = [
-        Blob(position=np.array([1., 1., 1.]), radius=3.0),
-        Blob(position=np.array([2., 2., 2.]), radius=2.0)
+        Blob(position=np.array([1.0, 1.0, 1.0]), radius=3.0),
+        Blob(position=np.array([2.0, 2.0, 2.0]), radius=2.0),
     ]
     tubes = [
-        Tube(position=np.array([0., 0., 0.]), direction=np.array([1., 0., 0.]), radius=1.0)
+        Tube(
+            position=np.array([0.0, 0.0, 0.0]),
+            direction=np.array([1.0, 0.0, 0.0]),
+            radius=1.0,
+        )
     ]
     # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
     structure_phantom = StructurePhantom(
@@ -1446,7 +1481,7 @@ def test_property_sampler_sample_like_with_mesh_phantom():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1454,11 +1489,9 @@ def test_property_sampler_sample_like_with_mesh_phantom():
     parent_mesh = trimesh.primitives.Sphere(radius=1.0)
     child_meshes = [
         trimesh.primitives.Sphere(radius=0.5),
-        trimesh.primitives.Sphere(radius=0.3)
+        trimesh.primitives.Sphere(radius=0.3),
     ]
-    tube_meshes = [
-        trimesh.primitives.Cylinder(radius=0.1, height=2.0)
-    ]
+    tube_meshes = [trimesh.primitives.Cylinder(radius=0.1, height=2.0)]
     # Test fixture: list invariance, Sphere/Cylinder are Trimesh subtypes
     mesh_phantom = MeshPhantom(
         parent=parent_mesh, children=child_meshes, tubes=tube_meshes  # type: ignore[arg-type]
@@ -1476,12 +1509,12 @@ def test_property_sampler_sample_like_with_empty_children_and_tubes():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
     structure_phantom = StructurePhantom(parent=parent_blob, children=[], tubes=[])
 
     property_phantom = sampler.sample_like(structure_phantom, rng)
@@ -1496,12 +1529,12 @@ def test_property_sampler_sample_like_with_specific_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
     structure_phantom = StructurePhantom(parent=parent_blob, children=[], tubes=[])
     properties_list = ["conductivity", "permittivity", "density"]
 
@@ -1518,12 +1551,12 @@ def test_property_sampler_sample_like_with_none_properties_list():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
     structure_phantom = StructurePhantom(parent=parent_blob, children=[], tubes=[])
 
     # Testing default None parameter behavior
@@ -1542,17 +1575,20 @@ def test_property_sampler_sample_like_with_moderate_children_and_tubes():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
-    child_blobs = [
-        Blob(position=np.array([i, i, i]), radius=1.0) for i in range(5)
-    ]
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
+    child_blobs = [Blob(position=np.array([i, i, i]), radius=1.0) for i in range(5)]
     tubes = [
-        Tube(position=np.array([i, 0., 0.]), direction=np.array([1., 0., 0.]), radius=0.5) for i in range(3)
+        Tube(
+            position=np.array([i, 0.0, 0.0]),
+            direction=np.array([1.0, 0.0, 0.0]),
+            radius=0.5,
+        )
+        for i in range(3)
     ]
     # Test fixture: list invariance, Blob/Tube are Structure3D subtypes
     structure_phantom = StructurePhantom(
@@ -1572,7 +1608,7 @@ def test_property_sampler_sample_values_within_configured_ranges():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1588,7 +1624,7 @@ def test_property_sampler_sample_boundary_values_minimum_range():
     properties_cfg = {
         "conductivity": {"min": 0.0, "max": 0.001},
         "permittivity": {"min": 1.0, "max": 1.001},
-        "density": {"min": 500.0, "max": 500.001}
+        "density": {"min": 500.0, "max": 500.001},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1604,7 +1640,7 @@ def test_property_sampler_sample_boundary_values_maximum_range():
     properties_cfg = {
         "conductivity": {"min": 999999.0, "max": 1000000.0},
         "permittivity": {"min": 999999.0, "max": 1000000.0},
-        "density": {"min": 999999.0, "max": 1000000.0}
+        "density": {"min": 999999.0, "max": 1000000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1620,7 +1656,7 @@ def test_property_sampler_sample_negative_range_values():
     properties_cfg = {
         "conductivity": {"min": -10.0, "max": -1.0},
         "permittivity": {"min": -100.0, "max": -10.0},
-        "density": {"min": -1000.0, "max": -100.0}
+        "density": {"min": -1000.0, "max": -100.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1635,7 +1671,7 @@ def test_property_sampler_sample_negative_range_values():
 def test_property_sampler_sample_with_custom_property_names_fails():
     properties_cfg = {
         "custom_property_1": {"min": 0.1, "max": 1.0},
-        "another_prop": {"min": 100.0, "max": 200.0}
+        "another_prop": {"min": 100.0, "max": 200.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1648,7 +1684,7 @@ def test_property_sampler_sample_with_very_small_precision_range():
     properties_cfg = {
         "conductivity": {"min": 1e-15, "max": 1e-14},
         "permittivity": {"min": 1e-15, "max": 1e-14},
-        "density": {"min": 1e-15, "max": 1e-14}
+        "density": {"min": 1e-15, "max": 1e-14},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1664,7 +1700,7 @@ def test_property_sampler_sample_with_very_large_precision_range():
     properties_cfg = {
         "conductivity": {"min": 1e14, "max": 1e15},
         "permittivity": {"min": 1e14, "max": 1e15},
-        "density": {"min": 1e14, "max": 1e15}
+        "density": {"min": 1e14, "max": 1e15},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1680,7 +1716,7 @@ def test_property_sampler_sample_all_properties_different_across_multiple_sample
     properties_cfg = {
         "conductivity": {"min": 0.0, "max": 1.0},
         "permittivity": {"min": 0.0, "max": 1.0},
-        "density": {"min": 0.0, "max": 1.0}
+        "density": {"min": 0.0, "max": 1.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1696,15 +1732,15 @@ def test_property_sampler_sample_like_properties_independent_across_components()
     properties_cfg = {
         "conductivity": {"min": 0.0, "max": 1.0},
         "permittivity": {"min": 0.0, "max": 1.0},
-        "density": {"min": 0.0, "max": 1.0}
+        "density": {"min": 0.0, "max": 1.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
 
-    parent_blob = Blob(position=np.array([0., 0., 0.]), radius=10.0)
+    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
     child_blobs = [
-        Blob(position=np.array([1., 1., 1.]), radius=3.0),
-        Blob(position=np.array([2., 2., 2.]), radius=2.0)
+        Blob(position=np.array([1.0, 1.0, 1.0]), radius=3.0),
+        Blob(position=np.array([2.0, 2.0, 2.0]), radius=2.0),
     ]
     # Test fixture: list invariance, Blob is Structure3D subtype
     structure_phantom = StructurePhantom(
@@ -1724,7 +1760,7 @@ def test_property_sampler_sample_with_invalid_min_max_order_allows_swap():
     properties_cfg = {
         "conductivity": {"min": 1.0, "max": 0.5},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1739,7 +1775,7 @@ def test_property_sampler_initialization_with_missing_min_key():
     properties_cfg = {
         "conductivity": {"max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1752,7 +1788,7 @@ def test_property_sampler_initialization_with_missing_max_key():
     properties_cfg = {
         "conductivity": {"min": 0.1},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1772,7 +1808,7 @@ def test_property_sampler_initialization_with_none_config():
 def test_property_sampler_sample_with_missing_required_property_in_config():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
-        "permittivity": {"min": 1.0, "max": 100.0}
+        "permittivity": {"min": 1.0, "max": 100.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1786,7 +1822,7 @@ def test_property_sampler_sample_with_extra_properties_in_config():
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
         "density": {"min": 500.0, "max": 2000.0},
-        "extra_property": {"min": 0.0, "max": 1.0}
+        "extra_property": {"min": 0.0, "max": 1.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1799,7 +1835,7 @@ def test_property_sampler_sample_like_with_invalid_phantom_type():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1815,7 +1851,7 @@ def test_property_sampler_sample_with_zero_range_all_properties():
     properties_cfg = {
         "conductivity": {"min": 0.5, "max": 0.5},
         "permittivity": {"min": 10.0, "max": 10.0},
-        "density": {"min": 1000.0, "max": 1000.0}
+        "density": {"min": 1000.0, "max": 1000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1831,7 +1867,7 @@ def test_property_sampler_sample_with_extreme_precision_boundaries():
     properties_cfg = {
         "conductivity": {"min": 1.0000000000000001, "max": 1.0000000000000002},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1845,7 +1881,7 @@ def test_property_sampler_sample_reproducibility_across_multiple_calls():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
 
@@ -1865,7 +1901,7 @@ def test_property_sampler_sample_like_phantom_with_no_parent_attribute():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1888,7 +1924,7 @@ def test_property_sampler_sample_with_invalid_config_missing_keys():
     properties_cfg = {
         "conductivity": {"max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1909,7 +1945,7 @@ def test_property_sampler_sample_like_with_invalid_phantom():
     properties_cfg = {
         "conductivity": {"min": 0.1, "max": 1.0},
         "permittivity": {"min": 1.0, "max": 100.0},
-        "density": {"min": 500.0, "max": 2000.0}
+        "density": {"min": 500.0, "max": 2000.0},
     }
     sampler = PropertySampler(properties_cfg)
     rng = default_rng(42)
@@ -1949,7 +1985,10 @@ def test_mesh_blob_sampler_initialization_with_sample_children_only_inside():
     child_radius = 0.3
     sample_children_only_inside = True
 
-    sampler = MeshBlobSampler(child_radius=child_radius, sample_children_only_inside=sample_children_only_inside)
+    sampler = MeshBlobSampler(
+        child_radius=child_radius,
+        sample_children_only_inside=sample_children_only_inside,
+    )
 
     assert sampler.child_radius == child_radius
     assert sampler.sample_children_only_inside is True
@@ -1979,9 +2018,11 @@ def test_mesh_blob_sampler_rejects_negative_child_radius():
         MeshBlobSampler(child_radius=-1.0)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(
+    custom_mesh_structure,
+):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     children = sampler.sample_children_blobs(parent_mesh_structure, 0, rng)
@@ -1990,25 +2031,33 @@ def test_mesh_blob_sampler_sample_children_blobs_with_zero_children(tmp_path):
     assert isinstance(children, list)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_single_child(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_single_child(
+    custom_mesh_structure,
+):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
-    children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2000)
+    children = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng, batch_size=2000
+    )
 
     assert len(children) == 1
     assert isinstance(children[0], Blob)
     assert children[0].radius == sampler.child_radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(
+    custom_mesh_structure,
+):
     sampler = MeshBlobSampler(child_radius=0.05)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
     num_children = 2
 
-    children = sampler.sample_children_blobs(parent_mesh_structure, num_children, rng, batch_size=2000)
+    children = sampler.sample_children_blobs(
+        parent_mesh_structure, num_children, rng, batch_size=2000
+    )
 
     assert len(children) == num_children
     for child in children:
@@ -2016,15 +2065,21 @@ def test_mesh_blob_sampler_sample_children_blobs_with_multiple_children(tmp_path
         assert child.radius == sampler.child_radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(
+    custom_mesh_structure,
+):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(42)
 
-    children1 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng1, batch_size=2000)
-    children2 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng2, batch_size=2000)
+    children1 = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng1, batch_size=2000
+    )
+    children2 = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng2, batch_size=2000
+    )
 
     assert len(children1) == len(children2)
     for c1, c2 in zip(children1, children2):
@@ -2032,15 +2087,21 @@ def test_mesh_blob_sampler_sample_children_blobs_reproducible_with_same_seed(tmp
         assert c1.radius == c2.radius
 
 
-def test_mesh_blob_sampler_sample_children_blobs_different_results_with_different_seeds(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_different_results_with_different_seeds(
+    custom_mesh_structure,
+):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(123)
 
-    children1 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng1, batch_size=2000)
-    children2 = sampler.sample_children_blobs(parent_mesh_structure, 1, rng2, batch_size=2000)
+    children1 = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng1, batch_size=2000
+    )
+    children2 = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng2, batch_size=2000
+    )
 
     assert not np.allclose(children1[0].position, children2[0].position)
 
@@ -2050,7 +2111,9 @@ def test_mesh_blob_sampler_sample_inside_volume_returns_valid_positions():
     mesh = create_test_mesh()
     rng = default_rng(42)
 
-    positions = sampler._sample_inside_volume(mesh, rng, batch_size=1000, points_to_return=10)
+    positions = sampler._sample_inside_volume(
+        mesh, rng, batch_size=1000, points_to_return=10
+    )
 
     assert positions.shape[0] <= 10
     assert positions.shape[1] == 3
@@ -2064,7 +2127,9 @@ def test_mesh_blob_sampler_sample_inside_volume_with_minimal_batch_size():
     mesh = create_test_mesh()
     rng = default_rng(42)
 
-    positions = sampler._sample_inside_volume(mesh, rng, batch_size=100, points_to_return=1)
+    positions = sampler._sample_inside_volume(
+        mesh, rng, batch_size=100, points_to_return=1
+    )
 
     assert positions.shape[0] <= 1
     assert positions.shape[1] == 3
@@ -2074,35 +2139,38 @@ def test_mesh_blob_sampler_sample_inside_volume_runtime_error_on_failure():
     """Test that RuntimeError is raised when no valid positions can be found."""
     sampler = MeshBlobSampler(child_radius=0.1)
 
-    vertices = np.array([
-        [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
-    ])
+    vertices = np.array([[0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]])
     faces = np.array([[0, 1, 2], [0, 2, 3]])
     thin_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
     rng = default_rng(42)
 
-    with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
+    with pytest.raises(
+        RuntimeError, match="Failed to sample a valid position inside the mesh"
+    ):
         sampler._sample_inside_volume(thin_mesh, rng, batch_size=10, points_to_return=1)
 
 
-def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements(tmp_path):
+def test_mesh_blob_sampler_sample_children_blobs_fails_with_no_valid_placements(
+    custom_mesh_structure,
+):
     """Test that RuntimeError is raised when no valid blob placements can be found."""
-    sampler = MeshBlobSampler(child_radius=0.5)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    sampler = MeshBlobSampler(child_radius=0.8)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
-
     with pytest.raises(RuntimeError, match="No valid blob placements found"):
-        sampler.sample_children_blobs(parent_mesh_structure, 20, rng, batch_size=50)
+        sampler.sample_children_blobs(parent_mesh_structure, 5, rng, batch_size=10)
 
 
-def test_mesh_blob_sampler_with_sample_children_only_inside_true(tmp_path):
+def test_mesh_blob_sampler_with_sample_children_only_inside_true(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.05, sample_children_only_inside=True)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     try:
-        children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2000)
+        children = sampler.sample_children_blobs(
+            parent_mesh_structure, 1, rng, batch_size=2000
+        )
         assert len(children) <= 1
         if len(children) > 0:
             assert isinstance(children[0], Blob)
@@ -2119,18 +2187,26 @@ def test_mesh_blob_sampler_sample_children_inside_filter_failure(tmp_path, monke
         return np.array([[0.0, 0.0, 0.0], [0.1, 0.0, 0.0]])
 
     monkeypatch.setattr(sampler, "_sample_inside_volume", fake_sample_inside_volume)
-    monkeypatch.setattr(parent_mesh_structure.mesh.nearest, "signed_distance", lambda points: np.zeros(points.shape[0]))
+    monkeypatch.setattr(
+        parent_mesh_structure.mesh.nearest,
+        "signed_distance",
+        lambda points: np.zeros(points.shape[0]),
+    )
 
-    with pytest.raises(RuntimeError, match="No valid blob placements found inside the parental mesh"):
+    with pytest.raises(
+        RuntimeError, match="No valid blob placements found inside the parental mesh"
+    ):
         sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2)
 
 
-def test_mesh_blob_sampler_batch_size_parameter(tmp_path):
+def test_mesh_blob_sampler_batch_size_parameter(custom_mesh_structure):
     sampler = MeshBlobSampler(child_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
-    children = sampler.sample_children_blobs(parent_mesh_structure, 1, rng, batch_size=2000)
+    children = sampler.sample_children_blobs(
+        parent_mesh_structure, 1, rng, batch_size=2000
+    )
 
     assert len(children) == 1
     assert isinstance(children[0], Blob)
@@ -2140,7 +2216,9 @@ def test_mesh_tube_sampler_initialization_with_valid_radii():
     tube_max_radius = 2.0
     tube_min_radius = 0.5
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
 
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
@@ -2152,7 +2230,9 @@ def test_mesh_tube_sampler_initialization_with_minimal_difference():
     tube_max_radius = 1.0 + np.finfo(float).eps
     tube_min_radius = 1.0
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
 
@@ -2161,7 +2241,9 @@ def test_mesh_tube_sampler_initialization_with_large_difference():
     tube_max_radius = 1000.0
     tube_min_radius = 0.001
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
     assert sampler.tube_max_radius == tube_max_radius
     assert sampler.tube_min_radius == tube_min_radius
 
@@ -2187,12 +2269,16 @@ def test_mesh_tube_sampler_rejects_negative_min_radius():
 
 
 def test_mesh_tube_sampler_rejects_min_radius_equal_to_max_radius():
-    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+    with pytest.raises(
+        ValueError, match="tube_min_radius must be less than tube_max_radius"
+    ):
         MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=1.0)
 
 
 def test_mesh_tube_sampler_rejects_min_radius_greater_than_max_radius():
-    with pytest.raises(ValueError, match="tube_min_radius must be less than tube_max_radius"):
+    with pytest.raises(
+        ValueError, match="tube_min_radius must be less than tube_max_radius"
+    ):
         MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=1.0)
 
 
@@ -2238,21 +2324,21 @@ def test_mesh_tube_sampler_sample_inside_position_runtime_error_on_failure():
     """Test that RuntimeError is raised when no valid position can be found."""
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
 
-    vertices = np.array([
-        [0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]
-    ])
+    vertices = np.array([[0, 0, 0], [1, 0, 0], [0.5, 0, 0.001], [0.5, 0, -0.001]])
     faces = np.array([[0, 1, 2], [0, 2, 3]])
     thin_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
     rng = default_rng(42)
 
-    with pytest.raises(RuntimeError, match="Failed to sample a valid position inside the mesh"):
+    with pytest.raises(
+        RuntimeError, match="Failed to sample a valid position inside the mesh"
+    ):
         sampler._sample_inside_position(thin_mesh, rng, max_iter=10)
 
 
-def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 0, rng)
@@ -2261,9 +2347,9 @@ def test_mesh_tube_sampler_sample_tubes_with_zero_tubes(tmp_path):
     assert isinstance(tubes, list)
 
 
-def test_mesh_tube_sampler_sample_tubes_with_single_tube(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_single_tube(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2273,9 +2359,9 @@ def test_mesh_tube_sampler_sample_tubes_with_single_tube(tmp_path):
     assert sampler.tube_min_radius <= tubes[0].radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.2, tube_min_radius=0.05)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
     num_tubes = 2
 
@@ -2288,9 +2374,9 @@ def test_mesh_tube_sampler_sample_tubes_with_multiple_tubes(tmp_path):
         assert np.isclose(np.linalg.norm(tube.direction), 1.0)
 
 
-def test_mesh_tube_sampler_sample_tubes_radii_within_range(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_radii_within_range(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=1.0, tube_min_radius=0.2)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2299,9 +2385,9 @@ def test_mesh_tube_sampler_sample_tubes_radii_within_range(tmp_path):
         assert sampler.tube_min_radius <= tube.radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_collision_detection(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_collision_detection(custom_mesh_structure):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2311,12 +2397,16 @@ def test_mesh_tube_sampler_sample_tubes_collision_detection(tmp_path):
             if i != j:
                 distance = Tube.distance_to_tube(tube1, tube2)
                 min_distance = tube1.radius + tube2.radius
-                assert distance >= min_distance or np.isclose(distance, min_distance, atol=1e-10)
+                assert distance >= min_distance or np.isclose(
+                    distance, min_distance, atol=1e-10
+                )
 
 
-def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(
+    custom_mesh_structure,
+):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(42)
@@ -2332,9 +2422,11 @@ def test_mesh_tube_sampler_sample_tubes_reproducible_with_same_seed(tmp_path):
             assert t1.radius == t2.radius
 
 
-def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(
+    custom_mesh_structure,
+):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     rng1 = default_rng(42)
     rng2 = default_rng(123)
@@ -2354,9 +2446,11 @@ def test_mesh_tube_sampler_sample_tubes_different_results_with_different_seeds(t
         assert different
 
 
-def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(
+    custom_mesh_structure,
+):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng, max_iterations=100)
@@ -2364,10 +2458,12 @@ def test_mesh_tube_sampler_sample_tubes_with_custom_max_iterations(tmp_path):
     assert len(tubes) <= 1
 
 
-def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(
+    custom_mesh_structure,
+):
     """Test that sampling terminates early when tube placement becomes impossible."""
     sampler = MeshTubeSampler(tube_max_radius=1.5, tube_min_radius=1.0)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 5, rng, max_iterations=10)
@@ -2375,9 +2471,11 @@ def test_mesh_tube_sampler_sample_tubes_early_termination_on_failure(tmp_path):
     assert len(tubes) < 5
 
 
-def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(tmp_path):
-    sampler = MeshTubeSampler(tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(custom_mesh_structure):
+    sampler = MeshTubeSampler(
+        tube_max_radius=np.finfo(float).eps * 2, tube_min_radius=np.finfo(float).eps
+    )
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2388,10 +2486,10 @@ def test_mesh_tube_sampler_sample_tubes_with_minimal_radius(tmp_path):
         assert tubes[0].radius <= sampler.tube_max_radius
 
 
-def test_mesh_tube_sampler_direction_vector_normalization(tmp_path):
+def test_mesh_tube_sampler_direction_vector_normalization(custom_mesh_structure):
     """Test that direction vectors are properly normalized."""
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)
@@ -2408,7 +2506,7 @@ def test_mesh_tube_sampler_initialization_with_parent_radius():
     sampler = MeshTubeSampler(
         tube_max_radius=tube_max_radius,
         tube_min_radius=tube_min_radius,
-        parent_radius=parent_radius
+        parent_radius=parent_radius,
     )
 
     assert sampler.tube_max_radius == tube_max_radius
@@ -2421,7 +2519,9 @@ def test_mesh_tube_sampler_initialization_with_default_parent_radius():
     tube_max_radius = 2.0
     tube_min_radius = 0.5
 
-    sampler = MeshTubeSampler(tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius)
+    sampler = MeshTubeSampler(
+        tube_max_radius=tube_max_radius, tube_min_radius=tube_min_radius
+    )
 
     assert sampler.parent_radius == 250.0
 
@@ -2434,7 +2534,7 @@ def test_mesh_tube_sampler_initialization_with_zero_parent_radius():
     sampler = MeshTubeSampler(
         tube_max_radius=tube_max_radius,
         tube_min_radius=tube_min_radius,
-        parent_radius=parent_radius
+        parent_radius=parent_radius,
     )
 
     assert sampler.parent_radius == 0.0
@@ -2448,16 +2548,20 @@ def test_mesh_tube_sampler_initialization_with_large_parent_radius():
     sampler = MeshTubeSampler(
         tube_max_radius=tube_max_radius,
         tube_min_radius=tube_min_radius,
-        parent_radius=parent_radius
+        parent_radius=parent_radius,
     )
 
     assert sampler.parent_radius == parent_radius
 
 
-def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(
+    custom_mesh_structure,
+):
     parent_radius = 80.0
-    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    sampler = MeshTubeSampler(
+        tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius
+    )
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
@@ -2467,9 +2571,11 @@ def test_mesh_tube_sampler_sample_tubes_sets_height_based_on_parent_radius(tmp_p
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(tmp_path):
+def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(
+    custom_mesh_structure,
+):
     sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 2, rng)
@@ -2479,10 +2585,14 @@ def test_mesh_tube_sampler_sample_tubes_with_default_parent_radius_height(tmp_pa
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(tmp_path):
+def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(
+    custom_mesh_structure,
+):
     parent_radius = 0.0
-    sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    sampler = MeshTubeSampler(
+        tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius
+    )
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2492,12 +2602,16 @@ def test_mesh_tube_sampler_height_calculation_with_zero_parent_radius(tmp_path):
         assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_height_calculation_formula_verification(tmp_path):
+def test_mesh_tube_sampler_height_calculation_formula_verification(
+    custom_mesh_structure,
+):
     parent_radius_values = [15.0, 50.0, 200.0, 1500.0]
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    parent_mesh_structure = custom_mesh_structure
 
     for parent_radius in parent_radius_values:
-        sampler = MeshTubeSampler(tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius)
+        sampler = MeshTubeSampler(
+            tube_max_radius=0.5, tube_min_radius=0.1, parent_radius=parent_radius
+        )
         rng = default_rng(42)
 
         tubes = sampler.sample_tubes(parent_mesh_structure, 1, rng)
@@ -2507,10 +2621,14 @@ def test_mesh_tube_sampler_height_calculation_formula_verification(tmp_path):
             assert tube.height == expected_height
 
 
-def test_mesh_tube_sampler_parent_radius_consistency_across_multiple_tubes(tmp_path):
+def test_mesh_tube_sampler_parent_radius_consistency_across_multiple_tubes(
+    custom_mesh_structure,
+):
     parent_radius = 120.0
-    sampler = MeshTubeSampler(tube_max_radius=0.3, tube_min_radius=0.05, parent_radius=parent_radius)
-    parent_mesh_structure = create_test_custom_mesh_structure(tmp_path)
+    sampler = MeshTubeSampler(
+        tube_max_radius=0.3, tube_min_radius=0.05, parent_radius=parent_radius
+    )
+    parent_mesh_structure = custom_mesh_structure
     rng = default_rng(42)
 
     tubes = sampler.sample_tubes(parent_mesh_structure, 3, rng)

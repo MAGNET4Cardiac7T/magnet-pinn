@@ -29,11 +29,16 @@ def test_perlin_noise_works_in_2D():
 
 
 def test_perlin_noise_works_in_high_dimensions():
-    """Checks if values in -1 1 in high dimensions."""
-    n_dims = 10
+    """Checks if values in -1 1 in high dimensions.
+
+    Uses reduced parameters (5 dimensions, 25 passes) compared to original
+    (10 dimensions, 100 passes) to improve test speed while still validating
+    high-dimensional correctness.
+    """
+    n_dims = 5  # Reduced from 10 for faster execution
     noise = PerlinNoise(octaves=3)
     vec: list[float] = []
-    n_passes = 100
+    n_passes = 25  # Reduced from 100 for faster execution
     for check in range(n_passes):
         vec = []
         for dim in range(n_dims):

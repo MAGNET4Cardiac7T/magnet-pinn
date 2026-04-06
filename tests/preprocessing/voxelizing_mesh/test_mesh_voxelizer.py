@@ -94,7 +94,7 @@ def test_unit_sphere_mesh_grid_is_smaller(sphere_unit_mesh):
     lower_bound = 4 / 3 * pi * np.power((radius - np.sqrt(3) * voxel_size), 3)
     assert upper_bound > np.sum(np.power(result, 3)) > lower_bound
     assert result.shape == (steps, steps, steps)
-    assert np.sum(result) == steps ** 3
+    assert np.sum(result) == steps**3
     assert np.equal(result, supposed_voxels).all()
 
 
@@ -174,12 +174,19 @@ def test_fast_winding_number_fallback(monkeypatch):
     Ensure fallback import is used when fast winding number is unavailable.
     """
     original_module = sys.modules.pop("magnet_pinn.preprocessing.voxelizing_mesh", None)
-    dummy_igl = SimpleNamespace(fast_winding_number_for_meshes=lambda *args, **kwargs: None)
+    dummy_igl = SimpleNamespace(
+        fast_winding_number_for_meshes=lambda *args, **kwargs: None
+    )
     monkeypatch.setitem(sys.modules, "igl", dummy_igl)
 
-    reloaded_module = importlib.import_module("magnet_pinn.preprocessing.voxelizing_mesh")
+    reloaded_module = importlib.import_module(
+        "magnet_pinn.preprocessing.voxelizing_mesh"
+    )
     try:
-        assert reloaded_module.fast_winding_number is dummy_igl.fast_winding_number_for_meshes
+        assert (
+            reloaded_module.fast_winding_number
+            is dummy_igl.fast_winding_number_for_meshes
+        )
     finally:
         sys.modules.pop("magnet_pinn.preprocessing.voxelizing_mesh", None)
         if original_module is not None:
@@ -255,7 +262,7 @@ def test_unit_box_mesh_grid_is_smaller(box_unit_mesh):
     result: npt.NDArray[np.float64] = voxelizer.process_mesh(box_unit_mesh)
     supposed_voxels = np.ones((steps, steps, steps))
 
-    assert np.sum(result) == steps ** 3
+    assert np.sum(result) == steps**3
     assert result.shape == (steps, steps, steps)
     assert np.equal(result, supposed_voxels).all()
 

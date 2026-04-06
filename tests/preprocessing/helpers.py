@@ -290,9 +290,5 @@ def create_pointslist_field(path: Path, field_type: str) -> None:
     ]
     position_dtype = [("x", "<f8"), ("y", "<f8"), ("z", "<f8")]
     with File(str(path), "w") as f:
-        f.create_dataset(
-            field_type, data=np.array(np.zeros(100), dtype=field_dtype)
-        )
-        f.create_dataset(
-            "Position", data=np.array(np.zeros(100), dtype=position_dtype)
-        )
+        f.create_dataset(field_type, data=np.array(np.zeros(100), dtype=field_dtype))
+        f.create_dataset("Position", data=np.array(np.zeros(100), dtype=position_dtype))

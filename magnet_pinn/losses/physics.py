@@ -91,7 +91,7 @@ class BasePhysicsLoss(BaseRegressionLoss):
         torch.Tensor
             Physics residual
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     def _build_physics_filters(self):
@@ -103,7 +103,7 @@ class BasePhysicsLoss(BaseRegressionLoss):
         torch.Tensor
             Differential operator filter
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def _base_loss_fn(self, pred, target):
         """
