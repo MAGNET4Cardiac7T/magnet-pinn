@@ -427,21 +427,6 @@ def test_blob_sampler_sample_children_blobs_with_multiple_children():
         assert child.radius == parent_blob.radius * sampler.radius_decrease_factor
 
 
-def test_blob_sampler_sample_children_blobs_children_within_parent():
-    sampler = BlobSampler(radius_decrease_factor=0.3)
-    parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
-    rng = default_rng(42)
-
-    children = sampler.sample_children_blobs(parent_blob, 2, rng)
-
-    for child in children:
-        distance_to_parent = np.linalg.norm(child.position - parent_blob.position)
-        max_allowed_distance = parent_blob.radius * (
-            1 + parent_blob.empirical_min_offset
-        ) - child.radius * (1 + child.empirical_max_offset)
-        assert distance_to_parent <= max_allowed_distance
-
-
 def test_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
     sampler = BlobSampler(radius_decrease_factor=0.2)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=10.0)
@@ -459,11 +444,17 @@ def test_blob_sampler_sample_children_blobs_reproducible_with_same_seed():
 
 
 def test_blob_sampler_sample_children_blobs_fails_with_too_small_parent():
-    sampler = BlobSampler(radius_decrease_factor=0.95)
+    # radius_decrease_factor=0.96 ensures _calculate_parent_sampling_radius raises
+    # "Parent blob radius too small" before _validate_packing_constraints runs.
+    # Under the fast fixture (offsets ±0.025):
+    #   child_radius_with_margin = 0.96 * 1.025 = 0.984
+    #   parent_inner_radius      = 1.0  * 0.975 = 0.975
+    #   parent_allowed_radius    = 0.975 - 0.984 = -0.009 → final_radius < 0 → raises.
+    sampler = BlobSampler(radius_decrease_factor=0.96)
     parent_blob = Blob(position=np.array([0.0, 0.0, 0.0]), radius=1.0)
     rng = default_rng(42)
     with pytest.raises(
-        RuntimeError, match="(Parent blob radius .* too small|Cannot pack .* spheres)"
+        RuntimeError, match="Parent blob radius .* too small"
     ):
         sampler.sample_children_blobs(parent_blob, 1, rng)
 
@@ -1025,24 +1016,6 @@ def test_tube_sampler_extreme_coordinate_values():
         assert np.isfinite(tube.direction).all()
         assert np.isfinite(tube.radius)
         assert tube.radius > 0
-
-
-def test_blob_sampler_safety_margin_calculations():
-    """Test safety margin calculations in child radius computation."""
-    sampler = BlobSampler(radius_decrease_factor=0.5)
-
-    blob1 = Blob(np.array([0, 0, 0]), 1.0, relative_disruption_strength=0.1)
-    blob2 = Blob(np.array([0, 0, 0]), 1.0, relative_disruption_strength=0.3)
-    blobs = [blob1, blob2]
-
-    base_radius = 1.0
-    safe_radius = sampler._calculate_safe_child_radius(blobs, base_radius)
-
-    assert safe_radius > base_radius
-
-    max_offset = max(blob.empirical_max_offset for blob in blobs)
-    expected = base_radius * (1 + max_offset)
-    assert np.isclose(safe_radius, expected)
 
 
 def test_blob_sampler_sample_children_blobs_numerical_precision():

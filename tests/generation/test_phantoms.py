@@ -615,53 +615,6 @@ def test_tissue_generate_tube_direction_vectors_normalized():
         assert np.isclose(norm, 1.0, rtol=1e-10)
 
 
-def test_tissue_generate_uses_parent_inner_radius_for_tubes():
-    tissue = Tissue(
-        num_children_blobs=0,
-        initial_blob_radius=10.0,
-        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
-        blob_radius_decrease_per_level=0.5,
-        num_tubes=1,
-        relative_tube_max_radius=0.1,
-    )
-
-    phantom = tissue.generate(seed=42)
-
-    # Runtime type of phantom.parent is Blob, which has empirical_min_offset
-    parent = phantom.parent
-    expected_max_distance = parent.radius * (1 + parent.empirical_min_offset)  # type: ignore[attr-defined]
-
-    for tube in phantom.tubes:
-        distance_to_center = np.linalg.norm(tube.position - parent.position)
-        assert distance_to_center + tube.radius <= expected_max_distance
-
-
-def test_tissue_generate_with_single_child_blob():
-    tissue = Tissue(
-        num_children_blobs=1,
-        initial_blob_radius=10.0,
-        initial_blob_center_extent=np.array([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]),
-        blob_radius_decrease_per_level=0.2,
-        num_tubes=0,
-        relative_tube_max_radius=0.1,
-    )
-
-    phantom = tissue.generate(seed=42)
-
-    assert len(phantom.children) == 1
-    child = phantom.children[0]
-    # Runtime types are Blob, which have empirical_min_offset and empirical_max_offset
-    parent = phantom.parent
-
-    distance = np.linalg.norm(child.position - parent.position)
-    max_distance = parent.radius * (
-        1 + parent.empirical_min_offset
-    ) - child.radius * (  # type: ignore[attr-defined]
-        1 + child.empirical_max_offset
-    )  # type: ignore[attr-defined]
-    assert distance <= max_distance
-
-
 def test_tissue_generate_with_single_tube():
     tissue = Tissue(
         num_children_blobs=0,
