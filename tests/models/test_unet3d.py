@@ -1,6 +1,7 @@
 """Tests for foundational 3D U-Net utilities, building blocks, and squeeze-excitation blocks."""
 
 import importlib.util
+from typing import cast
 
 import pytest
 import torch
@@ -64,8 +65,9 @@ def _assert_nonzero_gradients(
             assert all(
                 g is not None for g in grads
             ), "Some parameters received no gradient"
+            grads_nonnull: list[torch.Tensor] = [g for g in grads if g is not None]
             assert all(
-                torch.count_nonzero(g).item() > 0 for g in grads
+                torch.count_nonzero(g).item() > 0 for g in grads_nonnull
             ), "Some parameter gradients are zero"
 
 
@@ -216,10 +218,11 @@ class TestSingleConv:
         output_tensor = layer(input_tensor)
 
         assert output_tensor.shape == (1, 8, *input_tensor.shape[2:])
+        conv = cast(nn.Conv3d, layer.conv)
         if "g" in order or "b" in order:
-            assert layer.conv.bias is None
+            assert conv.bias is None
         else:
-            assert layer.conv.bias is not None
+            assert conv.bias is not None
 
     def test_capital_d_order_creates_dropout2d_layer(
         self, small_2d_input: torch.Tensor
@@ -250,10 +253,14 @@ class TestDoubleConv:
 
         output_tensor = module(input_tensor)
 
-        assert module.SingleConv1.conv.in_channels == 8
-        assert module.SingleConv1.conv.out_channels == expected_conv1_out_channels
-        assert module.SingleConv2.conv.in_channels == expected_conv1_out_channels
-        assert module.SingleConv2.conv.out_channels == 16
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.in_channels == 8
+        assert conv1.out_channels == expected_conv1_out_channels
+        assert conv2.in_channels == expected_conv1_out_channels
+        assert conv2.out_channels == 16
         assert output_tensor.shape == (1, 16, *small_3d_input.shape[2:])
 
     def test_encoder_path_clamps_intermediate_channels_to_input_channels(self) -> None:
@@ -262,8 +269,12 @@ class TestDoubleConv:
 
         output_tensor = module(input_tensor)
 
-        assert module.SingleConv1.conv.out_channels == 32
-        assert module.SingleConv2.conv.in_channels == 32
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.out_channels == 32
+        assert conv2.in_channels == 32
         assert output_tensor.shape == (1, 16, 8, 8, 8)
 
     def test_decoder_path_reduces_channels_in_first_convolution(
@@ -275,10 +286,14 @@ class TestDoubleConv:
 
         output_tensor = module(input_tensor)
 
-        assert module.SingleConv1.conv.in_channels == 24
-        assert module.SingleConv1.conv.out_channels == 8
-        assert module.SingleConv2.conv.in_channels == 8
-        assert module.SingleConv2.conv.out_channels == 8
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        conv1 = cast(nn.Conv3d, sc1.conv)
+        conv2 = cast(nn.Conv3d, sc2.conv)
+        assert conv1.in_channels == 24
+        assert conv1.out_channels == 8
+        assert conv2.in_channels == 8
+        assert conv2.out_channels == 8
         assert output_tensor.shape == (1, 8, *small_3d_input.shape[2:])
 
     def test_tuple_dropout_prob_applies_to_each_convolution(
@@ -298,10 +313,14 @@ class TestDoubleConv:
         output_tensor = module(input_tensor)
 
         assert output_tensor.shape == (1, 16, *small_3d_input.shape[2:])
-        assert isinstance(module.SingleConv1.dropout, nn.Dropout)
-        assert isinstance(module.SingleConv2.dropout, nn.Dropout)
-        assert module.SingleConv1.dropout.p == pytest.approx(0.1)
-        assert module.SingleConv2.dropout.p == pytest.approx(0.2)
+        sc1 = cast(SingleConv, module.SingleConv1)
+        sc2 = cast(SingleConv, module.SingleConv2)
+        d1 = cast(nn.Dropout, sc1.dropout)
+        d2 = cast(nn.Dropout, sc2.dropout)
+        assert isinstance(sc1.dropout, nn.Dropout)
+        assert isinstance(sc2.dropout, nn.Dropout)
+        assert d1.p == pytest.approx(0.1)
+        assert d2.p == pytest.approx(0.2)
 
 
 class TestResNetBlock:
