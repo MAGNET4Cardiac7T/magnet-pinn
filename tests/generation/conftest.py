@@ -50,8 +50,8 @@ def _fast_blob_init(
     self.perlin_scale = perlin_scale
 
     self.noise = PerlinNoise(octaves=num_octaves, seed=seed)
-    self.empirical_max_offset = 0.025 * (relative_disruption_strength / 0.1)
-    self.empirical_min_offset = -0.025 * (relative_disruption_strength / 0.1)
+    self.empirical_max_offset = 0.25 * relative_disruption_strength
+    self.empirical_min_offset = -0.25 * relative_disruption_strength
     self.effective_radius = self.radius * (1 + self.empirical_max_offset)
 
 
