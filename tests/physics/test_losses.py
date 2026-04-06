@@ -336,10 +336,8 @@ def test_base_physics_loss_accuracy_passed_to_filter():
 
     assert loss_fn_acc2.diff_filter_factory.accuracy == 2
     assert loss_fn_acc4.diff_filter_factory.accuracy == 4
-    # Higher accuracy means larger filter kernel.
-    assert loss_fn_acc4.physics_filters.shape[-1] > loss_fn_acc2.physics_filters.shape[
-        -1
-    ]
+    # Higher accuracy means larger filter kernel
+    assert loss_fn_acc4.physics_filters.shape[-1] > loss_fn_acc2.physics_filters.shape[-1]
 
 
 def test_base_physics_loss_invalid_dx_unit():

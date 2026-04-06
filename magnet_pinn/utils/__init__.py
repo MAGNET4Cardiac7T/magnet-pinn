@@ -3,7 +3,7 @@
 """
 
 from ._normalization import StandardNormalizer, MinMaxNormalizer, MetaNormalizer
-from ._normalization import Identity, Log, Power, Tanh, Arcsinh
+from ._normalization import Identity, Log, Power, Tanh, Arcsinh, Sqrt
 from ._perlin_noise import PerlinNoise
 
 __all__ = [

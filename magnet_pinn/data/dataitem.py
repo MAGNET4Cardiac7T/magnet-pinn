@@ -26,3 +26,13 @@ class DataItem:
     coils: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))
     dtype: Optional[str] = field(default_factory=str)
     truncation_coefficients: Optional[npt.NDArray] = field(default_factory=lambda: np.array([], dtype=np.float32))
+
+
+@dataclass
+class AugmentedDataItem(DataItem):
+    """
+    Extended data item with derived quantities (B1+, pointwise SAR).
+    Used by transforms that compute additional fields from the simulation data.
+    """
+    b1plus: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))
+    sar: Optional[npt.NDArray[np.float32]] = field(default_factory=lambda: np.array([], dtype=np.float32))

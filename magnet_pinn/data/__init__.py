@@ -2,23 +2,31 @@
     A module containing the data handling.
 """
 
-from ._base import MagnetBaseIterator
-from .dataitem import DataItem
+from ._base import MagnetBaseIterator, MagnetDataset
+from .dataitem import AugmentedDataItem, DataItem
 from .grid import MagnetGridIterator
 from .point import MagnetPointIterator
 from .transforms import (
-    Compose, 
-    DefaultTransform, 
-    Crop, PhaseShift, 
+    AsDict,
+    B1PlusTransform,
+    Compose,
     CoilEnumeratorPhaseShift,
-    PointSampling, 
-    check_transforms
+    Crop,
+    DefaultTransform,
+    PhaseShift,
+    PointSampling,
+    PointwiseSARTransform,
+    check_transforms,
 )
 from .utils import worker_init_fn
 
 __all__ = [
+    "AsDict",
+    "AugmentedDataItem",
+    "B1PlusTransform",
     "DataItem",
     "MagnetBaseIterator",
+    "MagnetDataset",
     "MagnetGridIterator",
     "MagnetPointIterator",
     "Compose",
@@ -27,6 +35,7 @@ __all__ = [
     "PhaseShift",
     "CoilEnumeratorPhaseShift",
     "PointSampling",
+    "PointwiseSARTransform",
     "check_transforms",
     "worker_init_fn",
 ]
