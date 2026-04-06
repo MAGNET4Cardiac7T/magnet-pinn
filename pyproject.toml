@@ -30,7 +30,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-linters = ["pre-commit", "black", "mypy", "pylint", "flake8", "isort"]
+linters = [
+    "pre-commit>=3.7.0,<4.0.0",
+    "black>=24.4.0,<25.0.0",
+    "mypy>=1.9.0,<2.0.0",
+    "pylint",
+    "flake8>=7.0.0,<8.0.0",
+    "isort>=5.13.2,<6.0.0",
+]
 
 [dependency-groups]
 dev = [
@@ -54,9 +61,10 @@ dev = [
     "coverage>=7.6.3,<8.0.0",
     "flake8-pyproject>=1.2.4",
     "pytest-xdist>=3.8.0",
-    "mypy>=1.9.0,<2.0.0",
-    "pylint",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.black]
 line-length = 88
